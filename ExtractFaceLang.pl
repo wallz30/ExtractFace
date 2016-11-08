@@ -139,6 +139,7 @@ sub loadDefaultStr
   $$refSTR{'menu2'}    = 'Scroll';
   $$refSTR{'menu3'}    = 'Expand';
   $$refSTR{'menu5'}    = 'Dump Albums';
+  $$refSTR{'menu4'}    = 'Dump Albums - Group';
   $$refSTR{'menu6'}    = 'Dump Friends';
   $$refSTR{'menu7'}    = 'Dump Event Members';
   $$refSTR{'menu17'}   = 'Dump Contributors';
@@ -166,6 +167,7 @@ sub loadDefaultStr
   $$refSTR{'winAlbums'}     = 'Dump albums';
   $$refSTR{'albumNames'}    = 'Album name';
   $$refSTR{'albumURLs'}     = 'Album url';
+  $$refSTR{'group'}         = 'Group';
   $$refSTR{'loadAlbum'}     = 'Loading the album page';
   $$refSTR{'dumpAlbumC'}    = 'Dumping albums cancelled';
   $$refSTR{'dumpAlbumP'}    = 'Dumping albums in progress';
@@ -173,6 +175,10 @@ sub loadDefaultStr
   $$refSTR{'chPublishDate'} = 'Include publication date';
   $$refSTR{'openHTML'}      = 'Open output HTML file';
   $$refSTR{'openAlbumDir'}  = 'Open album folder';
+  $$refSTR{'picSize'}       = 'Picture size';
+  $$refSTR{'small'}         = 'Small';
+  $$refSTR{'medium'}        = 'Medium';
+  $$refSTR{'full'}          = 'Large';
   $$refSTR{'errorDate'}     = 'Fail to get date!';
   
   # Dump friends

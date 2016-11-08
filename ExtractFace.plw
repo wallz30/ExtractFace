@@ -8,9 +8,9 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2016-09-28
-my $VERSION   = "4.4";
-# Author      : Alain Rioux (admin@le-tools.com)
+# Modified      : 2016-11-07
+my $VERSION     = "4.5";
+# Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2016  Alain Rioux (le-tools.com)
 #
@@ -240,7 +240,8 @@ my $trayMenu = Win32::GUI::Menu->new(
   ">$STR{'menu2'}"      => { -name => "Scrolling"    , -onClick => \&scroll                 },
   ">$STR{'menu3'}"      => { -name => "Expand"       , -onClick => \&expand                 },
   " > -"                => 0,
-  ">$STR{'menu5'}..."   => { -name => "Albums"       , -onClick => \&winAlbums              },
+  ">$STR{'menu5'}..."   => { -name => "Albums"       , -onClick => \&winAlbumsNormal        },
+  ">$STR{'menu4'}..."   => { -name => "AlbumsGroup"  , -onClick => \&winAlbumsGroup         },
   ">$STR{'menu6'}..."   => { -name => "Friends"      , -onClick => \&winFriends             },
   ">$STR{'menu7'}..."   => { -name => "Events"       , -onClick => \&winEvent               },
   ">$STR{'menu17'}..."  => { -name => "Contributors" , -onClick => \&winContrib             },
@@ -266,12 +267,12 @@ my $winAlbums = Win32::GUI::DialogBox->new( -name        => 'winAlbums'         
                                             -parent      => $win                            ,
                                             -text        => $STR{'winAlbums'}               ,
                                             -pos         => [$winAlbumsPosX, $winAlbumsPosY],
-                                            -size        => [780,355]                       ,
+                                            -size        => [790,390]                       ,
                                             -background  => [255, 255, 255]                 ,
-                                            -hasmaximize => 0                               ,
+                                            -hasmaximize => 1                               ,
                                             -hasminimize => 1                               ,
                                             -helpbutton  => 0                               ,
-                                            -resizable   => 0                               ,
+                                            -resizable   => 1                               ,
                                             -topmost     => 1                               ,
                                             -dialogui    => 1                               , );
 $winAlbums->SetIcon($winICO);
@@ -290,6 +291,13 @@ $winAlbums->AddLabel(             -name         => 'lblAlbumTitle'              
 $winAlbums->AddTextfield(         -name         => 'tfAlbumTitle'                 ,
                                   -size         => [440, 22]                      ,
                                   -pos          => [220, 15]                      , );
+$winAlbums->AddCheckbox(          -name         => 'chAlbumGroup'                 ,
+                                  -size         => [200, 20]                      ,
+                                  -pos          => [665, 15]                      ,
+                                  -text         => $STR{'group'}                  ,
+                                  -background   => [255, 255, 255]                ,
+                                  -font         => $font10                        ,
+                                  -visible      => 0                              , );
 $winAlbums->AddLabel(             -name         => 'lblDirSaveAlbums'             ,
                                   -size         => [ 75, 22]                      ,
                                   -pos          => [140, 48]                      ,
@@ -359,10 +367,24 @@ $winAlbums->AddCheckbox(          -name         => 'chAlbumsOpenDir'            
                                   -text         => $STR{'openAlbumDir'}           ,
                                   -background   => [255, 255, 255]                ,
                                   -font         => $font10                        , );
+$winAlbums->AddLabel(             -name         => 'lblPicturesSize'              ,
+                                  -size         => [100, 22]                      ,
+                                  -pos          => [220,283]                      ,
+                                  -text         => $STR{'picSize'}.':'            ,
+                                  -font         => $font10                        ,
+                                  -background   => [255, 255, 255]                , );
+$winAlbums->AddCombobox(          -name         => 'cbPicturesSize'               ,
+                                  -size         => [ 80,100]                      ,
+                                  -pos          => [325,280]                      ,
+                                  -font         => $font10                        ,
+                                  -dropdownlist => 1                              ,
+                                  -vscroll      => 1                              , );
+$winAlbums->cbPicturesSize->Add( $STR{'small'}, $STR{'medium'}, $STR{'full'},);
+$winAlbums->cbPicturesSize->SetCurSel(2);
 
 $winAlbums->AddButton(            -name         => 'btnAlbumsOk'                  ,
                                   -size         => [ 85, 30]                      ,
-                                  -pos          => [355,285]                      ,
+                                  -pos          => [355,310]                      ,
                                   -text         => $STR{'dump'}                   ,
                                   -font         => $font10                        ,
                                   -disabled     => 1                              ,
@@ -1936,6 +1958,52 @@ sub scrollExpandThr
 }  #--- End scrollExpandThr
 
 #--------------------------#
+sub winAlbums_Resize
+#--------------------------#
+{
+  if ($START) {
+    $winAlbums->tfAlbumTitle->Width($winAlbums->ScaleWidth()-320);
+    $winAlbums->chAlbumGroup->Left($winAlbums->ScaleWidth()-95);
+    $winAlbums->tfDirSaveAlbums->Width($winAlbums->ScaleWidth()-320);
+    $winAlbums->btnDirSaveAlbums->Left($winAlbums->ScaleWidth()-97);
+    $winAlbums->btnBrowseDirSaveAlbums->Left($winAlbums->ScaleWidth()-73);
+    $winAlbums->lblInProgress->Left($winAlbums->ScaleWidth()-283);
+    $winAlbums->btnAlbumsRefresh->Left($winAlbums->ScaleWidth()-25);
+    $winAlbums->GridAlbums->Width($winAlbums->ScaleWidth()-144);
+    $winAlbums->GridAlbums->Height($winAlbums->ScaleHeight()-205);
+    $winAlbums->GridAlbums->AutoSize();
+    $winAlbums->GridAlbums->ExpandLastColumn();
+    $winAlbums->lblAlbumsOpt->Top($winAlbums->ScaleHeight()-97);
+    $winAlbums->chPublishDate->Top($winAlbums->ScaleHeight()-98);
+    $winAlbums->chAlbumsOpenHTML->Top($winAlbums->ScaleHeight()-98);
+    $winAlbums->chAlbumsOpenDir->Top($winAlbums->ScaleHeight()-98);
+    $winAlbums->lblPicturesSize->Top($winAlbums->ScaleHeight()-67);
+    $winAlbums->cbPicturesSize->Top($winAlbums->ScaleHeight()-70);
+    $winAlbums->btnAlbumsOk->Left(($winAlbums->ScaleWidth()/2));
+    $winAlbums->btnAlbumsOk->Top($winAlbums->ScaleHeight()-35);
+  }
+
+}  #--- End winAlbums_Resize
+
+#--------------------------#
+sub winAlbumsNormal
+#--------------------------#
+{
+  $winAlbums->chAlbumGroup->Checked(0);
+  &winAlbums();
+  
+}  #--- End winAlbumsNormal
+
+#--------------------------#
+sub winAlbumsGroup
+#--------------------------#
+{
+  $winAlbums->chAlbumGroup->Checked(1);
+  &winAlbums();
+  
+}  #--- End winAlbumsGroup
+
+#--------------------------#
 sub winAlbums
 #--------------------------#
 {
@@ -1943,6 +2011,7 @@ sub winAlbums
   if ($THR and $THR->is_running()) {
     Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
   } else {
+    &winAlbums_Resize();
     $winAlbums->tfAlbumTitle->Text('');
     $winAlbums->GridAlbums->DeleteNonFixedRows();
     
@@ -2018,7 +2087,9 @@ sub winAlbumsThr
 
     # Get album names and urls
     my %albums;
-    my @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle');
+    my @albums;
+    if ($winAlbums->chAlbumGroup->Checked()) { @albums = $mech->selector('div._3hpt._2pif a');                            }
+    else                                     { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
     foreach my $album (@albums) {
       my $albumName = $album->{innerHTML};
       $albumName   =~ s/<[^\>]+>//g;
@@ -2028,6 +2099,7 @@ sub winAlbumsThr
     }
     
     # Feed the Album Grid
+    $winAlbums->GridAlbums->SetCellCheck(0, 0, 1);
     foreach my $albumName (sort keys %albums) {
       if (exists($albums{$albumName}) and my $i = $winAlbums->GridAlbums->InsertRow($albumName, -1)) {
         $winAlbums->GridAlbums->SetCellText($i, 0, ''        );
@@ -2060,7 +2132,11 @@ sub validAlbumPage
   my $currTitle;
   if ($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) {
     # Trying to get the good page
-    if ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) {
+    if ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Album from a Group page
+      $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
+      my $goodURL = "https://www.facebook.com/$1/photos/?tab=albums";
+      ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
+    } elsif ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) {
       my $profilID = $1;
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/profile.php?id=$profilID&sk=photos&collection_token=$profilID%3A2305272732%3A6";
@@ -2072,12 +2148,14 @@ sub validAlbumPage
     }
     
     # Re evaluate current page
-    if (($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) or $currTitle =~ /Page Not Found/) {
+    if (($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) and $currURL !~ /photos\/\?tab=albums/ or
+        $currTitle =~ /Page Not Found/) {
       $winAlbums->btnAlbumsOk->Disable();
       Win32::GUI::MessageBox($winAlbums, $STR{'warn3'}, $STR{'warn2T'}, 0x40010);
       threads->exit();
     } else {
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
+      &scrollPage($refMech, $CONFIG{'TIME_TO_WAIT'});
     }
   # You are in the right page, scroll down to load the whole page
   } else {
@@ -2086,6 +2164,7 @@ sub validAlbumPage
       elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
     }
     $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
+    &scrollPage($refMech, $CONFIG{'TIME_TO_WAIT'});
   }
   
   # Write title (used for HTML Album)
@@ -2312,11 +2391,7 @@ sub btnAlbumsOk_Click
     my %listAlbums        = ();
     my $refListAlbums     = \%listAlbums;     # Album names and urls
     my %listPics          = ();
-    my $refListPics       = \%listPics;       # Album, File path and index (position of the picture in the album)
-    my %listVideoFiles    = ();
-    my $refListVideoFiles = \%listVideoFiles; # Video file path
-    my %listPicsDate      = ();
-    my $refListPicsDate   = \%listPicsDate;   # Publication date
+    my $refListPics       = \%listPics;       # Album, File path, Publication date, Urls, and index (position of the picture in the album)
     my $nbrAlbums         = 0;
     my $posPb1            = 0;
     my $nbrRetries        = 0;
@@ -2325,8 +2400,7 @@ sub btnAlbumsOk_Click
     if (-d $saveDir and $mainAlbumTitle) {
       # Start the thread
       $THR = threads->create(\&dumpAlbums, $saveDir, $mainAlbumTitle, $refListAlbums, $refListPics,
-                             $refListVideoFiles, $refListPicsDate, $nbrAlbums, $tabCurrentTitle, 
-                             $posPb1, $nbrRetries);
+                             $nbrAlbums, $tabCurrentTitle, $posPb1, $nbrRetries);
       return(-1);
     } else { Win32::GUI::MessageBox($win, $STR{'err4'}, $STR{'err1T'}, 0x40010); }
   }
@@ -2338,9 +2412,9 @@ sub dumpAlbums
 #--------------------------#
 {
   # Local variables
-  my ($saveDir, $mainAlbumTitle, $refListAlbums, $refListPics, $refListVideoFiles,
-      $refListPicsDate, $nbrAlbums, $tabCurrentTitle, $posPb1, $nbrRetries) = @_;
+  my ($saveDir, $mainAlbumTitle, $refListAlbums, $refListPics, $nbrAlbums, $tabCurrentTitle, $posPb1, $nbrRetries) = @_;
   my $firstExec = 0;
+  my $FG_size   = $winAlbums->cbPicturesSize->GetCurSel(); # Possible values are: 0 = small size only, 1 = medium size, 2 = Full size
   
   # Cancel button
   $SIG{'KILL'} = sub {
@@ -2376,8 +2450,7 @@ sub dumpAlbums
       if ($msgErr !~ /NS_ERROR_FILE_IS_LOCKED/) { $winPb->lblPbCurr1->Text($STR{'crash'}.'...'); }
       sleep(2);
       $THR = threads->create(\&dumpAlbums, $saveDir, $mainAlbumTitle, $refListAlbums, $refListPics,
-                             $refListVideoFiles, $refListPicsDate, $nbrAlbums, $tabCurrentTitle,
-                             $posPb1, $nbrRetries);
+                             $nbrAlbums, $tabCurrentTitle, $posPb1, $nbrRetries);
     } else {
       Win32::GUI::MessageBox($winPb, $STR{'err2'}, $STR{'err1T'}, 0x40010);
       # Turn off progress bar
@@ -2431,7 +2504,6 @@ sub dumpAlbums
     # Parse each album
     foreach my $album (sort keys %{$refListAlbums}) {
       my $encodedName = encode($CONFIG{'CHARSET'}, $$refListAlbums{$album}{name});
-      my %listPics;
       my @listVideos;
       
       $winPb->lblPbCurr1->Text("$STR{'opening'}: $encodedName");
@@ -2440,9 +2512,10 @@ sub dumpAlbums
       $winPb->lblCount2->Text('');
       
       my $albumDir;
-      if ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/) { $albumDir = $1; }
+      if    ($winAlbums->chAlbumGroup->Checked() and $$refListAlbums{$album}{'url'} =~ /\&album_id=(\d+)/) { $albumDir = $1; }
+      elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/                                         ) { $albumDir = $1; }
       if (!$albumDir) { $albumDir = $count1; }
-      $$refListPics{$album}{'dir'} = $albumDir;
+      $$refListAlbums{$album}{'dir'} = $albumDir;
       
       # Gather album page
       my $mechAlbum = WWW::Mechanize::Firefox->new(tab => 'current', autodie => 0);
@@ -2453,36 +2526,47 @@ sub dumpAlbums
         $mechAlbum->get($$refListAlbums{$album}{'url'}, synchronize => 0);
         $winPb->lblPbCurr1->Text("$STR{'scrolling'}: $encodedName");
         sleep($CONFIG{'TIME_TO_WAIT'});
-        &scrollAlbumPage(\$mechAlbum, $CONFIG{'TIME_TO_WAIT'});
+        if      ($winAlbums->chAlbumGroup->Checked()) { &scrollPage(\$mechAlbum, $CONFIG{'TIME_TO_WAIT'});      }
+        else                                          { &scrollAlbumPage(\$mechAlbum, $CONFIG{'TIME_TO_WAIT'}); }
       }
-      
+      my $albumPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\album.html";
+      my $status = $mechAlbum->save_content($albumPath, "$saveDir\\$mainAlbumTitle\\$albumDir\\temp");
+      while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
       $winPb->lblPbCurr1->Text("$STR{'parsing'}: $encodedName");
       
       # Video album
-      if ($$refListAlbums{$album}{'url'} =~ /set=vb/) {
+      if ($$refListAlbums{$album}{'url'} =~ /set=vb/ and -T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
         my %listVideos;
         my %videoNames;
         
         # Gather video urls and corresponding preview picture urls
-        my @videos = $mechAlbum->selector('div._5h60 div._53s');
-        foreach my $video (@videos) {
-          my $videoUrl = $mechAlbum->selector('a', one => 1, node => $video);
-          if ($videoUrl and $video->{outerHTML} =~ /data-starred-src="([^\"]+)" /) {
+        my $file_as_string = do { local $/ = <$fhTemp> };
+        close($fhTemp);
+        $file_as_string =~ s/[\r\n]//g;
+        my $section     = (split(/function\(Bootloader\)/, $file_as_string))[1];
+        $file_as_string = undef;
+        my @parts       = split(/data-starred-src=/, $section);
+        $section        = undef;
+        shift(@parts);
+        foreach my $part (@parts) {
+          if ($part =~ /^"([^\"]+)" /) {
             my $picURL = $1;
-            $picURL =~ s/&amp;/&/g;
-            my $videoPageURL = $videoUrl->{href};
-            if ($videoPageURL =~ /\/([^\/]+)\/\?type=/) {
-              my $vd = $1;
-              if (!exists($videoNames{$vd})) {
-                $videoNames{$vd} = 1;
-                if ($videoPageURL !~ /^http/) { $videoPageURL = 'https://www.facebook.com'.$videoPageURL; }
-                $videoPageURL =~ s/&amp;/&/g;
-                $listVideos{$videoUrl->{href}} = $picURL;
+            $picURL    =~ s/&amp;/&/g;
+            if ($part =~ /href="([^\"]+)"/) {
+              my $videoPageURL = $1;
+              if ($videoPageURL =~ /\/([^\/]+)\/\?type=/) {
+                my $vd = $1;
+                if (!exists($videoNames{$vd})) {
+                  $videoNames{$vd} = 1;
+                  if ($videoPageURL !~ /^http/) { $videoPageURL = 'https://www.facebook.com'.$videoPageURL; }
+                  $videoPageURL =~ s/&amp;/&/g;
+                  $listVideos{$videoPageURL} = $picURL;
+                }
               }
             }
           }
         }
-        @videos = ();
+        @parts = ();
         $$refListAlbums{$album}{'nbrVideos'} = keys %listVideos;
         
         # Gather preview picture
@@ -2499,8 +2583,9 @@ sub dumpAlbums
               my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$pic";
               $winPb->lblPbCurr2->Text("$STR{'downloading'}: $pic");
               # Download the picture if does not exist
-              $$refListPics{$album}{$picPath} = $count2;
-              $$refListVideoFiles{$videoPage} = $picPath;
+              $$refListPics{$album}{$videoPage}{'ind'}          = $count2;
+              $$refListPics{$album}{$videoPage}{'smallPicName'} = $pic;
+              $$refListPics{$album}{$videoPage}{'picPath'}      = $picPath;
               if (!-e $picPath) {
                 $mechAlbum->save_url($listVideos{$videoPage}, $picPath);
               }
@@ -2519,25 +2604,48 @@ sub dumpAlbums
               # Gather page with the video
               $winPb->lblPbCurr2->Text("$STR{'opening'}: $videoPage");
               my $videoName = $1;
-              $mechAlbum->get($videoPage, synchronize => 0);
-              sleep($CONFIG{'TIME_TO_WAIT'}+1);
-              # Download the video
-              if (my $videoURL = ($mechAlbum->selector('video'))[-1]->{src}) {
-                my $videoPath;
-                $videoURL =~ s/&amp;/&/g;
-                $winPb->lblPbCurr2->Text("$STR{'downloading'}: $videoURL");
-                # Get the publication date
-                if ($winAlbums->chPublishDate->Checked) {
-                  my $videoDateCode = $mechAlbum->selector('a._39g5', any => 1);
-                  if ($videoDateCode and $videoDateCode->{innerHTML} =~ /data-utime="([^\"]+)"/) {
-                    $$refListPicsDate{$$refListVideoFiles{$videoPage}} = $1;
+              my $videoPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$videoName.mp4";
+              my $mechVideo;
+              if (!-e $videoPath or $winAlbums->chPublishDate->Checked) {
+                # Open the video page
+                if ($tabCurrentTitle) {
+                  $mechVideo = WWW::Mechanize::Firefox->new(tab => qr{$tabCurrentTitle}, create => 1, autodie => 0);
+                } else { $mechVideo = WWW::Mechanize::Firefox->new(create => 1, autodie => 0); }
+                $mechVideo->get($videoPage, synchronize => 0);
+                sleep($CONFIG{'TIME_TO_WAIT'});
+                $tabCurrentTitle = $mechVideo->title;
+                
+                # Save the page content
+                my $pagePath = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\page.html";
+                my $status   = $mechVideo->save_content($pagePath);
+                while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+                
+                # Load content from file
+                if (-T $pagePath and open(my $fhTemp, "<:encoding(UTF-8)", $pagePath)) {
+                  my $file_as_string = do { local $/ = <$fhTemp> };
+                  $file_as_string    =~ s/[\r\n]//g;
+                  close($fhTemp);
+                  my @sections       = (split(/<video/, $file_as_string));
+                  $file_as_string    = undef;
+                  
+                  # Download the video
+                  if ($sections[1] =~ /src="([^\"]+)/) {
+                    my $videoURL = $1;
+                    $videoURL    =~ s/&amp;/&/g;
+                    $winPb->lblPbCurr2->Text("$STR{'downloading'}: $videoURL");
+                    # Get the publication date
+                    if ($winAlbums->chPublishDate->Checked and
+                        ($sections[0] =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
+                         ($sections[0] =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) {
+                      $$refListPics{$album}{$videoPage}{'pubDate'} = $1;
+                    }
+                    if (!-e $videoPath) { $mechAlbum->save_url($videoURL, $videoPath); } # Download video
+                    $$refListPics{$album}{$videoPage}{'videoPath'} = $videoPath;
                   }
                 }
-                $videoPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$videoName\.mp4";
-                $mechAlbum->save_url($videoURL, $videoPath); # Download video
-                my $picPath = $$refListVideoFiles{$videoPage};
-                $$refListVideoFiles{$picPath} = $videoPath;
-              }
+                $mechVideo = undef;
+              # Already exists
+              } elsif (-e $videoPath) { $$refListPics{$album}{$videoPage}{'videoPath'} = $videoPath; }
             }
             
             # Update progress
@@ -2545,86 +2653,258 @@ sub dumpAlbums
             $winPb->pbWinPb2->StepIt();
             $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrVideos'}");
           }
-        }        
+        }
+      }
       # Picture album
-      } else {
-        # Gather picture urls
-        my @pictures = $mechAlbum->selector('div._5h60 div._53s');
-        my $i = 0;
-        foreach my $picture (@pictures) {
-          if ($picture->{outerHTML} =~ /class="uiMediaThumb _6i9 uiMediaThumbMedium"/ and $picture->{outerHTML} =~ /data-starred-src="([^\"]+)" /) {
-            my $picURL = $1;
-            $picURL =~ s/&amp;/&/g;
-            my $picturePage;
-            if ($picture->{outerHTML} =~ /ajaxify="([^\"]+)"/) { $picturePage = $1; }
-            $listPics{$picURL}{'ind'} = $i;
-            if ($picturePage) { $listPics{$picURL}{'picPage'} = $picturePage; }
-            else              { $listPics{$picURL}{'picPage'} = 0; }
-            $i++;
+      else {
+        
+        # Facebook Group profile
+        if    ($winAlbums->chAlbumGroup->Checked()) {
+          # Load content from file
+          if (-T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
+            my $file_as_string = do { local $/ = <$fhTemp> };
+            $file_as_string    =~ s/[\r\n]//g;
+            close($fhTemp);
+            my $section        = (split(/function\(Bootloader\)/, $file_as_string))[0];
+            $file_as_string    = undef;
+            my $content        = (split(/clearfix _ikh/, $section))[3];
+            $section           = undef;
+            my @parts          = split(/_2eea/, $content);
+            shift(@parts);
+            my $i = 0;
+            foreach (@parts) {
+              my $url;
+              my $fname;
+              if (/href=\"([^\"]+)/) { $url   = $1; }
+              if (/src=\"([^\"]+)/ ) { $fname = $1; }
+              if ($url and $fname) {
+                $$refListPics{$album}{$url}{'ind'}          = $i++;
+                $$refListPics{$album}{$url}{'smallPicName'} = $fname;
+                rcopy("$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\$fname", "$saveDir\\$mainAlbumTitle\\$albumDir\\$fname"); # Copy image
+              }
+            }
           }
         }
-        @pictures = ();
+        
+        # Normal user profile
+        else {
+          # Load content from file
+          if (-T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
+            my $file_as_string = do { local $/ = <$fhTemp> };
+            $file_as_string    =~ s/[\r\n]//g;
+            close($fhTemp);
+            my $section1       = (split(/function\(Bootloader\)/, $file_as_string))[1];
+            $file_as_string    = undef;
+            my $section2       = (split(/fbTimelineStarGridSeparator/, $section1))[0];
+            $section1          = undef;
+            my @parts          = split(/data-starred-src=/, $section2);
+            $section2          = undef;
+            shift(@parts);
+            my $i = 0;
+            foreach my $part (@parts) {
+              if ($part =~ /^"([^\"]+)"/) {
+                my $picURL  = $1;
+                $picURL     =~ s/&amp;/&/g;
+                if ($part =~ /ajaxify="([^\"]+)"/) {
+                  my $picPage = $1;
+                  $picPage    =~ s/&amp;/&/g;
+                  $$refListPics{$album}{$picURL}{'ind'} = $i++;
+                  if ($picPage) { $$refListPics{$album}{$picURL}{'picPage'} = $picPage; }
+                  else          { $$refListPics{$album}{$picURL}{'picPage'} = 0; }
+                }
+                # The small picture
+                if (!$FG_size and $part =~ /data-non-starred-src="([^\"]+)"/) {
+                  my $smallPicUrl = $1;
+                  $smallPicUrl    =~ s/&amp;/&/g;
+                  $$refListPics{$album}{$picURL}{'smallPicUrl'} = $smallPicUrl;
+                }
+              }
+            }
+          }
+        }
         
         # Gather pictures
-        $$refListAlbums{$album}{'nbrPics'} = (keys %listPics);
+        $$refListAlbums{$album}{'nbrPics'} = (keys %{$$refListPics{$album}});
         if ($$refListAlbums{$album}{'nbrPics'} > 0) {
           $winPb->pbWinPb2->SetRange(0, $$refListAlbums{$album}{'nbrPics'});
           $winPb->pbWinPb2->SetPos(0);
           $winPb->pbWinPb2->SetStep(1);
           my $count2 = 0;
           $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrPics'}");
-          foreach my $picURL (sort {$listPics{$a}{'ind'} <=> $listPics{$b}{'ind'}} keys %listPics) {
-            if ($picURL =~ /\/([^\/\?]+)(?:\?|$)/) {
-              my $pic = $1;
-              $pic = encode($CONFIG{'CHARSET'}, $pic);
-              my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$pic";
-              $winPb->lblPbCurr2->Text("$STR{'downloading'}: $pic");
-              my $picOk = 0;
+          foreach (sort {$$refListPics{$album}{$a}{'ind'} <=> $$refListPics{$album}{$b}{'ind'}} keys %{$$refListPics{$album}}) {
+            my $picURL = $_;
+            my $picOk  = 0;
+            if ($$refListPics{$album}{$picURL}{'picPath'} and -e $$refListPics{$album}{$picURL}{'picPath'}) {
               # If picture exists, verify integrity
-              if (-e $picPath) {
-                my $info = image_info($picPath);
-                if (!$info->{error}) { $picOk = 1; }
-              }
-              # If picture doesn't exist, or exists and corrupted, or was not downloaded in this instance
-              if (!-e $picPath or (-e $picPath and !$picOk) or !exists($$refListPicsDate{$picPath})) {
-                # Gather publication date
-                if ($winAlbums->chPublishDate->Checked) {
-                  my $mechPic;
-                  my $publishDate;
-                  if ($listPics{$picURL}{'picPage'}) {
-                    if ($tabCurrentTitle) {
-                      $mechPic = WWW::Mechanize::Firefox->new(tab => qr{$tabCurrentTitle}, create => 1, autodie => 0);
-                    } else { $mechPic = WWW::Mechanize::Firefox->new(create => 1, autodie => 0); }
-                    $mechPic->get($listPics{$picURL}{'picPage'}, synchronize => 0);
-                    sleep($CONFIG{'TIME_TO_WAIT'}+1);
-                    my $currentTitle = $mechPic->title;
-                    if ($currentTitle =~ /([^\-]+ \- )/) { $tabCurrentTitle = $1; }
-                    my $picDateCode = $mechPic->selector('a._39g5', any => 1);
-                    # Try harder to get the publication date (5 times more and parse each possible tag)
-                    if (!$picDateCode or $picDateCode->{innerHTML} !~ /data-utime/) {
-                      my $k = 0;
-                      while ($k < 5 and (!$picDateCode or $picDateCode->{innerHTML} !~ /data-utime/)) {
-                        sleep(2);
-                        my @allTimeCode = $mechPic->selector('a._39g5');
-                        foreach (@allTimeCode) {
-                          if ($_->{innerHTML} =~ /data-utime/) { $picDateCode = $_; last; }
-                        }
-                        $k++;
+              my $info = image_info($$refListPics{$album}{$picURL}{'picPath'});
+              if (!$info->{error}) { $picOk = 1; }
+            }
+            
+            # Facebook group - Pics
+            if (!$picOk and $winAlbums->chAlbumGroup->Checked()) {
+              my $picName = $$refListPics{$album}{$picURL}{'smallPicName'};
+              $winPb->lblPbCurr2->Text("$STR{'downloading'}: $picName");
+              my $bigSizePicUrl;
+              my $mediumSizePicUrl;
+              my $publishDate;
+              
+              # If we must gather the publication date
+              if ($winAlbums->chPublishDate->Checked or $FG_size) {
+                # Open the picture page
+                my $mechPic;
+                if ($tabCurrentTitle) {
+                  $mechPic = WWW::Mechanize::Firefox->new(tab => qr{$tabCurrentTitle}, create => 1, autodie => 0);
+                } else { $mechPic = WWW::Mechanize::Firefox->new(create => 1, autodie => 0); }
+                $mechPic->get($picURL, synchronize => 0);
+                sleep($CONFIG{'TIME_TO_WAIT'}*5);
+                $tabCurrentTitle = $mechPic->title;
+                
+                # Save the page content
+                my $pagePath = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\page.html";
+                my $status   = $mechPic->save_content($pagePath);
+                while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+                
+                # Load content from file
+                if (-T $pagePath and open(my $fhTemp, "<:encoding(UTF-8)", $pagePath)) {
+                  my $file_as_string = do { local $/ = <$fhTemp> };
+                  $file_as_string    =~ s/[\r\n]//g;
+                  close($fhTemp);
+                  my $section        = (split(/function\(Bootloader\)/, $file_as_string))[0];
+                  my @parts          = (split(/_3x-2/, $section));
+                  if ($winAlbums->chPublishDate->Checked and
+                      ($parts[0] =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
+                       ($parts[0] =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) { $$refListPics{$album}{$picURL}{'pubDate'} = $1; }
+                  # Gather the medium size picture Url
+                  if ($FG_size == 1 and $parts[1] =~ /src="([^\"]+$picName[^\"]+)/) {
+                    $mediumSizePicUrl                              = $1;
+                    $mediumSizePicUrl                              =~ s/&amp;/&/g;
+                    $$refListPics{$album}{$picURL}{'mediumPicURL'} = $mediumSizePicUrl;
+                  }
+                  # Gather the big size picture Url
+                  elsif ($FG_size == 2) {
+                    if ($file_as_string =~ /_2-sx/) {
+                      my $part        = (split(/_2-sx/, $file_as_string))[1];
+                      $file_as_string = undef;
+                      if ($part =~ /src="([^\"]+)/) {
+                        $bigSizePicUrl = $1;
+                        if ($bigSizePicUrl !~ /spacer/) {
+                          $bigSizePicUrl                              =~ s/&amp;/&/g;
+                          $$refListPics{$album}{$picURL}{'bigPicURL'} = $bigSizePicUrl;
+                        } else { $bigSizePicUrl = undef; }
                       }
                     }
-                    if ($picDateCode and $picDateCode->{innerHTML} =~ /data-utime="([^\"]+)"/) { $publishDate = $1; }
-                  } else {
-                    $mechPic = WWW::Mechanize::Firefox->new(tab => qr{[\d\_]+_\w\.\w+}, create => 1, autodie => 0);
-                    $mechPic->get($picURL, synchronize => 0);
-                    my $header   = $mechPic->res();
-                    $publishDate = $header->last_modified; # Doesn't work most of the time because Firefox changes response (add html code)
+                    # Gather big size picture Url was not possible, try medium size instead
+                    if (!$bigSizePicUrl and $parts[1] =~ /src="([^\"]+$picName[^\"]+)/) {
+                      $mediumSizePicUrl                           = $1;
+                      $mediumSizePicUrl                           =~ s/&amp;/&/g;
+                      $$refListPics{$album}{$picURL}{'bigPicURL'} = $mediumSizePicUrl;
+                    }
                   }
-                  $$refListPicsDate{$picPath} = $publishDate;
+                }
+              
+                # Download the picture (medium or big size)
+                if (($bigSizePicUrl and $bigSizePicUrl =~ /[^\"]+\/([^\?]+)/) or ($mediumSizePicUrl and $mediumSizePicUrl =~ /[^\"]+\/([^\?]+)/)) {
+                  my $picName = $1;
+                  my $picFileUrl;
+                  if ($bigSizePicUrl) { $picFileUrl = $bigSizePicUrl;    }
+                  else                { $picFileUrl = $mediumSizePicUrl; }
+                  my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
+                  $picFileUrl =~ s/&amp;/&/g;
+                  $mechPic->save_url($picFileUrl, $picPath);
+                  $$refListPics{$album}{$picURL}{'picPath'} = $picPath;
+                  $picPath                                  =~ s/\Q$saveDir\E\\//;
+                  $$refListPics{$album}{$picURL}{'relPath'} = ".\\$picPath";
                   undef $mechPic;
                 }
-                $mechAlbum->save_url($picURL, $picPath);
+              # Small size only
+              } else {
+                $$refListPics{$album}{$picURL}{'picPath'} = "$saveDir\\$mainAlbumTitle\\$albumDir\\" . $$refListPics{$album}{$picURL}{'smallPicName'};
+                $$refListPics{$album}{$picURL}{'relPath'} = $picURL;
               }
-              $$refListPics{$album}{$picPath} = $count2;
+            }
+            # Normal profile album
+            elsif (!$picOk and $picURL =~ /\/([^\/\?]+)(?:\?|$)/) {
+              my $picName = $1;
+              $picName    = encode($CONFIG{'CHARSET'}, $picName);
+              my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
+              $winPb->lblPbCurr2->Text("$STR{'downloading'}: $picName");
+              my $picOk = 0;
+              
+              # Download the small picture ?
+              if (!$FG_size and exists($$refListPics{$album}{$picURL}{'smallPicUrl'}) and $$refListPics{$album}{$picURL}{'smallPicUrl'} =~ /\/([^\/\?]+)(?:\?|$)/) {
+                my $picName = $1;
+                $picPath  = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
+                if (!-e $picPath) { $mechAlbum->save_url($$refListPics{$album}{$picURL}{'smallPicUrl'}, $picPath); }
+                $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
+                $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                $$refListPics{$album}{$picURL}{'relPath'}      = $$refListPics{$album}{$picURL}{'picPage'};
+              }
+              
+              # Download the medium picture ?
+              if ($FG_size == 1) {
+                if (!-e $picPath) { $mechAlbum->save_url($picURL, $picPath); }
+                $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
+                $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                $picPath                                       =~ s/\Q$saveDir\E\\//;
+                $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+              }
+              
+              # Publication date and/or big size picture
+              if ($winAlbums->chPublishDate->Checked or $FG_size == 2) {
+                my $mechPic;
+                my $publishDate;
+                if ($$refListPics{$album}{$picURL}{'picPage'}) {
+                  if ($tabCurrentTitle) {
+                    $mechPic = WWW::Mechanize::Firefox->new(tab => qr{$tabCurrentTitle}, create => 1, autodie => 0);
+                  } else { $mechPic = WWW::Mechanize::Firefox->new(create => 1, autodie => 0); }
+                  $mechPic->get($$refListPics{$album}{$picURL}{'picPage'}, synchronize => 0);
+                  sleep($CONFIG{'TIME_TO_WAIT'}*5);
+                  my $currentTitle = $mechPic->title;
+                  if ($currentTitle =~ /([^\-]+ \- )/) { $tabCurrentTitle = $1; }
+                  my $pagePath = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\page.html";
+                  my $status   = $mechPic->save_content($pagePath);
+                  while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+                  if (-T $pagePath and open(my $fhTemp, "<:encoding(UTF-8)", $pagePath)) {
+                    my $file_as_string = do { local $/ = <$fhTemp> };
+                    $file_as_string    =~ s/[\r\n]//g;
+                    close($fhTemp);
+                    if ($winAlbums->chPublishDate->Checked and
+                        ($file_as_string =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
+                         ($file_as_string =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) {
+                      $$refListPics{$album}{$picURL}{'pubDate'} = $1;
+                    }
+                    if ($FG_size == 2) {
+                      my $part        = (split(/_2-sx/, $file_as_string))[1];
+                      $file_as_string = undef;
+                      my $bigSizePicUrl;
+                      if ($part =~ /src="([^\"]+)/) {
+                        $bigSizePicUrl = $1;
+                        if ($bigSizePicUrl !~ /spacer/) {
+                          $bigSizePicUrl    =~ s/&amp;/&/g;
+                          if ($bigSizePicUrl =~ /\/([^\/\?]+)(?:\?|$)/) {
+                            my $picName = $1;
+                            $picPath    = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
+                            if (!-e $picPath) { $mechAlbum->save_url($bigSizePicUrl, $picPath); }
+                            $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
+                            $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                            $picPath                                       =~ s/\Q$saveDir\E\\//;
+                            $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+                          }
+                        } else { $bigSizePicUrl = undef; }
+                      }
+                      # Download big size picture was not possible, try medium size instead
+                      if (!$bigSizePicUrl) {
+                        if (!-e $picPath) { $mechAlbum->save_url($picURL, $picPath); }
+                        $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
+                        $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                        $picPath                                       =~ s/\Q$saveDir\E\\//;
+                        $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+                      }
+                    }
+                  }
+                  undef $mechPic;
+                }
+              }
             }
             
             # Update progress
@@ -2641,9 +2921,6 @@ sub dumpAlbums
       $winPb->pbWinPb2->SetPos(0);
       $winPb->lblPbCurr2->Text('');
       $winPb->lblCount2->Text('');
-      
-      # Delete completed album
-      delete($$refListAlbums{$album});
       
       # Delete temporary files
       if (-d "$saveDir\\$mainAlbumTitle\\$albumDir\\temp" and $winConfig->chDelTempFiles->Checked()) {
@@ -2665,27 +2942,31 @@ sub dumpAlbums
     print HTML "<table border=1 cellspacing=0 cellpadding=1 align=\"center\" width=\"800\">\n";
     # For each album
     foreach my $album (keys %{$refListPics}) {
+      my $albumDir = ".\\$mainAlbumTitle\\$$refListAlbums{$album}{'dir'}";
       print HTML "<tr><th colspan=4 height=\"60px\" style=\"color:#003300; background-color:#EEEEEE; font-size: 14pt; font-variant: small-caps; font-weight: bold;\">$album</th></tr>";
       my $count = 0;
-      my $albumDir = $$refListPics{$album}{'dir'};
-      delete($$refListPics{$album}{'dir'});
-      foreach my $pic (sort {$$refListPics{$album}{$a} <=> $$refListPics{$album}{$b}} keys %{$$refListPics{$album}}) {
-        my $fileName = (split(/\\/, $pic))[-1];
-        my $filePath = ".\\$mainAlbumTitle\\$albumDir\\$fileName";
+      foreach (sort {$$refListPics{$album}{$a}{'ind'} <=> $$refListPics{$album}{$b}{'ind'}} keys %{$$refListPics{$album}}) {
+        my $pic = $_;
+        my $fileName = $$refListPics{$album}{$pic}{'smallPicName'};
+        my $filePath = $$refListPics{$album}{$pic}{'picPath'};
+        if (-e $filePath) { $filePath =~ s/\Q$saveDir\E\\//;    }
+        else              { $filePath = "$albumDir\\$fileName"; }
         if (!$count) { print HTML "<tr>\n"; }  # new row for each group of 4 pics
         print HTML "<td width=\"25%\" align=\"center\" style=\"font-size: 11pt;\">\n";
-        if ($albumDir =~ /^vb\./ and exists($$refListVideoFiles{$pic})) { # Video
-          my $videoFileName = (split(/\\/, $$refListVideoFiles{$pic}))[-1];
-          my $videoPath = ".\\$mainAlbumTitle\\$albumDir\\$videoFileName";
+        # Video
+        if ($albumDir =~ /\\vb\./ and exists($$refListPics{$album}{$pic}{'videoPath'})) {
+          my $videoFileName = (split(/\\/, $$refListPics{$album}{$pic}{'videoPath'}))[-1];
+          my $videoPath     = "$albumDir\\$videoFileName";
           print HTML "<a href=\"$videoPath\">\n";
-        } else { print HTML "<a href=\"$filePath\">\n"; }               # Picture
-        print HTML "<img src=\"$filePath\" alt=\"$fileName\" width=\"200\" border=0>\n";
+        # Picture
+        } else { print HTML "<a href=\"$$refListPics{$album}{$pic}{'relPath'}\">\n"; }
+        print HTML "<img src=\"$albumDir\\$fileName\" alt=\"$fileName\" width=\"200\" border=0>\n";
         print HTML "</a><br><br>\n";
         if ($winAlbums->chPublishDate->Checked) {
-          if (exists($$refListPicsDate{$pic})) {
+          if (exists($$refListPics{$album}{$pic}{'pubDate'})) {
             my $dateStr;
-            if ($$refListPicsDate{$pic}) { $dateStr = &formatDate($$refListPicsDate{$pic}); }
-            else                         { $dateStr = $STR{'errorDate'};                    }
+            if ($$refListPics{$album}{$pic}{'pubDate'}) { $dateStr = &formatDate($$refListPics{$album}{$pic}{'pubDate'}); }
+            else                                        { $dateStr = $STR{'errorDate'};                                   }
             print HTML "Date: <strong style=\"color:#339900;\">$dateStr</strong>\n";
           }
         }
