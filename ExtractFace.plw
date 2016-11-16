@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2016-11-07
-my $VERSION     = "4.5";
+# Modified      : 2016-11-16
+my $VERSION     = "4.5.1";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2016  Alain Rioux (le-tools.com)
@@ -2665,11 +2665,9 @@ sub dumpAlbums
             my $file_as_string = do { local $/ = <$fhTemp> };
             $file_as_string    =~ s/[\r\n]//g;
             close($fhTemp);
-            my $section        = (split(/function\(Bootloader\)/, $file_as_string))[0];
-            $file_as_string    = undef;
-            my $content        = (split(/clearfix _ikh/, $section))[3];
-            $section           = undef;
-            my @parts          = split(/_2eea/, $content);
+            my $section     = (split(/function\(Bootloader\)/, $file_as_string))[0];
+            my @parts       = split(/_2eea/, $file_as_string);
+            $file_as_string = undef;
             shift(@parts);
             my $i = 0;
             foreach (@parts) {
