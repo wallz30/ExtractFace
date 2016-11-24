@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2016-11-16
-my $VERSION     = "4.5.1";
+# Modified      : 2016-11-24
+my $VERSION     = "4.5.2";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2016  Alain Rioux (le-tools.com)
@@ -5146,10 +5146,14 @@ sub dumpContrib
         my $commentUrl;
         my $commentImg;
         my $commentName;
-        if ($commentNode =~ / href="([^\&\"]+)(?:&|")[^\>]+hovercard.php\?id=([^\&\"]+)(?:&|")/) {
+        if ($commentNode =~ /href="([^\&\"]+)(?:&|")[^\>]+hovercard.php\?id=([^\&\"]+)(?:&|")/) {
           $commentUrl  = $1;
           $commentUrl  =~ s/&amp;/&/g;
           $commentId   = $2;
+        } elsif ($commentNode =~ /hovercard.php\?id=([^\&\"]+)(?:&|")[^\>]+href="([^\&\"]+)(?:&|")/) {
+          $commentId   = $1;
+          $commentUrl  = $2;
+          $commentUrl  =~ s/&amp;/&/g;
         }
         if ($commentNode =~ /src="([^\"]+)"/) { $commentImg  = $1; }
         if ($commentNode =~ /alt="([^\"]+)"/) { $commentName = $1; }
@@ -5218,7 +5222,7 @@ sub dumpContrib
         my @section = split(/fbTimelineSection fbTimelineCompactSection fbTimelineSectionTransparent/, $file_as_string);
         undef($file_as_string);
         foreach my $section (@section) {
-          my @parts = split(/_27jf _3emk/, $section);
+          my @parts = split(/_ipp/, $section);
           shift(@parts);
           foreach my $part (@parts) {
             if ($part =~ /href=\"([^\"]+)\"/) {
@@ -5234,7 +5238,7 @@ sub dumpContrib
           foreach my $part (@parts2) {
             if ($part =~ /href=\"([^\"]+)\"/) {
               my $url = $1;
-              if ($url =~ /ft_ent_identifier/) {
+              if ($url =~ /likes/) {
                 $url =~ s/&amp;/&/g;
                 if (!exists($$refLikePages{$url})) { $$refLikePages{$url} = 0; }
               }
