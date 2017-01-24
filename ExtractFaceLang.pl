@@ -7,10 +7,10 @@
 # CodePlex			        : https://extractface.codeplex.com
 # GitHub				        : https://github.com/arioux/ExtractFace
 # Creation              : 2015-08-01
-# Modified              : 2016-09-08
+# Modified              : 2017-01-24
 # Author                : Alain Rioux (admin@le-tools.com)
 #
-# Copyright (C) 2015-2016  Alain Rioux (le-tools.com)
+# Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -84,7 +84,8 @@ sub loadDefaultStr
   $$refSTR{'scrolling'}   = 'Scrolling';
   $$refSTR{'downloading'} = 'Downloading';
   $$refSTR{'saving'}      = 'Saving';
-  $$refSTR{'saveTab'}     = 'Saving current tab';
+  $$refSTR{'saveTab'}     = 'Saving current page content';
+  $$refSTR{'parsePage'}   = 'Parsing current page';
   $$refSTR{'parsing'}     = 'Parsing';
   $$refSTR{'wait'}        = 'Wait';
   $$refSTR{'createOutput'} = 'Creating output file';
@@ -105,6 +106,7 @@ sub loadDefaultStr
   $$refSTR{'date'}        = 'Date';
   $$refSTR{'dates'}       = 'Dates';
   $$refSTR{'start'}       = 'Start';
+  $$refSTR{'time'}        = 'Time';
   $$refSTR{'end'}         = 'End';
   $$refSTR{'message'}     = 'Message';
   $$refSTR{'warn1T'}      = 'Process running';
@@ -113,10 +115,11 @@ sub loadDefaultStr
   $$refSTR{'warn2'}       = 'You must select at least one option.';
   $$refSTR{'warn3'}       = 'You are not in the right page.';
   $$refSTR{'warn4'}       = 'You are not on Facebook.';
+  $$refSTR{'warn5'}       = 'You must be on Mobile Facebook to use this function.';
   $$refSTR{'err1T'}       = 'Error';
   $$refSTR{'err1'}        = 'You must start Firefox MozRepl add-on.';
   $$refSTR{'err2'}        = 'Process crash ! Try to increase the loading time in settings.';
-  $$refSTR{'err3'}        = 'Process crash ! Retry.';
+  $$refSTR{'err3'}        = 'Process crash';
   $$refSTR{'err4'}        = 'Select a valid folder and title for the album.';
   $$refSTR{'err5'}        = 'Invalid parameters.';
   $$refSTR{'err6'}        = 'Unable to find the event data.';
@@ -139,14 +142,17 @@ sub loadDefaultStr
   $$refSTR{'menu2'}    = 'Scroll';
   $$refSTR{'menu3'}    = 'Expand';
   $$refSTR{'menu5'}    = 'Dump Albums';
-  $$refSTR{'menu4'}    = 'Dump Albums - Group';
+  $$refSTR{'menu4'}    = 'Group';
+  $$refSTR{'menu19'}   = 'Dump Members';
   $$refSTR{'menu6'}    = 'Dump Friends';
   $$refSTR{'menu7'}    = 'Dump Event Members';
   $$refSTR{'menu17'}   = 'Dump Contributors';
+  $$refSTR{'menu18'}   = 'Scroll Contacts';
   $$refSTR{'menu8'}    = 'Scroll Chat';
   $$refSTR{'menu9'}    = 'Load Older Messages';
   $$refSTR{'menu10'}   = 'Load Newer Messages';
   $$refSTR{'menu11'}   = 'Dump Chat';
+  $$refSTR{'menu20'}   = 'Dump Vocal Message';
   $$refSTR{'menu12'}   = 'Settings';
   $$refSTR{'menu13'}   = 'Check for update';
   $$refSTR{'menu14'}   = 'Help';
@@ -221,7 +227,17 @@ sub loadDefaultStr
   $$refSTR{'dumpVPostsP'}       = 'Dumping Visitor Posts in progress';
   $$refSTR{'dumpContribF'}      = 'Dumping contributors finished';
   
+  # Dump Group Members
+  $$refSTR{'winGroupMembers'}   = 'Dump Group Members';
+  $$refSTR{'groupMembers'}      = 'Group Members';
+  $$refSTR{'dumpGroupMembersC'} = 'Dumping Group Members cancelled';
+  $$refSTR{'dumpGroupMembersP'} = 'Dumping Group Members in progress';
+  $$refSTR{'dumpGroupMembersF'} = 'Dumping Group Members finished';
+  
   # Dump Chat
+  $$refSTR{'scrollContactsC'} = 'Scrolling contacts cancelled';
+  $$refSTR{'scrollContactsP'} = 'Scrolling contacts in progress';
+  $$refSTR{'scrollContactsF'} = 'Scrolling contacts finished';
   $$refSTR{'scrollChatC'}   = 'Scrolling chat cancelled';
   $$refSTR{'scrollChatP'}   = 'Scrolling chat in progress';
   $$refSTR{'scrollChatF'}   = 'Scrolling chat finished';
@@ -238,27 +254,33 @@ sub loadDefaultStr
   $$refSTR{'rbChatDatesRange'} = 'Range';
   $$refSTR{'chDownloadAD'}  = 'Attached document';
   $$refSTR{'chDownloadImg'} = 'Pictures';
-  $$refSTR{'chFullSize'}    = 'Full size';
   $$refSTR{'chDownloadVid'} = 'Videos';
-  $$refSTR{'chDownloadVM'}  = 'Vocal messages';
   $$refSTR{'chHideMe'}      = 'Hide me';
-  $$refSTR{'chSearched'}    = 'Searched part only';
+  $$refSTR{'parsingMsg'}    = 'Parsing messages of';
   $$refSTR{'sharedLink'}    = 'Shared link';
   $$refSTR{'video'}         = 'Video';
   $$refSTR{'videoURL'}      = 'Video link';
   $$refSTR{'videoErr'}      = 'Unable to gather video image, link below';
   $$refSTR{'videoNotDL'}    = 'Video not downloaded';
-  $$refSTR{'vocalMsgLast'}  = 'Vocal message, last';
-  $$refSTR{'vocalMsgFile'}  = 'Vocal message, file';
   $$refSTR{'vocalJoin'}     = 'Use this filename to join';
   $$refSTR{'attached'}      = 'Attached document';
-  $$refSTR{'saveChat'}      = 'Saving chat in html file';
+  $$refSTR{'saveChat'}      = 'Creating html file';
   $$refSTR{'dumpChatC'}     = 'Dumping chat cancelled';
   $$refSTR{'dumpChatP'}     = 'Dumping chat in progress';
   $$refSTR{'dumpChatF'}     = 'Dumping chat finished';
-  $$refSTR{'zoomImg'}       = 'Viewing image in full size';
-  $$refSTR{'openMobile'}    = 'Searching chat on Facebook mobile';
+  $$refSTR{'noMsgDumped'}   = 'No message were dumped';
+  
+  # Dump Vocal Messages
+  $$refSTR{'winVocalMsg'}   = 'Dump Vocal Messages';
+  $$refSTR{'vocalMsg'}      = 'Vocal messages';
+  $$refSTR{'dumpVocalMsgC'} = 'Dumping Vocal Messages cancelled';
+  $$refSTR{'dumpVocalMsgP'} = 'Dumping Vocal Messages in progress';
+  $$refSTR{'dumpVocalMsgF'} = 'Dumping Vocal Messages finished';
+  $$refSTR{'browseAllChat'} = 'Browsing all messages';
+  $$refSTR{'downloadVM'}    = 'Downloading vocal messages';
   $$refSTR{'searchVMLinks'} = 'Searching vocal messages urls';
+  $$refSTR{'vocalMsgLast'}  = 'Vocal message, last';
+  $$refSTR{'listen'}        = 'Listen';
   
   # Config
   $$refSTR{'winConfig'}       = 'Settings';

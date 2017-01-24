@@ -26,6 +26,8 @@ following modules installed:
 - threads (v1.96)
 - threads-shared (v1.46)
 - Time-HiRes (v1.9726)
+- DateTime (v1.28)
+- DateTime-Format-Strptime (v1.68)
 - URI-Escape-JavaScript (v0.04)
 - Win32-API (v0.75)
 - Win32-GUI (v1.08)
@@ -36,13 +38,12 @@ following modules installed:
 To do
 -----
 
+- Dump vocal message
+	- Gather the name of the sender
+	- Add filter by dates
 - Dump event members: 
 	- Add possibility to exceed the 500 members limit
-- Dump chat:
-	- Add support for animated image (animation code)
-	- Gather Sent from Mobile, Sent from Messenger near date
 - Dump Visitor Posts (posts, not contributors)
-
 
 
 Packaging
