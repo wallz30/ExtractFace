@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-01-24
-my $VERSION     = "5.0";
+# Modified      : 2017-01-29
+my $VERSION     = "5.1";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -57,7 +57,7 @@ use DateTime;
 use DateTime::Format::Strptime;
 use URI::Escape::JavaScript qw(unescape);
 use Win32::API();
-use Win32::GUI 1.06 qw(:toolbar ILC_MASK CW_USEDEFAULT);
+use Win32::GUI;
 use Win32::GUI qw( WS_POPUP WS_CAPTION WS_THICKFRAME WS_EX_TOPMOST );
 use Win32::GUI::BitmapInline();
 use Win32::GUI::Grid;
@@ -242,6 +242,7 @@ my $trayMenu = Win32::GUI::Menu->new(
   ">$STR{'menu2'}"      => { -name => "Scrolling"    , -onClick => \&scroll                 },
   ">$STR{'menu3'}"      => { -name => "Expand"       , -onClick => \&expand                 },
   " > -"                => 0,
+  ">$STR{'menu21'}..."  => { -name => "PID"       	 , -onClick => \&winPID                 },
   ">$STR{'menu5'}..."   => { -name => "Albums"       , -onClick => \&winAlbumsNormal        },
   ">$STR{'menu6'}..."   => { -name => "Friends"      , -onClick => \&winFriends             },
   ">$STR{'menu7'}..."   => { -name => "Events"       , -onClick => \&winEvent               },
@@ -263,6 +264,47 @@ my $trayMenu = Win32::GUI::Menu->new(
   ">$STR{'menu15'}..."  => { -name => "About"        , -onClick => \&Tray_DblClick          },
   ">$STR{'menu16'}"     => { -name => "Quit"         , -onClick => \&main_Quit              },
 );
+
+
+#------------------------------------------------------------------------------#
+# Get profile ID window
+#------------------------------------------------------------------------------#
+my $winPID = Win32::GUI::DialogBox->new( 		-name        => 'winPID'           		,
+                                            -parent      => $win                  ,
+                                            -text        => $STR{'menu21'}		    ,
+                                            -pos         => [$winPosX, $winPosY]	,
+                                            -size        => [300,115]             ,
+                                            -background  => [255, 255, 255]       ,
+                                            -hasmaximize => 1                     ,
+                                            -hasminimize => 1                     ,
+                                            -helpbutton  => 0                     ,
+                                            -resizable   => 1                     ,
+                                            -topmost     => 1                     ,
+                                            -dialogui    => 1                     , );
+$winPID->SetIcon($winICO);
+
+$winPID->AddLabel(			-name         => 'lblPIDTitle'				,
+												-size         => [ 80, 22]						,
+												-pos          => [  5, 13]						,
+												-text         => $STR{'profilID'}.':'	,
+												-background   => [255, 255, 255]			,
+												-font         => $font10							, );
+$winPID->AddTextfield(	-name         => 'tfPIDTitle'					,
+												-size         => [168, 22]						,
+												-pos          => [ 90, 10]						, );
+$winPID->AddButton(			-name         => 'btnPIDRefresh'			,
+												-size         => [ 22, 22]            ,
+												-pos          => [260, 10]            ,
+												-bitmap       => $refresh16           ,
+												-tip          => $STR{'btnRefreshTip'},
+												-tabstop      => 1                    , );
+$winPID->AddButton(			-name         => 'btnPIDOk'						,
+												-size         => [ 50, 30]						,
+												-pos          => [125, 40]						,
+												-text         => $STR{'ok'}						,
+												-font         => $font10							,
+												-ok           => 1										,
+												-default      => 1										, );
 
 #------------------------------------------------------------------------------#
 # Dump albums window
@@ -837,7 +879,7 @@ my $winGroupMembers = Win32::GUI::DialogBox->new( -name        => 'winGroupMembe
 																									-parent      => $win                    ,
 																									-text        => $STR{'winGroupMembers'} ,
 																									-pos         => [$winPosX, $winPosY]		,
-																									-size        => [800,240]               ,
+																									-size        => [800,315]               ,
 																									-background  => [255, 255, 255]         ,
 																									-hasmaximize => 0                       ,
 																									-hasminimize => 1                       ,
@@ -924,26 +966,16 @@ $winGroupMembers->AddButton(        -name       => 'btnGroupMembersRefresh'     
                                     -bitmap     => $refresh16                     ,
                                     -tip        => $STR{'btnRefreshTip'}          ,
                                     -tabstop    => 1                              , );
-$winGroupMembers->AddLabel(         -name       => 'lblGroupMembersList'          ,
-                                    -size       => [ 75, 22]                      ,
-                                    -pos        => [140,101]                      ,
-                                    -text       => $STR{'dump'}.':'               ,
-                                    -font       => $font10                        ,
-                                    -background => [255, 255, 255]                , );
-$winGroupMembers->AddListView(  		-name       => 'lvGroupMembersListSel'        ,
-																		-pos        => [220,100]             					,
-																		-size       => [342, 65]             					,
-																		-font       => $font10               					,
-																		-background => [255, 255, 255]       					,
-																		-checkboxes => 1                     					,
-																		-gridlines  => 0                     					,
-																		-hottrack   => 1                     					,
-																		-nocolumnheader => 1                  				,
-																		-tabstop    => 1                     					, );
-$winGroupMembers->lvGroupMembersListSel->InsertColumn(-width => 322, index => 0, -text => '1',);
+$winGroupMembers->AddGrid (         -name         => 'GridGroupMembers'           ,
+																		-pos          => [140,100]                    ,
+																		-size         => [645,145]                    ,
+																		-fixedrows    => 1                            ,
+																		-fixedcolumns => 0                            ,
+																		-editable     => 0                            , );
+$winGroupMembers->GridGroupMembers->SetListMode(1);
 $winGroupMembers->AddButton(        -name       => 'btnGroupMembersOk'            ,
                                     -size       => [ 90, 30]                      ,
-                                    -pos        => [355,175]                      ,
+                                    -pos        => [355,250]                      ,
                                     -text       => $STR{'dump'}                   ,
                                     -font       => $font10                        ,
                                     -disabled   => 1                              ,
@@ -958,7 +990,7 @@ my $winChat = Win32::GUI::DialogBox->new(  -name        => 'winChat'            
                                            -parent      => $win									,
                                            -text        => $STR{'winChat'}			,
                                            -pos         => [$winPosX, $winPosY]	,
-                                           -size        => [665,325]            ,
+                                           -size        => [665,305]            ,
                                            -background  => [255, 255, 255]      ,
                                            -hasmaximize => 0                    ,
                                            -hasminimize => 1                    ,
@@ -1123,18 +1155,10 @@ $winChat->AddDateTime(            -name       => 'dtChatDatesRangeE'            
                                   -background => [255, 255, 255]                ,
                                   -format     => 'shortdate'                    ,
                                   -tabstop    => 1                              , );
-$winChat->AddCheckbox(            -name       => 'chHideMe'                     ,
-                                  -size       => [220, 20]                      ,
-                                  -pos        => [140,230]                      ,
-                                  -text       => $STR{'chHideMe'}               ,
-                                  -background => [255, 255, 255]                ,
-                                  -font       => $font10                        ,
-                                  -tabstop    => 1                              ,
-                                  -checked    => 0                              , );
 
 $winChat->AddButton(              -name       => 'btnChatOk'                    ,
                                   -size       => [ 85, 30]                      ,
-                                  -pos        => [300,255]                      ,
+                                  -pos        => [300,235]                      ,
                                   -text       => $STR{'dump'}                   ,
                                   -font       => $font10                        ,
                                   -disabled   => 1                              ,
@@ -1650,6 +1674,18 @@ $winFriends->GridFriends->SetColumnWidth(1, 80);
 $winFriends->GridFriends->SetColumnWidth(2, 0);
 $winFriends->GridFriends->ExpandLastColumn();
 
+# Header Dump Group Members grid
+$winGroupMembers->GridGroupMembers->SetRows(1);
+$winGroupMembers->GridGroupMembers->SetColumns(3); # 1: checkbox, 2: Category name, 3e: Category url
+$winGroupMembers->GridGroupMembers->SetCellText(0, 0, ''        );
+$winGroupMembers->GridGroupMembers->SetCellType(0, 0, GVIT_CHECK);
+$winGroupMembers->GridGroupMembers->SetCellCheck(0, 0, 1);
+$winGroupMembers->GridGroupMembers->SetCellText(0, 1, $STR{'friendCat'});
+$winGroupMembers->GridGroupMembers->SetCellText(0, 2, $STR{'url'});
+$winGroupMembers->GridGroupMembers->SetColumnWidth(0, 25);
+$winGroupMembers->GridGroupMembers->SetColumnWidth(1, 80);
+$winGroupMembers->GridGroupMembers->ExpandLastColumn();
+
 &loadConfig(\%CONFIG);
 
 # Auto-Update
@@ -2132,6 +2168,118 @@ sub scrollExpandThr
 }  #--- End scrollExpandThr
 
 #--------------------------#
+sub winPID
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) {
+    Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
+  } else {
+    $winPID->tfPIDTitle->Text('');
+		
+    # Start the thread
+    $THR = threads->create(\&winPIDThr);
+		
+    if ($winConfig->chRememberPos->Checked() and $CONFIG{'WINPID_LEFT'} and $CONFIG{'WINPID_TOP'}) {
+      $winPID->Left($CONFIG{'WINPID_LEFT'});
+      $winPID->Top($CONFIG{'WINPID_TOP'});
+    } else { $winPID->Center(); }
+    $winPID->DoModal();
+  }
+
+}  #--- End winPID
+
+#--------------------------#
+sub btnPIDRefresh_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) {
+    Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
+  } else {
+    $winPID->tfPIDTitle->Text('');
+    
+    # Start the thread
+    $THR = threads->create(\&winPIDThr);
+  }
+  
+}  #--- End btnPIDRefresh_Click
+
+#--------------------------#
+sub winPIDThr
+#--------------------------#
+{
+  # Deal with crash
+  $SIG{__DIE__} = sub {
+    my $msgErr = $_[0];
+    chomp($msgErr);
+    $msgErr =~ s/[\t\r\n]/ /g;
+    if ($msgErr =~ /NS_ERROR_FILE_IS_LOCKED/) {
+      # Restart a new thread to continue
+      $THR = threads->create(\&winPIDThr);
+    } else {
+      if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
+			my $err = (split(/ at /, $msgErr))[0];
+      $win->ChangeCursor($ARROW);
+      $win->Tray->Change(-tip => 'ExtractFace');
+      Win32::GUI::MessageBox($winAlbums, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
+			threads->exit();
+    }
+  };
+  
+  my $mech;
+  eval { $mech = WWW::Mechanize::Firefox->new(tab => 'current'); };
+  if ($@) {
+    if ($@ =~ /Failed to connect to/) {
+      Win32::GUI::MessageBox($winPID, $STR{'err1'}, $STR{'err1T'}, 0x40010);
+    }
+    threads->exit();
+  }
+	
+	# Get the profile ID
+	if (my $pidCode = $mech->selector('div._4a8n a', any => 1)) {
+		if ($pidCode->{outerHTML} =~ /user.php\?id=(\d+)/) {
+			$winPID->tfPIDTitle->Text($1);
+		}
+	}
+
+}  #--- End winPIDThr
+
+#--------------------------#
+sub btnPIDOk_Click
+#--------------------------#
+{
+  # Remember position
+  if ($winConfig->chRememberPos->Checked()) {
+    my $winLeft = $winPID->AbsLeft();
+    my $winTop  = $winPID->AbsTop();
+    $CONFIG{'WINPID_LEFT'} = $winLeft;
+    $CONFIG{'WINPID_TOP'}  = $winTop;
+    &saveConfig(\%CONFIG);
+  }
+  
+  return(-1);
+	
+}  #--- End btnPIDOk_Click
+
+#--------------------------#
+sub winPID_Terminate
+#--------------------------#
+{
+  # Remember position
+  if ($winConfig->chRememberPos->Checked()) {
+    my $winLeft = $winPID->AbsLeft();
+    my $winTop  = $winPID->AbsTop();
+    $CONFIG{'WINPID_LEFT'} = $winLeft;
+    $CONFIG{'WINPID_TOP'}  = $winTop;
+    &saveConfig(\%CONFIG);
+  }
+  
+  return(-1);
+
+}  #--- End winPID_Terminate
+
+#--------------------------#
 sub winAlbums_Resize
 #--------------------------#
 {
@@ -2264,8 +2412,10 @@ sub winAlbumsThr
     # Get album names and urls
     my %albums;
     my @albums;
-    if ($winAlbums->chAlbumGroup->Checked()) { @albums = $mech->selector('div._3hpt._2pif a');                            }
-    else                                     { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
+    if ($winAlbums->chAlbumGroup->Checked()) {
+			if ($mech->uri() =~ /\/groups\//) { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
+			else 															{ @albums = $mech->selector('div._3hpt._2pif a');                            }
+		} else { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
     foreach my $album (@albums) {
       my $albumName = $album->{innerHTML};
       $albumName   =~ s/<[^\>]+>//g;
@@ -2306,13 +2456,18 @@ sub validAlbumPage
   
   my $currURL = $$refMech->uri();
   my $currTitle;
-  if ($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) {
+  if ($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/ and
+			$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/) {
     # Trying to get the good page
-    if ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Album from a Group page
+    if ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/groups\/([^\/]+)/) { # Album from a Group page
+      $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
+      my $goodURL = "https://www.facebook.com/groups/$1/photos/?filter=albums";
+      ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
+		} elsif ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Album from a Group page
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/$1/photos/?tab=albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
-    } elsif ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) {
+		} elsif ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) {
       my $profilID = $1;
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/profile.php?id=$profilID&sk=photos&collection_token=$profilID%3A2305272732%3A6";
@@ -2324,7 +2479,8 @@ sub validAlbumPage
     }
     
     # Re evaluate current page
-    if (($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) and $currURL !~ /photos\/\?tab=albums/ or
+    if (($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) and
+				$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/ or
         $currTitle =~ /Page Not Found/) {
       $winAlbums->btnAlbumsOk->Disable();
       Win32::GUI::MessageBox($winAlbums, $STR{'warn3'}, $STR{'warn2T'}, 0x40010);
@@ -2337,6 +2493,7 @@ sub validAlbumPage
   } else {
     if ($currURL and $currURL =~ /https:\/\/www.facebook.com\//) {
       if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
+			elsif ($currURL =~ /https:\/\/www.facebook.com\/groups\/([^\/\?]+)/        ) { $currTitle = $1; }
       elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
     }
     $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
@@ -2663,6 +2820,7 @@ sub dumpAlbums
   
   if ($nbrAlbums > 0) {
     my $count1;
+		my $type = 1; # Type of Group Album
     
     # First execution, turn on the progress window
     if ($firstExec == 1) {
@@ -2691,8 +2849,10 @@ sub dumpAlbums
       $winPb->lblCount2->Text('');
       
       my $albumDir;
-      if    ($winAlbums->chAlbumGroup->Checked() and $$refListAlbums{$album}{'url'} =~ /\&album_id=(\d+)/) { $albumDir = $1; }
-      elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/                                         ) { $albumDir = $1; }
+      if    ($winAlbums->chAlbumGroup->Checked()) {
+				if    ($$refListAlbums{$album}{'url'} =~ /\&album_id=(\d+)/) { $albumDir = $1; }
+				elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/ ) { $albumDir = $1; $type = 2; }
+			} elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/ ) { $albumDir = $1; }
       if (!$albumDir) { $albumDir = $count1; }
       $$refListAlbums{$album}{'dir'} = $albumDir;
       
@@ -2839,7 +2999,7 @@ sub dumpAlbums
 			} else {
         
         # Facebook Group profile
-        if    ($winAlbums->chAlbumGroup->Checked()) {
+        if    ($winAlbums->chAlbumGroup->Checked() and $type == 1) {
           # Load content from file
           if (-T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
             my $file_as_string = do { local $/ = <$fhTemp> };
@@ -2871,12 +3031,20 @@ sub dumpAlbums
             my $file_as_string = do { local $/ = <$fhTemp> };
             $file_as_string    =~ s/[\r\n]//g;
             close($fhTemp);
-            my $section1       = (split(/function\(Bootloader\)/, $file_as_string))[0];
-            $file_as_string    = undef;
-            my $section2       = (split(/fbTimelineStarGridSeparator/, $section1))[0];
-            $section1          = undef;
-            my @parts          = split(/data-starred-src=/, $section2);
-            $section2          = undef;
+            my $section2;
+						if ($type == 2) {
+							my $section1 		= (split(/function\(Bootloader\)/, $file_as_string))[1];
+							$file_as_string = undef;
+							$section2 			= (split(/fbTimelineSectionStarGrid/, $section1))[1];
+							$section1 			= undef;
+						} else {
+							my $section1		= (split(/function\(Bootloader\)/, $file_as_string))[0];
+							$file_as_string = undef;
+							$section2 			= (split(/fbTimelineStarGridSeparator/, $section1))[0];
+							$section1 			= undef;
+						}
+            my @parts = split(/data-starred-src=/, $section2);
+            $section2 = undef;
             shift(@parts);
             my $i = 0;
             foreach my $part (@parts) {
@@ -2919,7 +3087,7 @@ sub dumpAlbums
             }
             
             # Facebook group - Pics
-            if (!$picOk and $winAlbums->chAlbumGroup->Checked()) {
+            if (!$picOk and $winAlbums->chAlbumGroup->Checked() and $type == 1) {
               my $picName = $$refListPics{$album}{$picURL}{'smallPicName'};
               $winPb->lblPbCurr2->Text("$STR{'downloading'}: $picName");
               my $bigSizePicUrl;
@@ -2999,9 +3167,9 @@ sub dumpAlbums
                 $$refListPics{$album}{$picURL}{'picPath'} = "$saveDir\\$mainAlbumTitle\\$albumDir\\" . $$refListPics{$album}{$picURL}{'smallPicName'};
                 $$refListPics{$album}{$picURL}{'relPath'} = $picURL;
               }
-            }
+							
             # Normal profile album
-            elsif (!$picOk and $picURL =~ /\/([^\/\?]+)(?:\?|$)/) {
+						} elsif (!$picOk and $picURL =~ /\/([^\/\?]+)(?:\?|$)/) {
               my $picName = $1;
               $picName    = encode($CONFIG{'CHARSET'}, $picName);
               my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
@@ -3307,7 +3475,8 @@ sub winFriendsThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winFriends, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winFriends, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
   };
   
@@ -4301,7 +4470,8 @@ sub winEventThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winEvent, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winEvent, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
   };
   
@@ -4944,7 +5114,8 @@ sub winContribThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winContrib, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winContrib, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
   };
   
@@ -5857,11 +6028,13 @@ sub winGroupMembers
     Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
   } else {
     $winGroupMembers->tfGroupMembersName->Text('');
+		$winGroupMembers->GridGroupMembers->DeleteNonFixedRows();
     
     # Start the thread
     $THR = threads->create(\&winGroupMembersThr);
     
     usleep(500000);
+		$winGroupMembers->GridGroupMembers->AutoSize();
     if ($winConfig->chRememberPos->Checked() and $CONFIG{'WINGROUP_MEMBERS_LEFT'} and $CONFIG{'WINGROUP_MEMBERS_TOP'}) {
       $winGroupMembers->Left($CONFIG{'WINGROUP_MEMBERS_LEFT'});
       $winGroupMembers->Top($CONFIG{'WINGROUP_MEMBERS_TOP'});
@@ -5880,6 +6053,7 @@ sub btnGroupMembersRefresh_Click
     Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
   } else {
     $winGroupMembers->tfGroupMembersName->Text('');
+		$winGroupMembers->GridGroupMembers->DeleteNonFixedRows();
     $THR = threads->create(\&winGroupMembersThr);
   }
   
@@ -5904,8 +6078,10 @@ sub winGroupMembersThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winGroupMembers, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winGroupMembers, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
+		threads->exit();
   };
   
   my $mech;
@@ -5918,28 +6094,76 @@ sub winGroupMembersThr
     threads->exit();
   }
   
-  if ($mech->uri() =~ /facebook.com/) {
+	$winGroupMembers->GridGroupMembers->DeleteNonFixedRows();
+	my $currURL = $mech->uri();
+  if ($currURL =~ /facebook.com/) {
+		my $type;
+		my $idGroup;
+		my $newURL;
     # Valid current page
-    my $currURL = $mech->uri();
-    my $idGroup;
-		# Get the right page
-		if ($currURL =~ /https:\/\/www.facebook.com\/groups\/(\d+)$/) {
-			$mech->get("https://www.facebook.com/browse/group_members/?gid=$1&edge=groups%3Amembers", synchronize => 0);
-			sleep($CONFIG{'TIME_TO_WAIT'});
-			$currURL = $mech->uri();
+		if ($currURL =~ /https:\/\/www.facebook.com\/groups\/(\w+)/) {
+			$idGroup = $1;
+			my $load = 1;
+			if (my $pageSel = $mech->selector('div.uiHeader.uiHeaderTopAndBottomBorder.uiHeaderSection a', any => 1)) {
+				if ($currURL = $pageSel->{href}) {
+					if ($currURL !~ /^http/) { $currURL = 'https://www.facebook.com'.$currURL; }
+					$type = 1;
+				}
+			} elsif ($mech->selector('ul._43o4', any => 1)) {
+				if ($currURL =~ /\/$/) { chop($currURL); }
+				if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currURL . '/members'; }
+				else { $load = 0; $newURL  = $currURL; }
+				$type = 2;
+			}
+			if ($type and $currURL and $load) {
+				$mech->get($currURL, synchronize => 0);
+				sleep($CONFIG{'TIME_TO_WAIT'});
+				$newURL = sprintf($mech->uri());
+			}
+		} elsif ($currURL =~ /https:\/\/www.facebook.com\/browse\/group_members\/\?gid=(\w+)/) {
+			$idGroup = $1;
+			$type    = 1;
+			$newURL  = $currURL;
 		}
 		# Right page, get the values
-    if ($currURL =~ /https:\/\/www.facebook.com\/browse\/group_members\/\?gid=(\d+)/) {
-			$winGroupMembers->tfGroupMembersName->Text($1);
-			$winGroupMembers->lvGroupMembersListSel->DeleteAllItems();
-			my @listFromCombo = $mech->selector('a._54nc span._54nh');
-			if (!scalar(@listFromCombo) and my $currList = $mech->selector('div.uiPopover span._55pe', any => 1)) {
-				$currList->click;
-				@listFromCombo = $mech->selector('a._54nc span._54nh');
+    if ($type and $newURL and ($type == 1 and $newURL =~ /https:\/\/www.facebook.com\/browse\/group_members\/\?gid=$idGroup/) or
+															($type == 2 and (($newURL =~ /https:\/\/www.facebook.com\/groups\/$idGroup\/members\/?/) or
+																							 ($newURL =~ /https:\/\/www.facebook.com\/groups\/$idGroup\/admins\/?/)))) {
+			$winGroupMembers->tfGroupMembersName->Text($idGroup);
+			my %categories;
+			# Type with combobox
+			if ($type == 1) {
+				my @listFromCombo = $mech->selector('a._54nc span._54nh');
+				if (!scalar(@listFromCombo) and my $currList = $mech->selector('div.uiPopover span._55pe', any => 1)) {
+					$currList->click;
+					@listFromCombo = $mech->selector('a._54nc span._54nh');
+				}
+				foreach (@listFromCombo) {
+					my $cat = $_->{innerHTML};
+					$categories{$cat}{url} = $newURL;
+				}
+			# Type with tab selection
+			} else {
+				if (my $membersPageName = $mech->selector('a._5bv4', any => 1)) {
+					if ($membersPageName->{innerHTML} =~ /^(\w+)/) { $categories{$1}{url} = $membersPageName->{href}; }
+				}
+				if (my $adminsPageName  = $mech->selector('a._5bv3', any => 1)) {
+					if ($adminsPageName->{innerHTML}  =~ /^(\w+)/) { $categories{$1}{url} = $adminsPageName->{href};  }
+				}
 			}
-			foreach my $list (@listFromCombo) {
-				$winGroupMembers->lvGroupMembersListSel->InsertItem(-text => $list->{innerHTML});
-			}
+      foreach my $cat (sort keys %categories) {
+        if (my $i = $winGroupMembers->GridGroupMembers->InsertRow($cat, -1)) {
+          $winGroupMembers->GridGroupMembers->SetCellText($i, 0, ''        );
+          $winGroupMembers->GridGroupMembers->SetCellType($i, 0, GVIT_CHECK);
+          $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1);
+          $categories{$cat}{name} = encode($CONFIG{'CHARSET'}, $cat);
+          $winGroupMembers->GridGroupMembers->SetCellText($i, 1, $categories{$cat}{name});
+          $winGroupMembers->GridGroupMembers->SetCellText($i, 2, $categories{$cat}{url});
+          $winGroupMembers->GridGroupMembers->AutoSize();
+          $winGroupMembers->GridGroupMembers->ExpandLastColumn();
+          $winGroupMembers->GridGroupMembers->Refresh();
+        }
+      }
 		# Wrong page
 		} else {
       $winGroupMembers->btnGroupMembersOk->Disable();
@@ -6110,12 +6334,34 @@ sub chGroupMembersOpenOutput_Click
 }  #--- End chGroupMembersOpenOutput_Click
 
 #--------------------------#
-sub lvGroupMembersListSel_ItemCheck
+sub GridGroupMembers_Click
 #--------------------------#
 {
-  &isDumpGroupMembersReady();
-	
-}  #--- End lvGroupMembersListSel_ItemCheck
+  # Local variables
+  my ($row, $column) = @_;
+  
+  # Select
+  if (!$column) {
+    my $selStatus = $winGroupMembers->GridGroupMembers->GetCellCheck($row, $column);
+    if (!$row) {
+      # Check all
+      if (!$selStatus) { for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1); } }
+      # Uncheck all
+      else             { for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 0); } }
+    } else {
+      # Check
+      if (!$selStatus) { $winGroupMembers->GridGroupMembers->SetCellCheck($row, $column, 1); }
+      # Uncheck
+      else {
+				$winGroupMembers->GridGroupMembers->SetCellCheck($row, $column, 0);
+				$winGroupMembers->GridGroupMembers->SetCellCheck(0   , $column, 0);
+			}
+    }
+  }
+  
+  return(1);
+
+}  #--- End GridGroupMembers_Click
 
 #--------------------------#
 sub isDumpGroupMembersReady
@@ -6132,15 +6378,16 @@ sub isDumpGroupMembersReady
   }
   
   # No selected lists
-	my $nbrSel = 0;
-  for (my $i = 0; $i < $winGroupMembers->lvGroupMembersListSel->GetItemCount(); $i++) {
-		if ($winGroupMembers->lvGroupMembersListSel->GetCheckState($i)) { $nbrSel++; }
-	}
-	if (!$nbrSel) {
-    $winGroupMembers->btnGroupMembersOk->Disable();
-    return(0);
+  my $nbrSel = 0;
+  for (my $i = 1; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) {
+    my $selStatus = $winGroupMembers->GridGroupMembers->GetCellCheck($i, 0);
+    if ($selStatus == 1) {
+      $nbrSel = 1;
+      last;
+    }
   }
-
+  if (!$nbrSel) { $winGroupMembers->btnGroupMembersOk->Disable(); return(0); }
+	
   $winGroupMembers->btnGroupMembersOk->Enable();
 
 }  #--- End isDumpGroupMembersReady
@@ -6166,17 +6413,19 @@ sub btnGroupMembersOk_Click
     my $groupMembersName  	= $winGroupMembers->tfGroupMembersName->Text();
     $groupMembersName     	=~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
     my $saveDir           	= $winGroupMembers->tfDirSaveGroupMembers->Text();
-    my %listGroupMembers; 	# Actually, two type : Admins and Other members
-    my $nbrLists            = 0;
+    my %catGroupMembers; 		# Actually, Admins and Other members seem to be the only category
+    my $nbrCatGroupMembers  = 0;
+		my $type                = 0; # Type of list: 1 = combobox, 2 = tab selection
     my $posPb1            	= 0;
     my $parsingDone       	= 0;
     my $nbrGroupMembersDone = 0;
     my $nbrRetries          = 0;
-
+		
     if ($groupMembersName and -d $saveDir) {
       # Start the thread
-      $THR = threads->create(\&dumpGroupMembers, $groupMembersName, $saveDir, \%listGroupMembers, $nbrLists, 
-                             $nbrGroupMembersDone, $posPb1, $parsingDone, $nbrRetries);
+			
+      $THR = threads->create(\&dumpGroupMembers, $groupMembersName, $saveDir, \%catGroupMembers, $nbrCatGroupMembers, 
+                             $type, $nbrGroupMembersDone, $posPb1, $parsingDone, $nbrRetries);
       return(-1);
     } else { Win32::GUI::MessageBox($win, $STR{'err5'}, $STR{'err1T'}, 0x40010); }
   }
@@ -6188,10 +6437,12 @@ sub dumpGroupMembers
 #--------------------------#
 {
   # Local variables
-  my ($groupMembersName, $saveDir, $refListGroupMembers, $nbrLists, $nbrGroupMembersDone, $posPb1, $parsingDone, $nbrRetries) = @_;
+  my ($groupMembersName, $saveDir, $refCatGroupMembers, $nbrCatGroupMembers, $type, $nbrGroupMembersDone,
+			$posPb1, $parsingDone, $nbrRetries) = @_;
   my $includeIcons = $winGroupMembers->chGroupMembersProfileIcons->Checked();
   my $format       = $winGroupMembers->cbGroupMembersFormat->GetCurSel(); # report format
   my $firstExec    = 0;
+	my $currShownCat;
 
   # Cancel button
   $SIG{'KILL'} = sub {
@@ -6228,8 +6479,8 @@ sub dumpGroupMembers
       # Restart a new thread to continue
       if ($msgErr !~ /NS_ERROR_FILE_IS_LOCKED/) { $winPb->lblPbCurr1->Text($STR{'crash'}.'...'); }
       sleep(2);
-      $THR = threads->create(\&dumpGroupMembers, $groupMembersName, $saveDir, $refListGroupMembers, $nbrLists, 
-                             $nbrGroupMembersDone, $posPb1, $parsingDone, $nbrRetries);
+      $THR = threads->create(\&dumpGroupMembers, $groupMembersName, $saveDir, $refCatGroupMembers, $nbrCatGroupMembers, 
+                             $type, $nbrGroupMembersDone, $posPb1, $parsingDone, $nbrRetries);
     } else {
 			my $err = (split(/ at /, $msgErr))[0];
       Win32::GUI::MessageBox($winPb, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
@@ -6245,29 +6496,43 @@ sub dumpGroupMembers
   };
 	
 	# Connect to current tab in Firefox
-	my $mech = WWW::Mechanize::Firefox->new(tab => 'current', autodie => 0);
-	my $currShownList;
-	if (my $currList = $mech->selector('div.uiPopover span._55pe', any => 1)) {
-		$currShownList = $currList->{innerHTML};
-	}
+	my $mech = WWW::Mechanize::Firefox->new(tab => 'current', autodie => 1);
+	my $currURL = $mech->uri();
+	if ($currURL =~ /browse\/group_members/) {
+		$type = 1;
+		my $currCat = $mech->selector('div.uiPopover span._55pe', any => 1);
+		if ($currCat) { $currShownCat = $currCat->{innerHTML}; }
+		elsif ($currCat = $mech->selector('div.filterBox a', any => 1)) {
+			if ($currCat->{innerHTML} =~ /^(\w+)/) { $currShownCat = $1; }
+		}
+	} elsif ($currURL =~ /\/members/ or $currURL =~ /\/admins/) { $type = 2; }
 	
   # First execution, must gather Group Members Lists
-  if (!$posPb1 and !$nbrLists) {
+  if (!$posPb1 and !$nbrCatGroupMembers) {
     $firstExec = 1;
     $win->ChangeCursor($HOURGLASS);
     $win->Tray->Change(-tip => $STR{'dumpGroupMembersP'}.'...');
-		my $count = 0;
-		for (my $i = 0; $i < $winGroupMembers->lvGroupMembersListSel->GetItemCount(); $i++) {
-			if ($winGroupMembers->lvGroupMembersListSel->GetCheckState($i)) {
-				$$refListGroupMembers{$count}{'name'} = $winGroupMembers->lvGroupMembersListSel->GetItemText($i);
-				$$refListGroupMembers{$count}{'url'}  = $mech->uri();
-				$count++;
+    for (my $i = 1; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) {
+      my $selStatus = $winGroupMembers->GridGroupMembers->GetCellCheck($i, 0);
+			my $catName = decode($CONFIG{'CHARSET'}, $winGroupMembers->GridGroupMembers->GetCellText($i, 1));
+			my $catURL  = $winGroupMembers->GridGroupMembers->GetCellText($i, 2);
+      if ($selStatus == 1) { $$refCatGroupMembers{$catName}{url} = $catURL; }
+			if ($type == 2 and !$currShownCat) {
+				if (my $membersPageName = $mech->selector('a._5bv4', any => 1)) {
+					my $url = $membersPageName->{href};
+					if ($currURL =~ /$url/ and $membersPageName->{innerHTML} =~ /^(\w+)/) { $currShownCat = $1; }
+				}
+				if (!$currShownCat and my $adminsPageName  = $mech->selector('a._5bv3', any => 1)) {
+					my $url = $adminsPageName->{href};
+					if ($currURL =~ /$url/ and $adminsPageName->{innerHTML}  =~ /^(\w+)/) { $currShownCat = $1; }
+				}
 			}
-		}
-    $nbrLists = keys %{$refListGroupMembers};
+    }
+    # Number of categories
+    $nbrCatGroupMembers = keys %{$refCatGroupMembers};
   } # else, resume after a crash
-
-  if ($nbrLists > 0) {
+	
+  if ($nbrCatGroupMembers > 0) {
     my $count1;
     # First execution, turn on the progress window
     if ($firstExec == 1) {
@@ -6275,7 +6540,7 @@ sub dumpGroupMembers
       $winPb->Center($winFriends);
       $winPb->Show();
       $win->Disable();
-      $winPb->pbWinPb1->SetRange(0, $nbrLists);
+      $winPb->pbWinPb1->SetRange(0, $nbrCatGroupMembers);
       $winPb->pbWinPb1->SetPos(0);
       $winPb->pbWinPb1->SetStep(1);
       $winPb->lblPbCurr1->Text('');
@@ -6286,79 +6551,149 @@ sub dumpGroupMembers
 			if (!-d "$saveDir\\images_$groupMembersName" and $includeIcons) { mkdir("$saveDir\\images_$groupMembersName"); }
     # If on resume state, get number of friends cat left
     } else {
-      my $nbrCurrNbrLists = keys %{$refListGroupMembers};
-      $count1 = $nbrLists - $nbrCurrNbrLists;
+      my $nbrCurrNbrCats = keys %{$refCatGroupMembers};
+      $count1 = $nbrCatGroupMembers - $nbrCurrNbrCats;
     }
 	
-		# Parse each Group Members list
+		# Parse each Group Members cat
 		if (!$parsingDone) {
-			my $count1 = 0;
-			foreach my $list (sort keys %{$refListGroupMembers}) {
-				my $encodedName = encode($CONFIG{'CHARSET'}, $$refListGroupMembers{$list}{'name'});
+			foreach my $cat (sort keys %{$refCatGroupMembers}) {
 				my $htmlPage;
 				my @members;
 				my $nbrMembers;
 				
-				# Check status for the current list
+				# Check status for the current cat
 				# 1 : Opening
 				# 2 : Scrolling done
 				# 3 : Downloading done
 				# 4 : Parsing done
 				
-				# Show the list
-				if (!exists($$refListGroupMembers{$list}{'status'})) {
-					$winPb->lblPbCurr1->Text("$STR{'opening'}: $encodedName");
-					$winPb->lblCount1->Text("$count1/$nbrLists");
+				# Opening the cat
+				if (!exists($$refCatGroupMembers{$cat}{status})) {
+					$winPb->lblPbCurr1->Text("$STR{'opening'}: $cat");
+					$winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
 					$winPb->lblPbCurr2->Text('');
 					$winPb->lblCount2->Text('');
 					$winPb->pbWinPb2->SetPos(0);
-					if ($currShownList ne $$refListGroupMembers{$list}{'name'}) {
+					if ($type == 1 and $currShownCat ne $cat) {
 						my @listFromCombo = $mech->selector('a._54nc span._54nh');
-						foreach my $listLink (@listFromCombo) {
-							if ($listLink->{innerHTML} eq $$refListGroupMembers{$list}{'name'}) {
-								$listLink->click();
+						foreach my $catLink (@listFromCombo) {
+							my $encodedName = encode($CONFIG{'CHARSET'}, $catLink->{innerHTML});
+							if ($encodedName eq $cat) {
+								$catLink->click();
+								if (-f "$saveDir\\temp\\page.html") { unlink("$saveDir\\temp\\page.html"); }
+							}
+						}
+					} elsif ($currShownCat ne $cat) {
+						$mech->get($$refCatGroupMembers{$cat}{url}, synchronize => 0);
+						sleep($CONFIG{'TIME_TO_WAIT'});
+						if (-f "$saveDir\\temp\\page.html") { unlink("$saveDir\\temp\\page.html"); }
+					}
+					# Get the current cat name
+					if ($type == 1) {
+						my $currCat = $mech->selector('div.uiPopover span._55pe', any => 1);
+						if ($currCat) { $currShownCat = $currCat->{innerHTML}; }
+						elsif ($currCat = $mech->selector('div.filterBox a', any => 1)) {
+							if ($currCat->{innerHTML} =~ /^(\w+)/) {
+								$$refCatGroupMembers{$cat}{name} = $1;
+								$currShownCat = $$refCatGroupMembers{$cat}{name};
+							}
+						}
+					} else {
+						my $currCatUrl = $mech->uri();
+						if (my $membersPageName = $mech->selector('a._5bv4', any => 1)) {
+							my $url = $membersPageName->{href};
+							if ($currCatUrl =~ /$url/ and $membersPageName->{innerHTML} =~ /^(\w+)/) {
+								$$refCatGroupMembers{$cat}{name} = $1;
+								$currShownCat = $$refCatGroupMembers{$cat}{name};
+							}
+						}
+						if (!$currShownCat and my $adminsPageName = $mech->selector('a._5bv3', any => 1)) {
+							my $url = $adminsPageName->{href};
+							if ($currCatUrl =~ /$url/ and $adminsPageName->{innerHTML}  =~ /^(\w+)/) {
+								$$refCatGroupMembers{$cat}{name} = $1;
+								$currShownCat = $$refCatGroupMembers{$cat}{name};
 							}
 						}
 					}
-					$$refListGroupMembers{$list}{'status'} = 1; # Opening done
+					$$refCatGroupMembers{$cat}{status} = 1; # Opening done
 				}
 				
-				# Scrolling the list
-				if ($$refListGroupMembers{$list}{'status'} < 2) {
-					$winPb->lblPbCurr1->Text("$STR{'scrolling'}: $encodedName");
+				# Scrolling the cat
+				if ($$refCatGroupMembers{$cat}{status} < 2) {
+					$winPb->lblPbCurr1->Text("$STR{'scrolling'}: $cat");
 					sleep($CONFIG{'TIME_TO_WAIT'});
 					&scrollLikePage(\$mech, $CONFIG{'TIME_TO_WAIT'});
-					$$refListGroupMembers{$list}{'status'} = 2; # Scrolling done
+					$$refCatGroupMembers{$cat}{status} = 2; # Scrolling done
 				}
 				
-				# Downloading the list
-				if ($$refListGroupMembers{$list}{'status'} < 3) {
-					$winPb->lblPbCurr1->Text("$STR{'saving'}: $encodedName");
+				# Downloading the cat
+				if ($$refCatGroupMembers{$cat}{status} < 3) {
+					$winPb->lblPbCurr1->Text("$STR{'saving'}: $cat");
 					$htmlPage = "$saveDir\\temp\\page.html";
-					my $status;
-					if ($includeIcons) { $status = $mech->save_content($htmlPage, "$saveDir\\temp"); }
-					else               { $status = $mech->save_content($htmlPage);                   }
-					while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
-					$$refListGroupMembers{$list}{'status'} = 3; # Downloading done
+					if (!-T $htmlPage) {
+						threads->create( sub {
+							$SIG{__DIE__} = sub { };
+							my $status;
+							if ($includeIcons) { $status = $mech->save_content($htmlPage, "$saveDir\\temp"); }
+							else 							 { $status = $mech->save_content($htmlPage); 									 }
+							while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
+						});
+						my $waitingTime = 5; # $waitingTime is 5 seconds by default
+						my $nbrFiles    = 1;
+						sleep($CONFIG{'TIME_TO_WAIT'}*$waitingTime);
+						if ($includeIcons) {
+							# Wait until number of elements in temp folder have not changed for at least [time to wait * $waitingTime]
+							while (1) {
+								my $currNbrFiles;
+								if (opendir(DIR,"$saveDir\\temp\\")) {
+									while (readdir(DIR)) { $currNbrFiles++; }
+									close(DIR);
+								}
+								if ($currNbrFiles != $nbrFiles) {
+									$nbrFiles = $currNbrFiles;
+									$winPb->lblPbCurr2->Text("$STR{'savingFiles'} ($nbrFiles)");
+									sleep($CONFIG{'TIME_TO_WAIT'}*$waitingTime);
+								} else { last; }
+							}
+						}
+						my $filesize = 1;
+						# Wait until size of the file have not changed for at least [time to wait * $waitingTime]
+						while (1) {
+							my $currSize = (stat($htmlPage))[7];
+							if ($currSize != $filesize) {
+								$filesize = $currSize;
+								$winPb->lblPbCurr2->Text("$STR{'savingHTML'} ($filesize $STR{'bytes'})");
+								sleep($CONFIG{'TIME_TO_WAIT'}*$waitingTime);
+							} else { last; }
+						}
+					}
+					$winPb->lblPbCurr2->Text('');
+					$$refCatGroupMembers{$cat}{status} = 3; # Downloading done
 				}
 				
-				# Parsing the list
-				my $nbrGroupMembersDone = keys %{$$refListGroupMembers{$list}{'profilOrder'}};
-				if ($$refListGroupMembers{$list}{'status'} < 4) {
-					$winPb->lblPbCurr1->Text("$STR{'parsing'}: $encodedName");
+				# Parsing the cat
+				$nbrGroupMembersDone = keys %{$$refCatGroupMembers{$cat}{'profilOrder'}};
+				if ($$refCatGroupMembers{$cat}{status} < 4) {
+					$winPb->lblPbCurr1->Text("$STR{parsing}: $cat");
 					# Load content from file
 					if (-T $htmlPage) {
 						if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
 							my $file_as_string = do { local $/ = <$fhTemp> };
 							$file_as_string    =~ s/[\r\n]//g;
-							my @parts          = split(/fbProfileBrowserResult/, $file_as_string);
-							undef($file_as_string);
-							shift(@parts);
-							my $currSection;
-							foreach (@parts) { if ($_ !~ /^[^\"]+hidden[^\"]+\"/) { $currSection .= $_; } }
-							@parts = ();
-							@members = split(/fbProfileBrowserListItem/, $currSection);
-							undef($currSection);
+							if ($type == 1) {
+								my @parts          = split(/fbProfileBrowserResult/, $file_as_string);
+								undef($file_as_string);
+								shift(@parts);
+								my $currSection;
+								foreach (@parts) { if ($_ !~ /^[^\"]+hidden[^\"]+\"/) { $currSection .= $_; } }
+								@parts = ();
+								@members = split(/fbProfileBrowserListItem/, $currSection);
+								undef($currSection);
+							} else {
+								@members = split(/GroupProfileGridItem/, $file_as_string);
+								undef($file_as_string);
+							}
 							shift(@members);
 							$nbrMembers = scalar(@members);
 							close($fhTemp);
@@ -6384,25 +6719,23 @@ sub dumpGroupMembers
 								$id  = $2;
 							}
 							# Img
-							if ($member =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" alt=""><\/a>/) {
-								$img = $1;
-							}
+							if ($member =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" alt=""><\/a>/) { $img = $1; }
 							
 							# Minimum details required
-							if ($url and $id and $img) {
+							if ($url and $id and $img and !exists($$refCatGroupMembers{$cat}{profilUrl}{$id})) {
 								$winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
 								if ($includeIcons and ($img =~ /\/([^\/\?]+)\?/ or $img =~ /(\w+\.jpg)/)) { # Include profile icons
 									my $imgFilename = $1; # Replace image name by profil id
 									rcopy("$saveDir\\temp\\$imgFilename", "$saveDir\\images_$groupMembersName\\$id\.jpg"); # Copy image
-									$$refListGroupMembers{$list}{'profilImg'}{$id} = "images_$groupMembersName\\$id\.jpg";
-								} elsif ($format == 1) { $$refListGroupMembers{$list}{'profilImageUrl'}{$id} = $img; } # HTML Report
-								$$refListGroupMembers{$list}{'profilUrl'}{$id} = $url;
-								$$refListGroupMembers{$list}{'profilOrder'}{$nbrGroupMembersDone} = $id;
+									$$refCatGroupMembers{$cat}{profilImg}{$id} = "images_$groupMembersName\\$id\.jpg";
+								} elsif ($format == 1) { $$refCatGroupMembers{$cat}{profilImageUrl}{$id} = $img; } # HTML Report
+								$$refCatGroupMembers{$cat}{profilUrl}{$id} = $url;
+								$$refCatGroupMembers{$cat}{profilOrder}{$nbrGroupMembersDone} = $id;
 								
 								# Gather profil name
 								my $url2 = quotemeta($url);
 								if ($member =~ /<(?:div|span) class="fsl fwb fcb"><a href="$url2[^\>]+>([^\<]+)</) {
-									$$refListGroupMembers{$list}{'profilName'}{$id} = $1;
+									$$refCatGroupMembers{$cat}{profilName}{$id} = $1;
 								}
 								
 								# Gather details (if available)
@@ -6418,22 +6751,22 @@ sub dumpGroupMembers
 										$details2 .= '('.$dateStr.')';
 									} else { $details2 =~ s/<[^\>]+>//g; }
 									$details2 = decode_entities($details2);
-									$$refListGroupMembers{$list}{'profilDetails'}{$id} = "$details1 $details2";
+									$$refCatGroupMembers{$cat}{profilDetails}{$id} = "$details1 $details2";
 								}
 							}
 							$winPb->pbWinPb2->StepIt();
 							$nbrGroupMembersDone++;
-							$winPb->lblCount2->Text("$k/$nbrMembers");
+							$winPb->lblCount2->Text("$nbrGroupMembersDone/$nbrMembers");
 						}
 						$k++;
 					}
-					$$refListGroupMembers{$list}{'status'} = 4; # Parsing done
+					$$refCatGroupMembers{$cat}{status} = 4; # Parsing done
 					$winPb->pbWinPb1->StepIt();
-					$winPb->lblCount1->Text("$count1/$nbrLists");
+					$winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
 				}
 				$count1++;
 				$nbrGroupMembersDone = 0;
-				if ($count1 == $nbrLists) { $parsingDone = 1; }
+				if ($count1 == $nbrCatGroupMembers) { $parsingDone = 1; }
 			}
 		}
 	}
@@ -6442,10 +6775,10 @@ sub dumpGroupMembers
 	my $count1 = 0;
 	$winPb->lblPbCurr1->Text($STR{'createOutput'}.'...');
 	$winPb->lblCount1->Text('');
-	if ($nbrLists) {
+	if ($nbrCatGroupMembers) {
 		# Progress 1
-		$winPb->lblCount1->Text("$count1/$nbrLists");
-		$winPb->pbWinPb1->SetRange(0, $nbrLists);
+		$winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
+		$winPb->pbWinPb1->SetRange(0, $nbrCatGroupMembers);
 		$winPb->pbWinPb1->SetPos(0);
 		$winPb->pbWinPb1->SetStep(1);
 	
@@ -6461,22 +6794,22 @@ sub dumpGroupMembers
 			}
 			
 			# One sheet per category
-			foreach my $list (sort keys %{$refListGroupMembers}) {
-				&createExcelSheetWithDetails(\$excel, $$refListGroupMembers{$list}{'name'}, $$refListGroupMembers{$list}, $includeIcons, $saveDir);
+			foreach my $cat (sort keys %{$refCatGroupMembers}) {
+				&createExcelSheetWithDetails(\$excel, $$refCatGroupMembers{$cat}{name}, $$refCatGroupMembers{$cat}, $includeIcons, $saveDir);
 				$count1++;
-				$winPb->lblCount1->Text("$count1/$nbrLists");
+				$winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
 				$winPb->pbWinPb1->StepIt();
 			}
 			$excel->close();
 			
 		# HTML
 		} elsif ($format == 1) {
-			$filename = &createHTMLGroupMembers($groupMembersName, $refListGroupMembers, $nbrLists, $includeIcons, $saveDir);
+			$filename = &createHTMLGroupMembers($groupMembersName, $refCatGroupMembers, $nbrCatGroupMembers, $includeIcons, $saveDir);
 	
 		# TXT
 		} else {
 			$filename = "$saveDir\\$groupMembersName.txt";
-			&createTXTGroupMembers($groupMembersName, $filename, $refListGroupMembers, $nbrLists, $includeIcons, $saveDir);
+			&createTXTGroupMembers($groupMembersName, $filename, $refCatGroupMembers, $nbrCatGroupMembers, $includeIcons, $saveDir);
 		}
 		
 		# Open the file
@@ -6511,7 +6844,7 @@ sub createHTMLGroupMembers
 #--------------------------#
 {
   # Local variables
-  my ($groupMembersName, $refListGroupMembers, $nbrLists, $includeIcons, $saveDir) = @_;
+  my ($groupMembersName, $refListGroupMembers, $nbrCatGroupMembers, $includeIcons, $saveDir) = @_;
   my $firstPage; # First page is the main page
   my $first = 0;
   my $count = 0;
@@ -6575,7 +6908,7 @@ sub createHTMLGroupMembers
     close(HTML);
     
     $count++;
-    $winPb->lblCount1->Text("$count/$nbrLists");
+    $winPb->lblCount1->Text("$count/$nbrCatGroupMembers");
     $winPb->pbWinPb1->StepIt();
   }
   
@@ -7001,6 +7334,10 @@ sub loadNewMsgThr
 			if ($loadNewerCode) {
 				$loadNewerCode->click();
 				sleep($CONFIG{'TIME_TO_WAIT'});
+			# If No Load Older button, Load Newer if the first button
+			} elsif ($loadNewerCode = ($mech->selector('button._3quh._30yy._2t_._41jf'))[0]) {
+				$loadNewerCode->click();
+				sleep($CONFIG{'TIME_TO_WAIT'});
 			} else { last; }
     }
     
@@ -7210,7 +7547,8 @@ sub winChatThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winChat, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winChat, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
   };
   
@@ -7227,7 +7565,7 @@ sub winChatThr
   if ($mech->uri() =~ /facebook.com/) {
     my $currURL  = $mech->uri();
     if ($currURL =~ /https:\/\/www.facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
-        $currURL =~ /https:\/\/www.facebook.com\/messages\/t\/([^\/]+)\/?/) {
+        $currURL =~ /https:\/\/www.facebook.com\/messages\/t\/([^\/\?]+)\/?/) {
       my $title = $1;
       $title =~ s/[\#\<\>\:\"\/\\\|\?\*]/_/g;
       $winChat->tfChatName->Text("$title - $STR{'chat'}");
@@ -7650,7 +7988,28 @@ sub dumpChat
 											$winPb->lblPbCurr2->Text("$STR{'parsingMsg'} $dateStr...");
 											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $date if $date;
 											# Sender name and message time
-											if ($msgHeader =~ /data-tooltip-content="([^\"]+)"/) { $$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $1; }
+											if ($msgHeader =~ /data-tooltip-content="([^\"]+)"/) {
+												my $time = $1;
+												my $dt;
+												if ($time =~ /(\w+ \d{1,2}, \d{4} \d{1,2}:\d{2} [ap]m)/) {
+													my $strp = DateTime::Format::Strptime->new(pattern => '%B %e, %Y %l:%M %p');
+													$dt   	 = $strp->parse_datetime($1);
+												} elsif ($time =~ /(\w+ \d{1,2}((?:[A-Za-z]{2})), \d{1,2}:\d{2}[ap]m)/) {
+													my $str = $1;
+													if ($2) { $str =~ s/[a-zA-Z]{2},/,/; }
+													my $strp = DateTime::Format::Strptime->new(pattern => '%B %e, %l:%M%p');
+													$dt   	 = $strp->parse_datetime($str);
+													my $year = (localtime(time))[5];
+													$year += 1900;
+													$dt->set_year($year);
+												}
+												if ($dt) {
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $dt->epoch();
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $dt->hms;
+												} else {
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $time;
+												}
+											}
 											# Sender name only
 											if ($msgHeader =~ /alt="([^\"]+)"/) {
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderName'} = $1;
@@ -7700,10 +8059,29 @@ sub dumpChat
 											if (($dateE and $date and $date > $dateE) or ($dateE and !$date)) { $keepMsg = 0; }
 											if ($keepMsg) {
 												$winPb->lblPbCurr2->Text("$STR{'parsingMsg'} $dateStr...");
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderName'} = 'Me';
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderName'} = $STR{'Me'};
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $date if $date;
 												if ($msg =~ /data-tooltip-content="([^\"]+)"/) { # Message time
-													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $1;
+													my $time = $1;
+													my $dt;
+													if ($time =~ /(\w+ \d{1,2}, \d{4} \d{1,2}:\d{2} [ap]m)/) {
+														my $strp = DateTime::Format::Strptime->new(pattern => '%B %e, %Y %l:%M %p');
+														$dt   	 = $strp->parse_datetime($1);
+													} elsif ($time =~ /(\w+ \d{1,2}((?:[A-Za-z]{2})), \d{1,2}:\d{2}[ap]m)/) {
+														my $str = $1;
+														if ($2) { $str =~ s/[a-zA-Z]{2},/,/; }
+														my $strp = DateTime::Format::Strptime->new(pattern => '%B %e, %l:%M%p');
+														$dt      = $strp->parse_datetime($str);
+														my $year = (localtime(time))[5];
+														$year += 1900;
+														$dt->set_year($year);
+													}
+													if ($dt) {
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $dt->epoch();
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $dt->hms;
+													} else {
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $time;
+													}
 												}
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} = &parseMessage($msg, $safeMode, $saveDir, $tmpDir, $chatName, \$mech);
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} =~ s/<br>$//;
@@ -7984,7 +8362,7 @@ sub parseMessage
 	# Picture
 	if ($msgCode =~ /<div[^\>]+_4tsk[^\>]+>(.+?)<\/div>/) {
 		my $extract = $1;
-		if ($extract =~ /(<img[^\>]+_5pf5[^\>]+>.+?<\/a>)/) {
+		if ($extract =~ /(<img[^\>]+(?:_5pf5|_mxz)[^\>]+>.+?<\/a>)/) {
 			$message .= $1;
 			if ($message =~ /src="([^\"]+)"/) {
 				my $picSRC = $1;
@@ -8054,6 +8432,8 @@ sub parseMessage
 				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
 			} elsif (-e "$tmpDir\\$videoImgUrl" and !-e "$saveDir\\videos_$chatName\\$videoImgUrl") {
 				rcopy("$tmpDir\\$videoImgUrl", "$saveDir\\videos_$chatName\\$videoImgUrl");
+				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"videos_$chatName\\$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
+			} elsif (-e "$saveDir\\videos_$chatName\\$videoImgUrl") {
 				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"videos_$chatName\\$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
 			}
 		}
@@ -8133,11 +8513,10 @@ sub createDumpChatReport
 	foreach my $msg (sort { $a <=> $b } keys %{$refMessages}) {
 		foreach my $partMsg (sort { $a <=> $b } keys %{$$refMessages{$msg}}) {
 			print HTML "<tr>\n";
-			my $isMe = 1 if $$refMessages{$msg}{$partMsg}{'senderName'} eq 'Me';
+			my $isMe = 1 if $$refMessages{$msg}{$partMsg}{'senderName'} eq $STR{'Me'};
 			# Image
 			my $imgTag;
-			if    ($isMe and $winChat->chHideMe->Checked()) { print HTML "<td style=\"background-color:black\">"; }
-			elsif (!$isMe) {
+			if (!$isMe) {
 				print HTML "<td style=\"background-color:#E0E0E0;text-align: center;vertical-align: center;\">";
 				my $imgPath;
 				if ($safeMode) 			 { $imgPath = "$$refMessages{$msg}{$partMsg}{'senderImg'}";                   	   }
@@ -8149,24 +8528,21 @@ sub createDumpChatReport
 			if ($$refMessages{$msg}{$partMsg}{'senderImg'}) { print HTML "$imgTag</td>\n"; }
 			else { print HTML "</td>\n"; }
 			# Name
-			if    ($isMe and $winChat->chHideMe->Checked())  { print HTML "<td style=\"background-color:black\">";   }
-			elsif (!$isMe)                                   { print HTML "<td style=\"background-color:#E0E0E0\">"; }
-			else                                             { print HTML "<td>"; }
+			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
+			else				{ print HTML "<td>"; }
 			if ($$refMessages{$msg}{$partMsg}{'senderName'}) { print HTML "$$refMessages{$msg}{$partMsg}{'senderName'}</td>\n"; }
 			else { print HTML "</td>\n"; }
 			# Date
-			if    ($isMe and $winChat->chHideMe->Checked()) { print HTML "<td style=\"background-color:black\">";   }
-			elsif (!$isMe) 																	{ print HTML "<td style=\"background-color:#E0E0E0\">"; }
-			else 																						{ print HTML "<td>"; }
+			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
+			else				{ print HTML "<td>"; }
 			if ($$refMessages{$msg}{$partMsg}{'date'}) {
 				my $dateStr = &formatDate($$refMessages{$msg}{$partMsg}{'date'});
 				my $date = (split(/ /, $dateStr))[0];
 				print HTML "$date</td>\n";
 			} else { print HTML "</td>\n"; }
 			# Time
-			if    ($isMe and $winChat->chHideMe->Checked()) { print HTML "<td style=\"background-color:black\">";   }
-			elsif (!$isMe) 																	{ print HTML "<td style=\"background-color:#E0E0E0\">"; }
-			else 																						{ print HTML "<td>"; }
+			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
+			else				{ print HTML "<td>"; }
 			if ($$refMessages{$msg}{$partMsg}{'time'}) {
 				my $senderName = $$refMessages{$msg}{$partMsg}{'senderName'};
 				if ($senderName and $$refMessages{$msg}{$partMsg}{'time'} =~ /$senderName /) { $$refMessages{$msg}{$partMsg}{'time'} =~ s/$senderName //; }
@@ -8178,9 +8554,8 @@ sub createDumpChatReport
 				print HTML "$$refMessages{$msg}{$partMsg}{'time'}</td>\n";
 			} else { print HTML "</td>\n"; }
 			# Messages
-			if    ($isMe and $winChat->chHideMe->Checked()) { print HTML "<td style=\"background-color:black\">";   }
-			elsif (!$isMe)                                  { print HTML "<td style=\"background-color:#E0E0E0\">"; }
-			else                                            { print HTML "<td>"; }
+			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
+			else				{ print HTML "<td>"; }
 			if ($$refMessages{$msg}{$partMsg}{'messages'})  { print HTML "$$refMessages{$msg}{$partMsg}{'messages'}</td>\n"; }
 			else { print HTML "</td>\n"; }
 			print HTML "</tr>\n";
@@ -8267,7 +8642,8 @@ sub winVocalMsgThr
       if ($winConfig->chDebugLogging->Checked()) { &debug($msgErr); }
       $win->ChangeCursor($ARROW);
       $win->Tray->Change(-tip => 'ExtractFace');
-      Win32::GUI::MessageBox($winVocalMsg, $STR{'err3'}, $STR{'err1T'}, 0x40010);
+			my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winVocalMsg, "$STR{'err3'}: $err", $STR{'err1T'}, 0x40010);
     }
   };
   
@@ -9650,510 +10026,3 @@ sub expandContent
   
 
 }  #--- End expandContent
-
-#--------------------------#
-sub cssSpriteBD
-#--------------------------#
-{
-  # Local variables
-  my ($sprite) = @_;
-  my %bdSprites = (
-    '_4_o0' => 'span._4_o0 { background-position:0 0 }', 
-    '_4_o1' => 'span._4_o1 { background-position:0 -17px }', 
-    '_4_o2' => 'span._4_o2 { background-position:0 -34px }', 
-    '_4_o3' => 'span._4_o3 { background-position:0 -51px }', 
-    '_4_o4' => 'span._4_o4 { background-position:0 -68px }', 
-    '_4_o5' => 'span._4_o5 { background-position:0 -85px }', 
-    '_4_o6' => 'span._4_o6 { background-position:0 -102px }', 
-    '_4_o7' => 'span._4_o7 { background-position:0 -119px }', 
-    '_4_o8' => 'span._4_o8 { background-position:0 -136px }', 
-    '_4_o9' => 'span._4_o9 { background-position:0 -153px }', 
-    '_4_oa' => 'span._4_oa { background-position:0 -170px }', 
-    '_4_ob' => 'span._4_ob { background-position:0 -187px }', 
-    '_4_oc' => 'span._4_oc { background-position:0 -204px }', 
-    '_4_od' => 'span._4_od { background-position:0 -221px }', 
-    '_4_oe' => 'span._4_oe { background-position:0 -238px }', 
-    '_4_of' => 'span._4_of { background-position:0 -255px }', 
-    '_2b_' => 'span._2b_ { background-position:0 -272px }', 
-    '_2c0' => 'span._2c0 { background-position:0 -289px }', 
-    '_4_og' => 'span._4_og { background-position:0 -306px }', 
-    '_4_oh' => 'span._4_oh { background-position:0 -323px }', 
-    '_4_oi' => 'span._4_oi { background-position:0 -340px }', 
-    '_4_oj' => 'span._4_oj { background-position:0 -357px }', 
-    '_4_ok' => 'span._4_ok { background-position:0 -374px }', 
-    '_4_ol' => 'span._4_ol { background-position:0 -391px }', 
-    '_2c1' => 'span._2c1 { background-position:0 -408px }', 
-    '_2c2' => 'span._2c2 { background-position:0 -425px }', 
-    '_2c3' => 'span._2c3 { background-position:0 -442px }', 
-    '_2c4' => 'span._2c4 { background-position:0 -459px }', 
-    '_2c5' => 'span._2c5 { background-position:0 -476px }', 
-    '_2c6' => 'span._2c6 { background-position:0 -493px }', 
-    '_2c7' => 'span._2c7 { background-position:0 -510px }', 
-    '_2c8' => 'span._2c8 { background-position:0 -527px }', 
-    '_2c9' => 'span._2c9 { background-position:0 -544px }', 
-    '_2ca' => 'span._2ca { background-position:0 -561px }', 
-    '_2cb' => 'span._2cb { background-position:0 -578px }', 
-    '_2cc' => 'span._2cc { background-position:0 -595px }', 
-    '_2cd' => 'span._2cd { background-position:0 -612px }', 
-    '_2ce' => 'span._2ce { background-position:0 -629px }', 
-    '_2cf' => 'span._2cf { background-position:0 -646px }', 
-    '_2cg' => 'span._2cg { background-position:0 -663px }', 
-    '_4_om' => 'span._4_om { background-position:0 -680px }', 
-    '_4_on' => 'span._4_on { background-position:0 -697px }', 
-    '_4_oo' => 'span._4_oo { background-position:0 -714px }', 
-    '_2ch' => 'span._2ch { background-position:0 -731px }', 
-    '_2ci' => 'span._2ci { background-position:0 -748px }', 
-    '_2cj' => 'span._2cj { background-position:0 -765px }', 
-    '_2ck' => 'span._2ck { background-position:0 -782px }', 
-    '_4_op' => 'span._4_op { background-position:0 -799px }', 
-    '_4_oq' => 'span._4_oq { background-position:0 -816px }', 
-    '_4_or' => 'span._4_or { background-position:0 -833px }', 
-    '_4_os' => 'span._4_os { background-position:0 -850px }', 
-    '_4_ot' => 'span._4_ot { background-position:0 -867px }', 
-    '_4_ou' => 'span._4_ou { background-position:0 -884px }', 
-    '_4_ov' => 'span._4_ov { background-position:0 -901px }', 
-    '_4_ow' => 'span._4_ow { background-position:0 -918px }', 
-    '_4_ox' => 'span._4_ox { background-position:0 -935px }', 
-    '_4_oy' => 'span._4_oy { background-position:0 -952px }', 
-    '_4_oz' => 'span._4_oz { background-position:0 -969px }', 
-    '_4_o-' => 'span._4_o- { background-position:0 -986px }', 
-    '_4_o_' => 'span._4_o_ { background-position:0 -1003px }', 
-    '_4_p0' => 'span._4_p0 { background-position:0 -1020px }', 
-    '_4_p1' => 'span._4_p1 { background-position:0 -1037px }', 
-    '_4_p2' => 'span._4_p2 { background-position:0 -1054px }', 
-    '_4_p3' => 'span._4_p3 { background-position:0 -1071px }', 
-    '_4_p4' => 'span._4_p4 { background-position:0 -1088px }', 
-    '_4_p5' => 'span._4_p5 { background-position:0 -1105px }', 
-    '_4_p6' => 'span._4_p6 { background-position:0 -1122px }', 
-    '_2cl' => 'span._2cl { background-position:0 -1139px }', 
-    '_2cm' => 'span._2cm { background-position:0 -1156px }', 
-    '_4_p7' => 'span._4_p7 { background-position:0 -1173px }', 
-    '_4_p8' => 'span._4_p8 { background-position:0 -1190px }', 
-    '_2cn' => 'span._2cn { background-position:0 -1207px }', 
-    '_2co' => 'span._2co { background-position:0 -1224px }', 
-    '_2cp' => 'span._2cp { background-position:0 -1241px }', 
-    '_2cq' => 'span._2cq { background-position:0 -1258px }', 
-    '_2cr' => 'span._2cr { background-position:0 -1275px }', 
-    '_2cs' => 'span._2cs { background-position:0 -1292px }', 
-    '_4_p9' => 'span._4_p9 { background-position:0 -1309px }', 
-    '_2ct' => 'span._2ct { background-position:0 -1326px }', 
-    '_2cu' => 'span._2cu { background-position:0 -1343px }', 
-    '_2cv' => 'span._2cv { background-position:0 -1360px }', 
-    '_2cw' => 'span._2cw { background-position:0 -1377px }', 
-    '_4_pa' => 'span._4_pa { background-position:0 -1394px }', 
-    '_2cx' => 'span._2cx { background-position:0 -1411px }', 
-    '_4_pb' => 'span._4_pb { background-position:0 -1428px }', 
-    '_4_pc' => 'span._4_pc { background-position:0 -1445px }', 
-    '_4_pd' => 'span._4_pd { background-position:0 -1462px }', 
-    '_4_pe' => 'span._4_pe { background-position:0 -1479px }', 
-    '_4_pf' => 'span._4_pf { background-position:0 -1496px }', 
-    '_4_pg' => 'span._4_pg { background-position:0 -1513px }', 
-    '_4_ph' => 'span._4_ph { background-position:0 -1530px }', 
-    '_4_pi' => 'span._4_pi { background-position:0 -1547px }', 
-    '_4_pj' => 'span._4_pj { background-position:0 -1564px }', 
-    '_4_pk' => 'span._4_pk { background-position:0 -1581px }', 
-    '_4_pl' => 'span._4_pl { background-position:0 -1598px }', 
-    '_4_pm' => 'span._4_pm { background-position:0 -1615px }', 
-    '_4_pn' => 'span._4_pn { background-position:0 -1632px }', 
-    '_2cy' => 'span._2cy { background-position:0 -1649px }', 
-    '_2cz' => 'span._2cz { background-position:0 -1666px }', 
-    '_4_po' => 'span._4_po { background-position:0 -1683px }', 
-    '_4_pp' => 'span._4_pp { background-position:0 -1700px }', 
-    '_4_pq' => 'span._4_pq { background-position:0 -1717px }', 
-    '_2c-' => 'span._2c- { background-position:0 -1734px }', 
-    '_4_pr' => 'span._4_pr { background-position:0 -1751px }', 
-    '_4_ps' => 'span._4_ps { background-position:0 -1768px }', 
-    '_4_pt' => 'span._4_pt { background-position:0 -1785px }', 
-    '_4_pu' => 'span._4_pu { background-position:0 -1802px }', 
-    '_4_pv' => 'span._4_pv { background-position:0 -1819px }', 
-    '_4_pw' => 'span._4_pw { background-position:0 -1836px }', 
-    '_4_px' => 'span._4_px { background-position:0 -1853px }', 
-    '_4_py' => 'span._4_py { background-position:0 -1870px }', 
-    '_4_pz' => 'span._4_pz { background-position:0 -1887px }', 
-    '_4_p-' => 'span._4_p- { background-position:0 -1904px }', 
-    '_4_p_' => 'span._4_p_ { background-position:0 -1921px }', 
-    '_4_q0' => 'span._4_q0 { background-position:0 -1938px }', 
-    '_4_q1' => 'span._4_q1 { background-position:0 -1955px }', 
-    '_4_q2' => 'span._4_q2 { background-position:0 -1972px }', 
-    '_4_q3' => 'span._4_q3 { background-position:0 -1989px }', 
-    '_4_q4' => 'span._4_q4 { background-position:0 -2006px }', 
-    '_4_q5' => 'span._4_q5 { background-position:0 -2023px }', 
-    '_4_q6' => 'span._4_q6 { background-position:0 -2040px }', 
-    '_4_q7' => 'span._4_q7 { background-position:0 -2057px }', 
-    '_4_q8' => 'span._4_q8 { background-position:0 -2074px }', 
-    '_4_q9' => 'span._4_q9 { background-position:0 -2091px }', 
-    '_2c_' => 'span._2c_ { background-position:0 -2108px }', 
-    '_2d0' => 'span._2d0 { background-position:0 -2125px }', 
-    '_2d1' => 'span._2d1 { background-position:0 -2142px }', 
-    '_2d2' => 'span._2d2 { background-position:0 -2159px }', 
-    '_2d3' => 'span._2d3 { background-position:0 -2176px }', 
-    '_2d4' => 'span._2d4 { background-position:0 -2193px }', 
-    '_2d5' => 'span._2d5 { background-position:0 -2210px }', 
-    '_2d6' => 'span._2d6 { background-position:0 -2227px }', 
-    '_2d7' => 'span._2d7 { background-position:0 -2244px }', 
-    '_2d8' => 'span._2d8 { background-position:0 -2261px }', 
-    '_2d9' => 'span._2d9 { background-position:0 -2278px }', 
-    '_2da' => 'span._2da { background-position:0 -2295px }', 
-    '_2db' => 'span._2db { background-position:0 -2312px }', 
-    '_2dc' => 'span._2dc { background-position:0 -2329px }', 
-    '_2dd' => 'span._2dd { background-position:0 -2346px }', 
-    '_2de' => 'span._2de { background-position:0 -2363px }', 
-    '_2df' => 'span._2df { background-position:0 -2380px }', 
-    '_2dg' => 'span._2dg { background-position:0 -2397px }', 
-    '_2dh' => 'span._2dh { background-position:0 -2414px }', 
-    '_2di' => 'span._2di { background-position:0 -2431px }', 
-    '_2dj' => 'span._2dj { background-position:0 -2448px }', 
-    '_2dk' => 'span._2dk { background-position:0 -2465px }', 
-    '_2dl' => 'span._2dl { background-position:0 -2482px }', 
-    '_2dm' => 'span._2dm { background-position:0 -2499px }', 
-    '_2dn' => 'span._2dn { background-position:0 -2516px }', 
-    '_2do' => 'span._2do { background-position:0 -2533px }', 
-    '_2dp' => 'span._2dp { background-position:0 -2550px }', 
-    '_2dq' => 'span._2dq { background-position:0 -2567px }', 
-    '_491' => 'span._491 { background-position:0 -2584px }', 
-    '_2dr' => 'span._2dr { background-position:0 -2601px }', 
-    '_2ds' => 'span._2ds { background-position:0 -2618px }', 
-    '_2dt' => 'span._2dt { background-position:0 -2635px }', 
-    '_2du' => 'span._2du { background-position:0 -2652px }', 
-    '_2dv' => 'span._2dv { background-position:0 -2669px }', 
-    '_2dw' => 'span._2dw { background-position:0 -2686px }', 
-    '_2dx' => 'span._2dx { background-position:0 -2703px }', 
-    '_2dy' => 'span._2dy { background-position:0 -2720px }', 
-    '_2dz' => 'span._2dz { background-position:0 -2737px }', 
-    '_2d-' => 'span._2d- { background-position:0 -2754px }', 
-    '_2d_' => 'span._2d_ { background-position:0 -2771px }', 
-    '_2e0' => 'span._2e0 { background-position:0 -2788px }', 
-    '_2e1' => 'span._2e1 { background-position:0 -2805px }', 
-    '_2e2' => 'span._2e2 { background-position:0 -2822px }', 
-    '_2e3' => 'span._2e3 { background-position:0 -2839px }', 
-    '_2e4' => 'span._2e4 { background-position:0 -2856px }', 
-    '_2e5' => 'span._2e5 { background-position:0 -2873px }', 
-    '_2e6' => 'span._2e6 { background-position:0 -2890px }', 
-    '_2e7' => 'span._2e7 { background-position:0 -2907px }', 
-    '_2e8' => 'span._2e8 { background-position:0 -2924px }', 
-    '_2e9' => 'span._2e9 { background-position:0 -2941px }', 
-    '_2ea' => 'span._2ea { background-position:0 -2958px }', 
-    '_4_qa' => 'span._4_qa { background-position:0 -2975px }', 
-    '_4_qb' => 'span._4_qb { background-position:0 -2992px }', 
-    '_4_qc' => 'span._4_qc { background-position:0 -3009px }', 
-    '_4_qd' => 'span._4_qd { background-position:0 -3026px }', 
-    '_4_qe' => 'span._4_qe { background-position:0 -3043px }', 
-    '_4_qf' => 'span._4_qf { background-position:0 -3060px }', 
-    '_4_qg' => 'span._4_qg { background-position:0 -3077px }', 
-    '_4_qh' => 'span._4_qh { background-position:0 -3094px }', 
-    '_4_qi' => 'span._4_qi { background-position:0 -3111px }', 
-    '_4_qj' => 'span._4_qj { background-position:0 -3128px }', 
-    '_4_qk' => 'span._4_qk { background-position:0 -3145px }', 
-    '_4_ql' => 'span._4_ql { background-position:0 -3162px }', 
-    '_2eb' => 'span._2eb { background-position:0 -3179px }', 
-    '_2ec' => 'span._2ec { background-position:0 -3196px }', 
-    '_2ed' => 'span._2ed { background-position:0 -3213px }', 
-    '_2ee' => 'span._2ee { background-position:0 -3230px }', 
-    '_2ef' => 'span._2ef { background-position:0 -3247px }', 
-    '_2eg' => 'span._2eg { background-position:0 -3264px }', 
-    '_2eh' => 'span._2eh { background-position:0 -3281px }', 
-    '_2ei' => 'span._2ei { background-position:0 -3298px }', 
-    '_2ej' => 'span._2ej { background-position:0 -3315px }', 
-    '_2ek' => 'span._2ek { background-position:0 -3332px }', 
-    '_2el' => 'span._2el { background-position:0 -3349px }', 
-    '_2em' => 'span._2em { background-position:0 -3366px }', 
-    '_2en' => 'span._2en { background-position:0 -3383px }', 
-    '_2eo' => 'span._2eo { background-position:0 -3400px }', 
-    '_2ep' => 'span._2ep { background-position:0 -3417px }', 
-    '_2eq' => 'span._2eq { background-position:0 -3434px }', 
-    '_2er' => 'span._2er { background-position:0 -3451px }', 
-    '_2es' => 'span._2es { background-position:0 -3468px }', 
-    '_2et' => 'span._2et { background-position:0 -3485px }', 
-    '_2eu' => 'span._2eu { background-position:0 -3502px }', 
-    '_2ev' => 'span._2ev { background-position:0 -3519px }', 
-    '_2ew' => 'span._2ew { background-position:0 -3536px }', 
-    '_2ex' => 'span._2ex { background-position:0 -3553px }', 
-    '_4_qm' => 'span._4_qm { background-position:0 -3570px }', 
-    '_2ey' => 'span._2ey { background-position:0 -3587px }', 
-    '_4_qn' => 'span._4_qn { background-position:0 -3604px }', 
-    '_4_qo' => 'span._4_qo { background-position:0 -3621px }', 
-    '_4_qp' => 'span._4_qp { background-position:0 -3638px }', 
-    '_2ez' => 'span._2ez { background-position:0 -3655px }', 
-    '_4_qq' => 'span._4_qq { background-position:0 -3672px }', 
-    '_4_qr' => 'span._4_qr { background-position:0 -3689px }', 
-    '_4_qs' => 'span._4_qs { background-position:0 -3706px }', 
-    '_2e-' => 'span._2e- { background-position:0 -3723px }', 
-    '_2e_' => 'span._2e_ { background-position:0 -3740px }', 
-    '_2f0' => 'span._2f0 { background-position:0 -3757px }', 
-    '_4_qt' => 'span._4_qt { background-position:0 -3774px }', 
-    '_2f1' => 'span._2f1 { background-position:0 -3791px }', 
-    '_2f2' => 'span._2f2 { background-position:0 -3808px }', 
-    '_2f3' => 'span._2f3 { background-position:0 -3825px }', 
-    '_2f4' => 'span._2f4 { background-position:0 -3842px }', 
-    '_2f5' => 'span._2f5 { background-position:0 -3859px }', 
-    '_2f6' => 'span._2f6 { background-position:0 -3876px }', 
-    '_2f7' => 'span._2f7 { background-position:0 -3893px }', 
-    '_2f8' => 'span._2f8 { background-position:0 -3910px }', 
-    '_2f9' => 'span._2f9 { background-position:0 -3927px }', 
-    '_2fa' => 'span._2fa { background-position:0 -3944px }', 
-    '_4_qu' => 'span._4_qu { background-position:0 -3961px }', 
-    '_4_qv' => 'span._4_qv { background-position:0 -3978px }', 
-    '_4_qw' => 'span._4_qw { background-position:0 -3995px }', 
-    '_4_qx' => 'span._4_qx { background-position:0 -4012px }', 
-    '_2fb' => 'span._2fb { background-position:0 -4029px }', 
-    '_4_qy' => 'span._4_qy { background-position:0 -4046px }', 
-    '_2fc' => 'span._2fc { background-position:0 -4063px }', 
-    '_2fd' => 'span._2fd { background-position:0 -4080px }', 
-    '_4_qz' => 'span._4_qz { background-position:0 -4097px }', 
-    '_2fe' => 'span._2fe { background-position:0 -4114px }', 
-    '_2ff' => 'span._2ff { background-position:0 -4131px }', 
-    '_2fg' => 'span._2fg { background-position:0 -4148px }', 
-    '_4_q-' => 'span._4_q- { background-position:0 -4165px }', 
-    '_4_q_' => 'span._4_q_ { background-position:0 -4182px }', 
-    '_4_r0' => 'span._4_r0 { background-position:0 -4199px }', 
-    '_4_r1' => 'span._4_r1 { background-position:0 -4216px }', 
-    '_4_r2' => 'span._4_r2 { background-position:0 -4233px }', 
-    '_2fh' => 'span._2fh { background-position:0 -4250px }', 
-    '_4_r3' => 'span._4_r3 { background-position:0 -4267px }', 
-    '_2fi' => 'span._2fi { background-position:0 -4284px }', 
-    '_2fj' => 'span._2fj { background-position:0 -4301px }', 
-    '_2fk' => 'span._2fk { background-position:0 -4318px }', 
-    '_2fl' => 'span._2fl { background-position:0 -4335px }', 
-    '_4_r4' => 'span._4_r4 { background-position:0 -4352px }', 
-    '_4_r5' => 'span._4_r5 { background-position:0 -4369px }', 
-    '_2fm' => 'span._2fm { background-position:0 -4386px }', 
-    '_2fn' => 'span._2fn { background-position:0 -4403px }', 
-    '_4_r6' => 'span._4_r6 { background-position:0 -4420px }', 
-    '_4_r7' => 'span._4_r7 { background-position:0 -4437px }', 
-    '_4_r8' => 'span._4_r8 { background-position:0 -4454px }', 
-    '_4_r9' => 'span._4_r9 { background-position:0 -4471px }', 
-    '_4_ra' => 'span._4_ra { background-position:0 -4488px }', 
-    '_4_rb' => 'span._4_rb { background-position:0 -4505px }', 
-    '_4_rc' => 'span._4_rc { background-position:0 -4522px }', 
-    '_4_rd' => 'span._4_rd { background-position:0 -4539px }', 
-    '_4_re' => 'span._4_re { background-position:0 -4556px }', 
-    '_4_rf' => 'span._4_rf { background-position:0 -4573px }', 
-    '_2fo' => 'span._2fo { background-position:0 -4590px }', 
-    '_2fp' => 'span._2fp { background-position:0 -4607px }', 
-    '_4_rg' => 'span._4_rg { background-position:0 -4624px }', 
-    '_4_rh' => 'span._4_rh { background-position:0 -4641px }', 
-    '_4_ri' => 'span._4_ri { background-position:0 -4658px }', 
-    '_4_rj' => 'span._4_rj { background-position:0 -4675px }', 
-    '_2fq' => 'span._2fq { background-position:0 -4692px }', 
-    '_4_rk' => 'span._4_rk { background-position:0 -4709px }', 
-    '_4_rl' => 'span._4_rl { background-position:0 -4726px }', 
-    '_4_rm' => 'span._4_rm { background-position:0 -4743px }', 
-    '_4_rn' => 'span._4_rn { background-position:0 -4760px }', 
-    '_4_ro' => 'span._4_ro { background-position:0 -4777px }', 
-    '_4_rp' => 'span._4_rp { background-position:0 -4794px }', 
-    '_4_rq' => 'span._4_rq { background-position:0 -4811px }', 
-    '_4_rr' => 'span._4_rr { background-position:0 -4828px }', 
-    '_4_rs' => 'span._4_rs { background-position:0 -4845px }', 
-    '_4_rt' => 'span._4_rt { background-position:0 -4862px }', 
-    '_2fr' => 'span._2fr { background-position:0 -4879px }', 
-    '_4_ru' => 'span._4_ru { background-position:0 -4896px }', 
-    '_492' => 'span._492 { background-position:0 -4913px }', 
-    '_4_rv' => 'span._4_rv { background-position:0 -4930px }', 
-    '_4_rw' => 'span._4_rw { background-position:0 -4947px }', 
-    '_4_rx' => 'span._4_rx { background-position:0 -4964px }', 
-    '_4_ry' => 'span._4_ry { background-position:0 -4981px }', 
-    '_4_rz' => 'span._4_rz { background-position:0 -4998px }', 
-    '_4_r-' => 'span._4_r- { background-position:0 -5015px }', 
-    '_4_r_' => 'span._4_r_ { background-position:0 -5032px }', 
-    '_4_s0' => 'span._4_s0 { background-position:0 -5049px }', 
-    '_4_s1' => 'span._4_s1 { background-position:0 -5066px }', 
-    '_4_s2' => 'span._4_s2 { background-position:0 -5083px }', 
-    '_4_s3' => 'span._4_s3 { background-position:0 -5100px }', 
-    '_4_s4' => 'span._4_s4 { background-position:0 -5117px }', 
-    '_4_s5' => 'span._4_s5 { background-position:0 -5134px }', 
-    '_4_s6' => 'span._4_s6 { background-position:0 -5151px }', 
-    '_4_s7' => 'span._4_s7 { background-position:0 -5168px }', 
-    '_2fs' => 'span._2fs { background-position:0 -5185px }', 
-    '_2ft' => 'span._2ft { background-position:0 -5202px }', 
-    '_2fu' => 'span._2fu { background-position:0 -5219px }', 
-    '_2fv' => 'span._2fv { background-position:0 -5236px }', 
-    '_2fw' => 'span._2fw { background-position:0 -5253px }', 
-    '_2fx' => 'span._2fx { background-position:0 -5270px }', 
-    '_1q3y' => 'span._1q3y { background-position:0 -5287px }', 
-    '_2fz' => 'span._2fz { background-position:0 -5304px }', 
-    '_2f-' => 'span._2f- { background-position:0 -5321px }', 
-    '_2f_' => 'span._2f_ { background-position:0 -5338px }', 
-    '_2g0' => 'span._2g0 { background-position:0 -5355px }', 
-    '_2g1' => 'span._2g1 { background-position:0 -5372px }', 
-    '_2g2' => 'span._2g2 { background-position:0 -5389px }', 
-    '_2g3' => 'span._2g3 { background-position:0 -5406px }', 
-    '_2g4' => 'span._2g4 { background-position:0 -5423px }', 
-    '_2g5' => 'span._2g5 { background-position:0 -5440px }', 
-    '_2g6' => 'span._2g6 { background-position:0 -5457px }', 
-    '_2g7' => 'span._2g7 { background-position:0 -5474px }', 
-    '_2g8' => 'span._2g8 { background-position:0 -5491px }', 
-    '_2g9' => 'span._2g9 { background-position:0 -5508px }', 
-    '_2ga' => 'span._2ga { background-position:0 -5525px }', 
-    '_2gb' => 'span._2gb { background-position:0 -5542px }', 
-    '_2gc' => 'span._2gc { background-position:0 -5559px }', 
-    '_2gd' => 'span._2gd { background-position:0 -5576px }', 
-    '_2ge' => 'span._2ge { background-position:0 -5593px }', 
-    '_2gf' => 'span._2gf { background-position:0 -5610px }', 
-    '_2gg' => 'span._2gg { background-position:0 -5627px }', 
-    '_2gh' => 'span._2gh { background-position:0 -5644px }', 
-    '_2gi' => 'span._2gi { background-position:0 -5661px }', 
-    '_2gj' => 'span._2gj { background-position:0 -5678px }', 
-    '_2gk' => 'span._2gk { background-position:0 -5695px }', 
-    '_2gl' => 'span._2gl { background-position:0 -5712px }', 
-    '_2gm' => 'span._2gm { background-position:0 -5729px }', 
-    '_2gn' => 'span._2gn { background-position:0 -5746px }', 
-    '_2go' => 'span._2go { background-position:0 -5763px }', 
-    '_2gp' => 'span._2gp { background-position:0 -5780px }', 
-    '_2gq' => 'span._2gq { background-position:0 -5797px }', 
-    '_2gr' => 'span._2gr { background-position:0 -5814px }', 
-    '_2gs' => 'span._2gs { background-position:0 -5831px }', 
-    '_2gt' => 'span._2gt { background-position:0 -5848px }', 
-    '_2gu' => 'span._2gu { background-position:0 -5865px }', 
-    '_2gv' => 'span._2gv { background-position:0 -5882px }', 
-    '_2gw' => 'span._2gw { background-position:0 -5899px }', 
-    '_2gx' => 'span._2gx { background-position:0 -5916px }', 
-    '_2gy' => 'span._2gy { background-position:0 -5933px }', 
-    '_2gz' => 'span._2gz { background-position:0 -5950px }', 
-    '_2g-' => 'span._2g- { background-position:0 -5967px }', 
-    '_2g_' => 'span._2g_ { background-position:0 -5984px }', 
-    '_4_s8' => 'span._4_s8 { background-position:0 -6001px }', 
-    '_4_s9' => 'span._4_s9 { background-position:0 -6018px }', 
-    '_4_sa' => 'span._4_sa { background-position:0 -6035px }', 
-    '_4_sb' => 'span._4_sb { background-position:0 -6052px }', 
-    '_4_sc' => 'span._4_sc { background-position:0 -6069px }', 
-    '_4_sd' => 'span._4_sd { background-position:0 -6086px }', 
-    '_4_se' => 'span._4_se { background-position:0 -6103px }', 
-    '_4_sf' => 'span._4_sf { background-position:0 -6120px }', 
-    '_4_sg' => 'span._4_sg { background-position:0 -6137px }', 
-    '_4_sh' => 'span._4_sh { background-position:0 -6154px }', 
-    '_4_si' => 'span._4_si { background-position:0 -6171px }', 
-    '_4_sj' => 'span._4_sj { background-position:0 -6188px }', 
-    '_4_sk' => 'span._4_sk { background-position:0 -6205px }', 
-    '_4_sl' => 'span._4_sl { background-position:0 -6222px }', 
-    '_4_sm' => 'span._4_sm { background-position:0 -6239px }', 
-    '_4_sn' => 'span._4_sn { background-position:0 -6256px }', 
-    '_4_so' => 'span._4_so { background-position:0 -6273px }', 
-    '_4_sp' => 'span._4_sp { background-position:0 -6290px }', 
-    '_4_sq' => 'span._4_sq { background-position:0 -6307px }', 
-    '_4_sr' => 'span._4_sr { background-position:0 -6324px }', 
-    '_4_ss' => 'span._4_ss { background-position:0 -6341px }', 
-    '_4_st' => 'span._4_st { background-position:0 -6358px }', 
-    '_4_su' => 'span._4_su { background-position:0 -6375px }', 
-    '_4_sv' => 'span._4_sv { background-position:0 -6392px }', 
-    '_4_sw' => 'span._4_sw { background-position:0 -6409px }', 
-    '_4_sx' => 'span._4_sx { background-position:0 -6426px }', 
-    '_4_sy' => 'span._4_sy { background-position:0 -6443px }', 
-    '_4_sz' => 'span._4_sz { background-position:0 -6460px }', 
-    '_4_s-' => 'span._4_s- { background-position:0 -6545px }', 
-    '_4_s_' => 'span._4_s_ { background-position:0 -6562px }', 
-    '_4_t0' => 'span._4_t0 { background-position:0 -6579px }', 
-    '_4_t1' => 'span._4_t1 { background-position:0 -6596px }', 
-    '_4_t2' => 'span._4_t2 { background-position:0 -6613px }', 
-    '_4_t3' => 'span._4_t3 { background-position:0 -6630px }', 
-    '_4_t4' => 'span._4_t4 { background-position:0 -6681px }', 
-    '_2h0' => 'span._2h0 { background-position:0 -6732px }', 
-    '_2h1' => 'span._2h1 { background-position:0 -6749px }', 
-    '_4_t5' => 'span._4_t5 { background-position:0 -6851px }', 
-    '_4_t6' => 'span._4_t6 { background-position:0 -6868px }', 
-    '_2h2' => 'span._2h2 { background-position:0 -6885px }', 
-    '_4_t7' => 'span._4_t7 { background-position:0 -6902px }', 
-    '_4_t8' => 'span._4_t8 { background-position:0 -6919px }', 
-    '_4_t9' => 'span._4_t9 { background-position:0 -6936px }', 
-    '_4_ta' => 'span._4_ta { background-position:0 -6953px }', 
-    '_2h3' => 'span._2h3 { background-position:0 -6970px }', 
-    '_4_tb' => 'span._4_tb { background-position:0 -6987px }', 
-    '_4_tc' => 'span._4_tc { background-position:0 -7004px }', 
-    '_4_td' => 'span._4_td { background-position:0 -7021px }', 
-    '_4_te' => 'span._4_te { background-position:0 -7038px }', 
-    '_4_tf' => 'span._4_tf { background-position:0 -7055px }', 
-    '_4_tg' => 'span._4_tg { background-position:0 -7072px }', 
-    '_4_th' => 'span._4_th { background-position:0 -7089px }', 
-    '_2h4' => 'span._2h4 { background-position:0 -7157px }', 
-    '_2h5' => 'span._2h5 { background-position:0 -7174px }', 
-    '_2h6' => 'span._2h6 { background-position:0 -7191px }', 
-    '_4_ti' => 'span._4_ti { background-position:0 -7276px }', 
-    '_4_tj' => 'span._4_tj { background-position:0 -7293px }', 
-    '_4_tk' => 'span._4_tk { background-position:0 -7395px }', 
-    '_4_tl' => 'span._4_tl { background-position:0 -7412px }', 
-    '_4_tm' => 'span._4_tm { background-position:0 -7463px }', 
-    '_4_tn' => 'span._4_tn { background-position:0 -7480px }', 
-    '_4_to' => 'span._4_to { background-position:0 -7497px }', 
-    '_4_tp' => 'span._4_tp { background-position:0 -7514px }', 
-    '_4_tq' => 'span._4_tq { background-position:0 -7531px }', 
-    '_4_tr' => 'span._4_tr { background-position:0 -7548px }', 
-    '_4_ts' => 'span._4_ts { background-position:0 -7565px }', 
-    '_4_tt' => 'span._4_tt { background-position:0 -7582px }', 
-    '_4_tu' => 'span._4_tu { background-position:0 -6477px }', 
-    '_4_tv' => 'span._4_tv { background-position:0 -6494px }', 
-    '_4_tw' => 'span._4_tw { background-position:0 -6511px }', 
-    '_4_tx' => 'span._4_tx { background-position:0 -6528px }', 
-    '_2h7' => 'span._2h7 { background-position:0 -6647px }', 
-    '_2h8' => 'span._2h8 { background-position:0 -6664px }', 
-    '_2h9' => 'span._2h9 { background-position:0 -6698px }', 
-    '_2ha' => 'span._2ha { background-position:0 -6715px }', 
-    '_4_ty' => 'span._4_ty { background-position:0 -6766px }', 
-    '_4_tz' => 'span._4_tz { background-position:0 -6783px }', 
-    '_4_t-' => 'span._4_t- { background-position:0 -6800px }', 
-    '_4_t_' => 'span._4_t_ { background-position:0 -6817px }', 
-    '_4_u0' => 'span._4_u0 { background-position:0 -6834px }', 
-    '_4_u1' => 'span._4_u1 { background-position:0 -7106px }', 
-    '_4_u2' => 'span._4_u2 { background-position:0 -7123px }', 
-    '_4_u3' => 'span._4_u3 { background-position:0 -7140px }', 
-    '_4_u4' => 'span._4_u4 { background-position:0 -7208px }', 
-    '_2hb' => 'span._2hb { background-position:0 -7225px }', 
-    '_4_u5' => 'span._4_u5 { background-position:0 -7242px }', 
-    '_4_u6' => 'span._4_u6 { background-position:0 -7259px }', 
-    '_4_u7' => 'span._4_u7 { background-position:0 -7310px }', 
-    '_4_u8' => 'span._4_u8 { background-position:0 -7327px }', 
-    '_4_u9' => 'span._4_u9 { background-position:0 -7344px }', 
-    '_4_ua' => 'span._4_ua { background-position:0 -7361px }', 
-    '_2hc' => 'span._2hc { background-position:0 -7378px }', 
-    '_4_ub' => 'span._4_ub { background-position:0 -7429px }', 
-    '_4_uc' => 'span._4_uc { background-position:0 -7446px }', 
-    '_4_ud' => 'span._4_ud { background-position:0 -7599px }', 
-    '_4_ue' => 'span._4_ue { background-position:0 -7616px }',
-  );
-
-  
-  # Return the code if exist
-  if (exists($bdSprites{$sprite})) { return($bdSprites{$sprite}); }
-
-}  #--- End cssSpriteBD
-
-#--------------------------#
-sub emoticon
-#--------------------------#
-{
-  # Local variables
-  my ($emoticonTag) = @_;
-  my %bdImoticon = (
-    'emoticon_smile' => 'span.emoticon_smile { background-position:0 -340px }', 
-    'emoticon_frown' => 'span.emoticon_frown { background-position:0 -119px }', 
-    'emoticon_poop' => 'span.emoticon_poop { background-position:0 -289px }', 
-    'emoticon_putnam' => 'span.emoticon_putnam { background-position:0 -306px }', 
-    'emoticon_tongue' => 'span.emoticon_tongue { background-position:0 -391px }', 
-    'emoticon_grin' => 'span.emoticon_grin { background-position:0 -170px }', 
-    'emoticon_gasp' => 'span.emoticon_gasp { background-position:0 -136px }', 
-    'emoticon_wink' => 'span.emoticon_wink { background-position:0 -442px }', 
-    'emoticon_glasses' => 'span.emoticon_glasses { background-position:0 -153px }', 
-    'emoticon_sunglasses' => 'span.emoticon_sunglasses { background-position:0 -374px }', 
-    'emoticon_grumpy' => 'span.emoticon_grumpy { background-position:0 -187px }', 
-    'emoticon_unsure' => 'span.emoticon_unsure { background-position:0 -408px }', 
-    'emoticon_cry' => 'span.emoticon_cry { background-position:0 -85px }', 
-    'emoticon_devil' => 'span.emoticon_devil { background-position:0 -102px }', 
-    'emoticon_angel' => 'span.emoticon_angel { background-position:0 -17px }', 
-    'emoticon_kiss' => 'span.emoticon_kiss { background-position:0 -238px }', 
-    'emoticon_heart' => 'span.emoticon_heart { background-position:0 -204px }', 
-    'emoticon_kiki' => 'span.emoticon_kiki { background-position:0 -221px }', 
-    'emoticon_squint' => 'span.emoticon_squint { background-position:0 -357px }', 
-    'emoticon_confused' => 'span.emoticon_confused { background-position:0 -51px }', 
-    'emoticon_confused_rev' => 'span.emoticon_confused_rev { background-position:0 -68px }', 
-    'emoticon_upset' => 'span.emoticon_upset { background-position:0 -425px }', 
-    'emoticon_pacman' => 'span.emoticon_pacman { background-position:0 -255px }', 
-    'emoticon_robot' => 'span.emoticon_robot { background-position:0 -459px }', 
-    'emoticon_colonthree' => 'span.emoticon_colonthree { background-position:0 -34px }', 
-    'emoticon_penguin' => 'span.emoticon_penguin { background-position:0 -272px }', 
-    'emoticon_shark' => 'span.emoticon_shark { background-position:0 -323px }', 
-    'emoticon_like' => 'span.emoticon_like { background-position:0 0 }', 
-  );
-
-  
-  # Return the code if exist
-  if (exists($bdImoticon{$emoticonTag})) { return($bdImoticon{$emoticonTag}); }
-
-}  #--- End emoticon

@@ -72,6 +72,7 @@ sub loadDefaultStr
   $$refSTR{'remDir'}      = 'Remember this dir';
   $$refSTR{'selDir'}      = 'Select a folder';
   $$refSTR{'dump'}        = 'Dump';
+  $$refSTR{'ok'}          = 'Ok';
   $$refSTR{'download'}    = 'Download';
   $$refSTR{'lblOptions'}  = 'Options';
   $$refSTR{'openXLSX'}    = 'Open output XLSX file';
@@ -141,6 +142,7 @@ sub loadDefaultStr
   $$refSTR{'menu1'}    = 'Scroll and Expand';
   $$refSTR{'menu2'}    = 'Scroll';
   $$refSTR{'menu3'}    = 'Expand';
+  $$refSTR{'menu21'}   = 'Current Profile ID';
   $$refSTR{'menu5'}    = 'Dump Albums';
   $$refSTR{'menu4'}    = 'Group';
   $$refSTR{'menu19'}   = 'Dump Members';
@@ -233,6 +235,9 @@ sub loadDefaultStr
   $$refSTR{'dumpGroupMembersC'} = 'Dumping Group Members cancelled';
   $$refSTR{'dumpGroupMembersP'} = 'Dumping Group Members in progress';
   $$refSTR{'dumpGroupMembersF'} = 'Dumping Group Members finished';
+  $$refSTR{'savingFiles'}       = 'Saving files';
+  $$refSTR{'savingHTML'}        = 'Saving HTML file';
+  $$refSTR{'bytes'}             = 'Bytes';
   
   # Dump Chat
   $$refSTR{'scrollContactsC'} = 'Scrolling contacts cancelled';
@@ -249,6 +254,7 @@ sub loadDefaultStr
   $$refSTR{'scrollChat3F'}  = 'Loading older messages finished';
   $$refSTR{'winChat'}       = 'Dump chat';
   $$refSTR{'chat'}          = 'Chat';
+  $$refSTR{'Me'}            = 'Me';
   $$refSTR{'rbChatNormalMode'} = 'Normal mode';
   $$refSTR{'rbChatDatesAll'}   = 'All';
   $$refSTR{'rbChatDatesRange'} = 'Range';
