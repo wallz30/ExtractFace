@@ -7,7 +7,7 @@
 # CodePlex			        : https://extractface.codeplex.com
 # GitHub				        : https://github.com/arioux/ExtractFace
 # Creation              : 2015-08-01
-# Modified              : 2017-01-24
+# Modified              : 2017-02-19
 # Author                : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -26,11 +26,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 #------------------------------------------------------------------------------#
-
-#------------------------------------------------------------------------------#
 # Modules
 #------------------------------------------------------------------------------#
-
 use strict;
 use warnings;
 
@@ -40,12 +37,10 @@ sub loadStr
 {
   # Local variables
   my ($refSTR, $LANG_FILE) = @_;
-  
   # Open and load string values
   open(LANG, "<:encoding(UTF-8)", $LANG_FILE);
   my @tab = <LANG>;
   close(LANG);
-  
   # Store values  
   foreach (@tab) {
     chomp($_);
@@ -126,10 +121,10 @@ sub loadDefaultStr
   $$refSTR{'err6'}        = 'Unable to find the event data.';
   $$refSTR{'err7'}        = 'Error connection';
   $$refSTR{'err8'}        = 'have not been found in the program folder.';
+  $$refSTR{'err9'}        = 'Profile ID not found.';
   $$refSTR{'crash'}       = 'Crashed, ExtractFace will try to resume';
   $$refSTR{'errorOpening'} = 'Error opening';
   $$refSTR{'browseFolder'} = 'Browse folder in Explorer';
-  
   # About
   $$refSTR{'author'}            = 'Author';
   $$refSTR{'translatedBy'}      = 'Translated by';
@@ -137,7 +132,6 @@ sub loadDefaultStr
   $$refSTR{'translatorName'}    = '-';
   $$refSTR{'chStartMinimized'}  = "Don't show this window on startup";
   $$refSTR{'lblText4'}          = 'Use taskbar icon to access functions';
-  
   # Taskbar menu
   $$refSTR{'menu1'}    = 'Scroll and Expand';
   $$refSTR{'menu2'}    = 'Scroll';
@@ -160,7 +154,6 @@ sub loadDefaultStr
   $$refSTR{'menu14'}   = 'Help';
   $$refSTR{'menu15'}   = 'About';
   $$refSTR{'menu16'}   = 'Quit';
-  
   # Scroll and Expand
   $$refSTR{'scrollTaskC'}    = 'Scrolling cancelled';
   $$refSTR{'scrollTaskP'}    = 'Scrolling in progress';
@@ -170,7 +163,6 @@ sub loadDefaultStr
   $$refSTR{'expandTaskF'}    = 'Expanding finished';
   $$refSTR{'scrExpTaskC'}    = 'Scroll and expand cancelled';
   $$refSTR{'scrExpTaskF'}    = 'Scroll and expand finished';
-  
   # Dump albums
   $$refSTR{'winAlbums'}     = 'Dump albums';
   $$refSTR{'albumNames'}    = 'Album name';
@@ -188,7 +180,6 @@ sub loadDefaultStr
   $$refSTR{'medium'}        = 'Medium';
   $$refSTR{'full'}          = 'Large';
   $$refSTR{'errorDate'}     = 'Fail to get date!';
-  
   # Dump friends
   $$refSTR{'winFriends'}     = 'Dump friends';
   $$refSTR{'friends'}        = 'Friends';
@@ -201,7 +192,6 @@ sub loadDefaultStr
   $$refSTR{'dumpFriendsC'}   = 'Dumping friends cancelled';
   $$refSTR{'dumpFriendsP'}   = 'Dumping friends in progress';
   $$refSTR{'dumpFriendsF'}   = 'Dumping friends finished';
-  
   # Dump Event members  
   $$refSTR{'winEvent'}      = 'Dump event members';  
   $$refSTR{'lblEventDetailsT'} = 'Event Details';
@@ -214,7 +204,6 @@ sub loadDefaultStr
   $$refSTR{'dumpEventC'}    = 'Dumping event members cancelled';
   $$refSTR{'dumpEventP'}    = 'Dumping event members in progress';
   $$refSTR{'dumpEventF'}    = 'Dumping event members finished';
-  
   # Dump Contributors
   $$refSTR{'contributors'}      = 'Contributors';
   $$refSTR{'lblContribTypes'}   = 'Types';
@@ -228,7 +217,6 @@ sub loadDefaultStr
   $$refSTR{'dumpLikesP'}        = 'Dumping Likes in progress (per group)';
   $$refSTR{'dumpVPostsP'}       = 'Dumping Visitor Posts in progress';
   $$refSTR{'dumpContribF'}      = 'Dumping contributors finished';
-  
   # Dump Group Members
   $$refSTR{'winGroupMembers'}   = 'Dump Group Members';
   $$refSTR{'groupMembers'}      = 'Group Members';
@@ -238,7 +226,6 @@ sub loadDefaultStr
   $$refSTR{'savingFiles'}       = 'Saving files';
   $$refSTR{'savingHTML'}        = 'Saving HTML file';
   $$refSTR{'bytes'}             = 'Bytes';
-  
   # Dump Chat
   $$refSTR{'scrollContactsC'} = 'Scrolling contacts cancelled';
   $$refSTR{'scrollContactsP'} = 'Scrolling contacts in progress';
@@ -275,7 +262,6 @@ sub loadDefaultStr
   $$refSTR{'dumpChatP'}     = 'Dumping chat in progress';
   $$refSTR{'dumpChatF'}     = 'Dumping chat finished';
   $$refSTR{'noMsgDumped'}   = 'No message were dumped';
-  
   # Dump Vocal Messages
   $$refSTR{'winVocalMsg'}   = 'Dump Vocal Messages';
   $$refSTR{'vocalMsg'}      = 'Vocal messages';
@@ -287,7 +273,6 @@ sub loadDefaultStr
   $$refSTR{'searchVMLinks'} = 'Searching vocal messages urls';
   $$refSTR{'vocalMsgLast'}  = 'Vocal message, last';
   $$refSTR{'listen'}        = 'Listen';
-  
   # Config
   $$refSTR{'winConfig'}       = 'Settings';
   $$refSTR{'lblGenOpt'}       = 'General';
@@ -318,12 +303,10 @@ sub loadDefaultStr
   $$refSTR{'rbMaxScrollByDate'}     = 'By date';
   $$refSTR{'tfMaxScrollByPageTip'}  = 'Stop scrolling after a maximum of pages displayed. Default is 0 (No maximum).';
   $$refSTR{'tfMaxScrollByDateTip'}  = 'Stop scrolling when the given date is reached.';
-  
   # Misc
   $$refSTR{'winPb'}           = 'Progress';
   $$refSTR{'returnedCode'}    = 'Returned code';
   $$refSTR{'returnedError'}   = 'Returned error';
-  
   # Update Window
   $$refSTR{'update1'}         = 'You have the latest version installed.';
   $$refSTR{'update2'}         = 'Check for update';
@@ -332,7 +315,6 @@ sub loadDefaultStr
   $$refSTR{'update5'}         = 'is available. Download it';
 
 }  #--- End loadStrings
-
 
 #------------------------------------------------------------------------------#
 1;
