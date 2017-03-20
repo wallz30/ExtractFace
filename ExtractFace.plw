@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-02-19
-my $VERSION     = "5.2";
+# Modified      : 2017-03-20
+my $VERSION     = "5.2.1";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -2148,6 +2148,8 @@ sub winPIDThr
 	# Normal profile
 	if ($pidCode = $mech->selector('div._4a8n a', any => 1)) {
 		if ($pidCode->{outerHTML} =~ /user.php\?id=(\d+)/) { $winPID->tfPIDTitle->Text($1); }
+	} elsif ($pidCode = $mech->selector('a.profilePicThumb', any => 1)) {
+		if ($pidCode->{href} =~ /profile_id=(\d+)/ or $pidCode->{href} =~ /fbid=(\d+)/) { $winPID->tfPIDTitle->Text($1); }
 	# Group profile
 	} elsif ($pidCode = $mech->selector('form._2l5f.rfloat._ohf', any => 1)) {
 		if ($pidCode->{outerHTML} =~ /action="\/groups\/([^\/]+)\//) { $winPID->tfPIDTitle->Text($1); }
@@ -2745,11 +2747,15 @@ sub dumpAlbums
         my $file_as_string = do { local $/ = <$fhTemp> };
         close($fhTemp);
         $file_as_string =~ s/[\r\n]//g;
-        my $section     = (split(/function\(Bootloader\)/, $file_as_string))[0];
-        $file_as_string = undef;
-        my @parts       = split(/data-starred-src=/, $section);
-        $section        = undef;
-        shift(@parts);
+				my @sections = split(/function\(Bootloader\)/, $file_as_string);
+				my @parts;
+				foreach my $section (@sections) {
+					if ($section =~ /data-starred-src=/) {
+						@parts = split(/data-starred-src=/, $section);
+						shift(@parts);
+						last;
+					}
+				}
         foreach my $part (@parts) {
           if ($part =~ /^"([^\"]+)" /) {
             my $picURL = $1;
@@ -2862,10 +2868,15 @@ sub dumpAlbums
             my $file_as_string = do { local $/ = <$fhTemp> };
             $file_as_string    =~ s/[\r\n]//g;
             close($fhTemp);
-            my $section     = (split(/function\(Bootloader\)/, $file_as_string))[0];
-            my @parts       = split(/_2eea/, $file_as_string);
-            $file_as_string = undef;
-            shift(@parts);
+						my @sections = split(/function\(Bootloader\)/, $file_as_string);
+						my @parts;
+						foreach my $section (@sections) {
+							if ($section =~ /_2eea/) {
+								@parts = split(/_2eea/, $section);
+								shift(@parts);
+								last;
+							}
+						}
             my $i = 0;
             foreach (@parts) {
               my $url;
@@ -2887,20 +2898,18 @@ sub dumpAlbums
             my $file_as_string = do { local $/ = <$fhTemp> };
             $file_as_string    =~ s/[\r\n]//g;
             close($fhTemp);
-            my $section2;
-						if ($type == 2) {
-							my $section1 		= (split(/function\(Bootloader\)/, $file_as_string))[1];
-							$file_as_string = undef;
-							$section2 			= (split(/fbTimelineSectionStarGrid/, $section1))[1];
-							$section1 			= undef;
-						} else {
-							my $section1		= (split(/function\(Bootloader\)/, $file_as_string))[0];
-							$file_as_string = undef;
-							$section2 			= (split(/fbTimelineStarGridSeparator/, $section1))[0];
-							$section1 			= undef;
+						my @sections = split(/function\(Bootloader\)/, $file_as_string);
+						my $section2;
+						foreach my $section (@sections) {
+							if ($type == 2 and $section =~ /fbTimelineSectionStarGrid/) {
+								my @partsSection = split(/fbTimelineSectionStarGrid/, $section);
+								foreach (@partsSection) { if (/data-starred-src=/) { $section2 = $_; last; } }
+							} elsif ($section =~ /fbTimelineStarGridSeparator/) {
+								my @partsSection = split(/fbTimelineStarGridSeparator/, $section);
+								foreach (@partsSection) { if (/data-starred-src=/) { $section2 = $_; last; } }
+							}
 						}
             my @parts = split(/data-starred-src=/, $section2);
-            $section2 = undef;
             shift(@parts);
             my $i = 0;
             foreach my $part (@parts) {
@@ -3783,19 +3792,19 @@ sub dumpFriends
           # Load content from file
           if (-T $htmlPage) {
             if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
-              my $file_as_string  = do { local $/ = <$fhTemp> };
-              $file_as_string     =~ s/[\r\n]//g;
+              my $file_as_string = do { local $/ = <$fhTemp> };
+              $file_as_string    =~ s/[\r\n]//g;
 							if ($file_as_string =~ /a[^\>]+_3c_ _3s-[^\>]+name="([^\"]+)"/) { $$refListCatFriends{$cat}{name} = $1; } # Get original utf-8 current cat name
-              my @partsID         = split(/\:/, $$refListCatFriends{$cat}{id});
-              my $id              = pop(@partsID);
-              my $separator       = join(':', @partsID);
-              my @sections        = split(/id=\"$separator/, $file_as_string);
+              my @partsID   = split(/\:/, $$refListCatFriends{$cat}{id});
+              my $id        = pop(@partsID);
+              my $separator = join(':', @partsID);
+              my @sections  = split(/id=\"$separator/, $file_as_string);
               my $section;
               foreach (@sections) { if (/^\:$id\"/) { $section = $_; last; } }
-              $file_as_string     = undef;
-              @friends            = split(/_698/, $section);
+							if ($section =~ /_3cz/) { $section = (split(/_3cz/, $section))[0]; }
+              @friends = split(/_698/, $section);
               shift(@friends);
-              $nbrFriends        = scalar(@friends);
+              $nbrFriends = scalar(@friends);
               if (!$nbrFriends) {
                 @friends = split(/fbProfileBrowserListItem/, $section); # Followers category
                 shift(@friends);
@@ -7265,7 +7274,8 @@ sub dumpChat
   # Local variables
   my ($chatName, $interlocutor, $interlocutorURL, $saveDir, $refMessages, $posPb1, $nbrRetries,
 			$count, $step, $nbrPartsDone, $nbrMessagesDone) = @_;
-  my $tmpDir     = "$saveDir\\temp";
+	my $baseDir    = "$saveDir\\$chatName";
+  my $tmpDir     = "$baseDir\\temp";
   my $htmlPage   = "$tmpDir\\page.html";
   my $normalMode = $winChat->rbChatNormalMode->Checked();
   # Filter by dates (if set)
@@ -7347,12 +7357,14 @@ sub dumpChat
   my $mech = WWW::Mechanize::Firefox->new(tab => 'current');
   # Create folders and save the page
   my $origURL = $mech->uri;
-  my $profilID; if ($origURL =~ /messages\/t\/(?:search\/)?([^?#]+)\#?/) { $profilID = $1; } # $profilID is the profil ID of the interlocutor
+  my $profilID;
+	if ($origURL =~ /messages\/t\/(?:search\/)?([^?#]+)\#?/) { $profilID = $1; } # $profilID is the profil ID of the interlocutor
   if ($step == 1) {
+		if (!-d $baseDir) { mkdir($baseDir); }
     if (!-d $tmpDir) { mkdir($tmpDir); }
     my $status;
 		$winPb->lblPbCurr1->Text($STR{'saveTab'}.'...');
-		if (!-T $htmlPage) { &saveCurrentTab(\$mech, $normalMode, $htmlPage, "$saveDir\\temp"); }
+		if (!-T $htmlPage) { &saveCurrentTab(\$mech, $normalMode, $htmlPage, $tmpDir); }
 		$winPb->lblPbCurr2->Text('');
     $step = 2; # Page have been saved
 		$winPb->pbWinPb1->StepIt();
@@ -7376,17 +7388,22 @@ sub dumpChat
     if (-T $htmlPage) {
       if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
         my $file_as_string = do { local $/ = <$fhTemp> };
+				close($fhTemp);
         $file_as_string =~ s/[\r\n]//g;
-				my $section    = (split(/function\(Bootloader\)/, $file_as_string))[0];
-				undef($file_as_string);
-				my $msgSection = (split(/aria-label="Messages"/, $section))[1]; # Keep the messages area
-				undef($section);
-				# If there is at least one date tag
-				if ($msgSection) {
-					@byDateParts = split(/_497p _2lpt/, $msgSection); # Split using date tag
-					shift(@byDateParts);
-				} else { push(@byDateParts, $msgSection); }
-        close($fhTemp);
+				my @sections = split(/function\(Bootloader\)/, $file_as_string);
+				foreach my $section (@sections) {
+					if ($section =~ /aria-label="Messages"/) {
+						my @parts = split(/aria-label="Messages"/, $section);
+						foreach my $part (@parts) {
+							if ($part =~ /_497p _2lpt/) {
+								@byDateParts = split(/_497p _2lpt/, $part); # Split using date tag
+								last;
+							}
+						}
+						if (scalar(@byDateParts) == 0) { push(@byDateParts, $section); }
+						last;
+					}
+				}
       }
 			if (scalar(@byDateParts)) {
 				my $nbrParts  = scalar(@byDateParts);
@@ -7465,21 +7482,21 @@ sub dumpChat
 											if ($msgHeader =~ /src="([^\"]+)"/) {
 												my $profileImgSRC = $1;
 												my $profileImg;
-												if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
+												if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
 												if    ($profileImgSRC =~ /\/([^\/\?]+)\?/) { $profileImg = $1;             }
 												elsif ($profileImgSRC =~ /\.jpg$/)         { $profileImg = $profileImgSRC; }
-												if ($normalMode and -e "$tmpDir\\$profileImg" and !-e "$saveDir\\images_$chatName\\$profileImg") {
-													rcopy("$tmpDir\\$profileImg", "$saveDir\\images_$chatName\\$profileImg");
-												} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$profileImg" and
-																 !-e "$saveDir\\images_$chatName\\$profileImg" and $profileImgSRC) {
-													$mech->save_url($profileImgSRC, "$saveDir\\images_$chatName\\$profileImg");
+												if ($normalMode and -e "$tmpDir\\$profileImg" and !-e "$baseDir\\images_$chatName\\$profileImg") {
+													rcopy("$tmpDir\\$profileImg", "$baseDir\\images_$chatName\\$profileImg");
+												} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$profileImg" and
+																 !-e "$baseDir\\images_$chatName\\$profileImg" and $profileImgSRC) {
+													$mech->save_url($profileImgSRC, "$baseDir\\images_$chatName\\$profileImg");
 												} else { $profileImg = $profileImgSRC; }
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderImg'} = $profileImg;
 											}
 											# Parse message
 											my $strCount = 0;
 											foreach my $msg (@msgContent) {
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} .= &parseMessage($msg, $normalMode, $saveDir, $tmpDir, $chatName, \$mech);
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} .= &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
 											}
 											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} =~ s/<br>$//;
 											$nbrMessagesDone++;
@@ -7528,7 +7545,7 @@ sub dumpChat
 														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $time;
 													}
 												}
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} = &parseMessage($msg, $normalMode, $saveDir, $tmpDir, $chatName, \$mech);
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} = &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
 												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} =~ s/<br>$//;
 												$nbrMessagesDone++;
 											}
@@ -7562,7 +7579,7 @@ sub dumpChat
 		foreach my $msg (keys %{$refMessages}) { $nbrMessages += keys %{$$refMessages{$msg}}; }
 		if ($nbrMessages) {
 			$winPb->lblPbCurr1->Text($STR{'saveChat'}.'...');
-			$htmlChatPage = "$saveDir\\$chatName.html";
+			$htmlChatPage = "$baseDir\\$chatName.html";
 			if (!$interlocutor) { $interlocutor = $chatName; }
 			&createDumpChatReport($htmlChatPage, $normalMode, $chatName, $interlocutor, $interlocutorURL, $refMessages, $nbrMessages);
 		}
@@ -7599,7 +7616,7 @@ sub parseMessage
 #--------------------------#
 {
   # Local variables
-  my ($msgCode, $normalMode, $saveDir, $tmpDir, $chatName, $refMech) = @_;
+  my ($msgCode, $normalMode, $baseDir, $tmpDir, $chatName, $refMech) = @_;
 	my $message;
 	# Last message, remove junk
 	$msgCode = (split(/class="_4u-f"/, $msgCode))[0] if $msgCode =~ /class="_4u-f"/;
@@ -7617,14 +7634,14 @@ sub parseMessage
 				if ($emoticonTag =~ /src="([^\"]+)"/) {
 					my $emotionSRC = $1;
 					my $emoticonFn;
-					if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
+					if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
 					if    ($emotionSRC =~ /\/([^\/\?]+)\?/) { $emoticonFn = $1;          }
 					elsif ($emotionSRC =~ /\.png$/)         { $emoticonFn = $emotionSRC; }
-					if ($normalMode and -e "$tmpDir\\$emoticonFn" and !-e "$saveDir\\images_$chatName\\$emoticonFn") {
-						rcopy("$tmpDir\\$emoticonFn", "$saveDir\\images_$chatName\\$emoticonFn");
-					} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$emoticonFn" and
-									 !-e "$saveDir\\images_$chatName\\$emoticonFn" and $emotionSRC) {
-						$$refMech->save_url($emotionSRC, "$saveDir\\images_$chatName\\$emoticonFn");
+					if ($normalMode and -e "$tmpDir\\$emoticonFn" and !-e "$baseDir\\images_$chatName\\$emoticonFn") {
+						rcopy("$tmpDir\\$emoticonFn", "$baseDir\\images_$chatName\\$emoticonFn");
+					} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$emoticonFn" and
+									 !-e "$baseDir\\images_$chatName\\$emoticonFn" and $emotionSRC) {
+						$$refMech->save_url($emotionSRC, "$baseDir\\images_$chatName\\$emoticonFn");
 					} else { $emoticonFn = $emotionSRC; }
 					# Create a new emoticon tag
 					if ($emoticonFn !~ /^http/) { $emoticonFn = "images_$chatName\\$emoticonFn"; }
@@ -7691,8 +7708,8 @@ sub parseMessage
 				if ($normalMode) {
 					my $mapFn = $sharedLinkTitle . '.jpg';
 					$mapFn =~ s/[\<\>\:\"\/\\\|\?\*]/_/g;
-					if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-					$$refMech->save_url($mapURL, "$saveDir\\images_$chatName\\$mapFn");
+					if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+					$$refMech->save_url($mapURL, "$baseDir\\images_$chatName\\$mapFn");
 					$mapImgTag .= "<img src=\"images_$chatName\\$mapFn\" alt=\"\"><br>";
 				} else { $mapImgTag .= "<img src=\"$mapURL\" alt=\"\"><br>"; }
 			}
@@ -7714,13 +7731,13 @@ sub parseMessage
 				if    ($imgSRC =~ /\/([^\/\?]+)\?/) { $imgName = $1;      }
 				elsif ($imgSRC =~ /\.png$/)         { $imgName = $imgSRC; }
 				# Download the image ?
-				if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-				if ($normalMode and -e "$tmpDir\\$imgName" and !-e "$saveDir\\images_$chatName\\$imgName") {
-					rcopy("$tmpDir\\$imgName", "$saveDir\\images_$chatName\\$imgName");
-				} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$imgName" and
-								 !-e "$saveDir\\images_$chatName\\$imgName" and $imgSRC) {
+				if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+				if ($normalMode and -e "$tmpDir\\$imgName" and !-e "$baseDir\\images_$chatName\\$imgName") {
+					rcopy("$tmpDir\\$imgName", "$baseDir\\images_$chatName\\$imgName");
+				} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$imgName" and
+								 !-e "$baseDir\\images_$chatName\\$imgName" and $imgSRC) {
 					if ($imgSRC !~ /^http/) { $imgSRC = "https://www.facebook.com$imgSRC"; }
-					$$refMech->save_url($imgSRC, "$saveDir\\images_$chatName\\$imgName");
+					$$refMech->save_url($imgSRC, "$baseDir\\images_$chatName\\$imgName");
 				} else { $imgName = $imgSRC; }
 				# Create a new emoticon tag
 				if ($imgName !~ /^http/) { $imgName = "images_$chatName\\$imgName"; }
@@ -7747,8 +7764,8 @@ sub parseMessage
 			# Download the image ?
 			if ($normalMode and $imgURL =~ /\/([^\/\?]+)(?:\?|$)/) {
 				my $imgName = $1;
-				if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-				$$refMech->save_url($imgURL, "$saveDir\\images_$chatName\\$imgName");
+				if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+				$$refMech->save_url($imgURL, "$baseDir\\images_$chatName\\$imgName");
 				$message .= "<img src=\"images_$chatName\\$imgName\" alt=\"\"><br>";
 			} else { $message .= "<img src=\"$imgURL\" alt=\"\"><br>"; }
 		}
@@ -7756,8 +7773,8 @@ sub parseMessage
 		elsif ($extract2 =~ /<svg/ and $extract2 =~ /Thumbs Up Sign/) {
 			my $imgURL = 'https://www.facebook.com/rsrc.php/ya/r/FwHVs2eE5cr.svg';
 			# Download the image
-			if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-			$$refMech->save_url($imgURL, "$saveDir\\images_$chatName\\FwHVs2eE5cr.svg");
+			if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+			$$refMech->save_url($imgURL, "$baseDir\\images_$chatName\\FwHVs2eE5cr.svg");
 			$message .= "<img src=\"images_$chatName\\FwHVs2eE5cr.svg\" alt=\"\" style=\"width:35px;height:35px;\">";
 		}
 		# Emoji
@@ -7771,14 +7788,14 @@ sub parseMessage
 					my $emojiFn;
 					my $emojiAlt = undef;
 					if ($emojiTag =~ /alt=\"([^\"]+)\"/) { $emojiAlt = $1; }
-					if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
+					if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
 					if    ($emojiSRC =~ /\/([^\/\?]+)\?/) { $emojiFn = $1;        }
 					elsif ($emojiSRC =~ /\.png$/)         { $emojiFn = $emojiSRC; }
-					if ($normalMode and -e "$tmpDir\\$emojiFn" and !-e "$saveDir\\images_$chatName\\$emojiFn") {
-						rcopy("$tmpDir\\$emojiFn", "$saveDir\\images_$chatName\\$emojiFn");
-					} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$emojiFn" and
-									 !-e "$saveDir\\images_$chatName\\$emojiFn" and $emojiSRC) {
-						$$refMech->save_url($emojiSRC, "$saveDir\\images_$chatName\\$emojiFn");
+					if ($normalMode and -e "$tmpDir\\$emojiFn" and !-e "$baseDir\\images_$chatName\\$emojiFn") {
+						rcopy("$tmpDir\\$emojiFn", "$baseDir\\images_$chatName\\$emojiFn");
+					} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$emojiFn" and
+									 !-e "$baseDir\\images_$chatName\\$emojiFn" and $emojiSRC) {
+						$$refMech->save_url($emojiSRC, "$baseDir\\images_$chatName\\$emojiFn");
 					} else { $emojiFn = $emojiSRC; }
 					# Create a new emoticon tag
 					if ($emojiFn !~ /^http/) { $emojiFn = "images_$chatName\\$emojiFn"; }
@@ -7810,15 +7827,15 @@ sub parseMessage
 					if ($winChat->chDownloadImg->Checked() and $extract4 =~ /href="([^\"]+)"/) {
 						$picURL = $1;
 						$picURL =~ s/&amp;/&/g;
-						$$refMech->save_url($picURL, "$saveDir\\images_$chatName\\$picFn");
+						$$refMech->save_url($picURL, "$baseDir\\images_$chatName\\$picFn");
 					}
 					# Normal size
-					if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-					if ($normalMode and -e "$tmpDir\\$picFn" and !-e "$saveDir\\images_$chatName\\$picFn") {
-						rcopy("$tmpDir\\$picFn", "$saveDir\\images_$chatName\\$picFn");
-					} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$picFn" and
-									 !-e "$saveDir\\images_$chatName\\$picFn" and $picSRC) {
-						$$refMech->save_url($picSRC, "$saveDir\\images_$chatName\\$picFn");
+					if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+					if ($normalMode and -e "$tmpDir\\$picFn" and !-e "$baseDir\\images_$chatName\\$picFn") {
+						rcopy("$tmpDir\\$picFn", "$baseDir\\images_$chatName\\$picFn");
+					} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$picFn" and
+									 !-e "$baseDir\\images_$chatName\\$picFn" and $picSRC) {
+						$$refMech->save_url($picSRC, "$baseDir\\images_$chatName\\$picFn");
 					} else { $picFn = $picSRC; }
 					if ($picFn !~ /^http/) { $picFn = "images_$chatName\\$picFn"; }
 					my $newImgTag = "<img src=\"$picFn\" alt=\"\">";
@@ -7840,15 +7857,15 @@ sub parseMessage
 				if ($winChat->chDownloadImg->Checked() and $message =~ /href="([^\"]+)"/) {
 					$picURL = $1;
 					$picURL =~ s/&amp;/&/g;
-					$$refMech->save_url($picURL, "$saveDir\\images_$chatName\\$picFn");
+					$$refMech->save_url($picURL, "$baseDir\\images_$chatName\\$picFn");
 				}
 				# Normal size
-				if (!-d "$saveDir\\images_$chatName") { mkdir("$saveDir\\images_$chatName"); }
-				if ($normalMode and -e "$tmpDir\\$picFn" and !-e "$saveDir\\images_$chatName\\$picFn") {
-					rcopy("$tmpDir\\$picFn", "$saveDir\\images_$chatName\\$picFn");
-				} elsif ($normalMode and !-e "$saveDir\\images_$chatName\\$picFn" and
-								 !-e "$saveDir\\images_$chatName\\$picFn" and $picSRC) {
-					$$refMech->save_url($picSRC, "$saveDir\\images_$chatName\\$picFn");
+				if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
+				if ($normalMode and -e "$tmpDir\\$picFn" and !-e "$baseDir\\images_$chatName\\$picFn") {
+					rcopy("$tmpDir\\$picFn", "$baseDir\\images_$chatName\\$picFn");
+				} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$picFn" and
+								 !-e "$baseDir\\images_$chatName\\$picFn" and $picSRC) {
+					$$refMech->save_url($picSRC, "$baseDir\\images_$chatName\\$picFn");
 				} else { $picFn = $picSRC; }
 				# Replace in $message
 				if ($picFn !~ /^http/) { $picFn = "images_$chatName\\$picFn"; }
@@ -7869,8 +7886,8 @@ sub parseMessage
 			if ($extract =~ /-->([^\<]+)<!--/) { $attachedName = $1; }
 			# Download attached document
 			if ($winChat->chDownloadAD->Checked() and $attachedURL and $attachedName) {
-				if (!-d "$saveDir\\docs_$chatName") { mkdir("$saveDir\\docs_$chatName"); }
-				my $localPJFile = "$saveDir\\docs_$chatName\\$attachedName";
+				if (!-d "$baseDir\\docs_$chatName") { mkdir("$baseDir\\docs_$chatName"); }
+				my $localPJFile = "$baseDir\\docs_$chatName\\$attachedName";
 				if ($attachedURL =~ /u=([^\&]+)\&/) {
 					my $directURL = unescape($1);
 					$$refMech->save_url($directURL, $localPJFile);
@@ -7891,14 +7908,14 @@ sub parseMessage
 		if ($extract =~ /src="([^\"]+)"/) {
 			my $videoImgUrl = $1; # Image filename
 			# Create result code
-			if (!-d "$saveDir\\videos_$chatName") { mkdir("$saveDir\\videos_$chatName"); }
+			if (!-d "$baseDir\\videos_$chatName") { mkdir("$baseDir\\videos_$chatName"); }
 			# Link
 			if ($videoImgUrl =~ /^https/) {
 				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
-			} elsif (-e "$tmpDir\\$videoImgUrl" and !-e "$saveDir\\videos_$chatName\\$videoImgUrl") {
-				rcopy("$tmpDir\\$videoImgUrl", "$saveDir\\videos_$chatName\\$videoImgUrl");
+			} elsif (-e "$tmpDir\\$videoImgUrl" and !-e "$baseDir\\videos_$chatName\\$videoImgUrl") {
+				rcopy("$tmpDir\\$videoImgUrl", "$baseDir\\videos_$chatName\\$videoImgUrl");
 				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"videos_$chatName\\$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
-			} elsif (-e "$saveDir\\videos_$chatName\\$videoImgUrl") {
+			} elsif (-e "$baseDir\\videos_$chatName\\$videoImgUrl") {
 				$message .= "<video width=\"320\" height=\"240\" controls><source src=\"videos_$chatName\\$videoImgUrl\" type=\"video/mp4\">Your browser does not support the video tag.</video><br>";
 			}
 		}
