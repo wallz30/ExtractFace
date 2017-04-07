@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-03-20
-my $VERSION     = "5.2.1";
+# Modified      : 2017-04-07
+my $VERSION     = "5.2.2";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -3831,9 +3831,7 @@ sub dumpFriends
                 $id  = $2;
               }
               # Img
-              if ($friend =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" alt=""><\/a>/) {
-                $img = $1;
-              }
+              if ($friend =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" /) { $img = $1; }
               # Minimum details required
               if ($url and $id and $img) {
                 $winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
@@ -5765,19 +5763,10 @@ sub winGroupMembersThr
 																							 ($newURL =~ /https:\/\/www.facebook.com\/groups\/$idGroup\/admins\/?/)))) {
 			$winGroupMembers->tfGroupMembersName->Text($idGroup);
 			my %categories;
-			# Type with combobox
-			if ($type == 1) {
-				my @listFromCombo = $mech->selector('a._54nc span._54nh');
-				if (!scalar(@listFromCombo) and my $currList = $mech->selector('div.uiPopover span._55pe', any => 1)) {
-					$currList->click;
-					@listFromCombo = $mech->selector('a._54nc span._54nh');
-				}
-				foreach (@listFromCombo) {
-					my $cat = $_->{innerHTML};
-					$categories{$cat}{url} = $newURL;
-				}
+			# Type with single list
+			if ($type == 1) { $categories{$STR{'groupMembers'}}{url} = $newURL; }
 			# Type with tab selection
-			} else {
+			else {
 				if (my $membersPageName = $mech->selector('a._5bv4', any => 1)) {
 					if ($membersPageName->{innerHTML} =~ /^(\w+)/) { $categories{$1}{url} = $membersPageName->{href}; }
 				}
@@ -6273,7 +6262,7 @@ sub dumpGroupMembers
 								$id  = $2;
 							}
 							# Img
-							if ($member =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" alt=""><\/a>/) { $img = $1; }
+							if ($member =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" /) { $img = $1; }
 							# Minimum details required
 							if ($url and $id and $img and !exists($$refCatGroupMembers{$cat}{profilUrl}{$id})) {
 								$winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
@@ -6343,7 +6332,7 @@ sub dumpGroupMembers
 			}
 			# One sheet per category
 			foreach my $cat (sort keys %{$refCatGroupMembers}) {
-				&createExcelSheetWithDetails(\$excel, $$refCatGroupMembers{$cat}{name}, $$refCatGroupMembers{$cat}, $includeIcons, $saveDir);
+				&createExcelSheetWithDetails(\$excel, $cat, $$refCatGroupMembers{$cat}, $includeIcons, $saveDir);
 				$count1++;
 				$winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
 				$winPb->pbWinPb1->StepIt();
