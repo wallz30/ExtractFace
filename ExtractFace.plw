@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-04-07
-my $VERSION     = "5.2.2";
+# Modified      : 2017-06-03
+my $VERSION     = "5.2.3";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -100,17 +100,17 @@ if (-e $LANG_FILE and -T $LANG_FILE) { &loadStr(\%STR, $LANG_FILE); } # If langu
 #------------------------------------------------------------------------------#
 # Splash window
 #------------------------------------------------------------------------------#
-my $splash = new Win32::GUI::Window ( -name       => 'Splash'                   ,
-                                      -text       => 'Splash'                   ,
-                                      -size       => [128,128]                  ,
-                                      -pos        => [100,100]                  ,
-                                      -addstyle   => WS_POPUP                   ,
-                                      -popstyle   => WS_CAPTION | WS_THICKFRAME ,
-                                      -addexstyle => WS_EX_TOPMOST              , );
-$splash->AddLabel(                    -name       => 'Bitmap'                   ,
-                                      -size       => [128,128]                  ,
-                                      -pos        => [  0,  0]                  ,
-                                      -bitmap     => $logoBmp                   , );
+my $splash = new Win32::GUI::Window ( -name       => 'Splash'                  ,
+                                      -text       => 'Splash'                  ,
+                                      -size       => [128,128]                 ,
+                                      -pos        => [100,100]                 ,
+                                      -addstyle   => WS_POPUP                  ,
+                                      -popstyle   => WS_CAPTION | WS_THICKFRAME,
+                                      -addexstyle => WS_EX_TOPMOST             , );
+$splash->AddLabel(                    -name       => 'Bitmap'                  ,
+                                      -size       => [128,128]                 ,
+                                      -pos        => [  0,  0]                 ,
+                                      -bitmap     => $logoBmp                  , );
 
 #------------------------------------------------------------------------------#
 # Main window
@@ -122,14 +122,14 @@ my $winWidth  = 520;
 my $winHeight = 195;
 my $winPosX   = ($scrnX - $winWidth)  / 2;
 my $winPosY   = ($scrnY - $winHeight) / 2;
-my $win = Win32::GUI::Window->new( -name       => 'main'               ,
-                                   -title      => 'ExtractFace'        ,
-                                   -background => [255, 255, 255]      ,
-                                   -width      => $winWidth            ,
-                                   -height     => $winHeight           ,
-                                   -pos        => [$winPosX, $winPosY] ,
-                                   -resizable  => 0                    ,
-                                   -hasmaximize=> 0                    , );
+my $win = Win32::GUI::Window->new(-name       => 'main'               ,
+																	-title      => 'ExtractFace'        ,
+																	-background => [255, 255, 255]      ,
+																	-width      => $winWidth            ,
+																	-height     => $winHeight           ,
+																	-pos        => [$winPosX, $winPosY] ,
+																	-resizable  => 0                    ,
+																	-hasmaximize=> 0                    , );
 $win->SetIcon($winICO);
 # Fonts
 sub LOGPIXELSX() {88}
@@ -1725,7 +1725,7 @@ sub scroll
 {
   # Avoid new thread
   if ($THR and $THR->is_running()) {
-    Win32::GUI::MessageBox($win, $STR{'warn1'},$STR{'warn1T'},0x40010);
+    Win32::GUI::MessageBox($win,$STR{'warn1'},$STR{'warn1T'},0x40010);
   } else {
     # Start the thread
     my $nbrRetries = 0;
@@ -2003,7 +2003,6 @@ sub scrollExpandThr
   if (!$nbrRetries) {
     $win->ChangeCursor($HOURGLASS);
     $win->Tray->Change(-tip => $STR{'scrollTaskP'}.'...');
-    
     # Turn on progress bar
     $winPb2->Center($win);
     $winPb2->Show();
@@ -2322,6 +2321,7 @@ sub winAlbumsThr
     if ($winAlbums->chAlbumGroup->Checked()) {
 			if ($mech->uri() =~ /\/groups\//) { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
 			else 															{ @albums = $mech->selector('div._3hpt._2pif a');                            }
+			#if (!scalar(@albums))             { @albums = $mech->selector('div._3rte div._50f4'); 										  	 }
 		} else { @albums = $mech->selector('td._51m-.vTop.hLeft.pbm.prm a.photoTextTitle'); }
     foreach my $album (@albums) {
       my $albumName = $album->{innerHTML};
@@ -2374,15 +2374,19 @@ sub validAlbumPage
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/profile.php?id=$profilID&sk=photos&collection_token=$profilID%3A2305272732%3A6";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
+    } elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\?\/]+)(?:\/photos_albums)?\?lst=\d+%3A\d+%3A\d+/) { # Profile with id
+      my $profilID = $1;
+      $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
+      my $goodURL = "https://www.facebook.com/$profilID/photos_albums";
+      ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
     } elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Other profile
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/$1/photos_albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
     }
     # Re evaluate current page
-    if (($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/) and
-				$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/ or
-        $currTitle =~ /Page Not Found/) {
+    if (($currURL !~ /photos_albums$/       and $currURL !~ /photos_albums\?/         and $currURL !~ /collection_token=\w+%\w+%3A6$/) and
+				 $currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/ or  $currTitle =~ /Page Not Found/) {
       $winAlbums->btnAlbumsOk->Disable();
       Win32::GUI::MessageBox($winAlbums, $STR{'warn3'}, $STR{'warn2T'}, 0x40010);
       threads->exit();
@@ -2495,9 +2499,12 @@ sub GridAlbums_Click
     my $selStatus = $winAlbums->GridAlbums->GetCellCheck($row, $column);
     if (!$row) {
       # Check all
-      if (!$selStatus) { for (my $i = 0; $i < $winAlbums->GridAlbums->GetRows(); $i++) { $winAlbums->GridAlbums->SetCellCheck($i, 0, 1); } }
+      if (!$selStatus) {
+				for (my $i = 0; $i < $winAlbums->GridAlbums->GetRows(); $i++) { $winAlbums->GridAlbums->SetCellCheck($i, 0, 1); }
       # Uncheck all
-      else             { for (my $i = 0; $i < $winAlbums->GridAlbums->GetRows(); $i++) { $winAlbums->GridAlbums->SetCellCheck($i, 0, 0); } }
+			} else {
+				for (my $i = 0; $i < $winAlbums->GridAlbums->GetRows(); $i++) { $winAlbums->GridAlbums->SetCellCheck($i, 0, 0); }
+			}
     } else {
       # Check
       if (!$selStatus) { $winAlbums->GridAlbums->SetCellCheck($row, $column, 1); }
@@ -2683,8 +2690,8 @@ sub dumpAlbums
       if ($selStatus == 1) {
         my $albumName = decode($CONFIG{'CHARSET'}, $winAlbums->GridAlbums->GetCellText($i, 1));
         my $albumURL  = $winAlbums->GridAlbums->GetCellText($i, 2);
-        $$refListAlbums{$albumName}{'url'}  = $albumURL;
-        $$refListAlbums{$albumName}{'name'} = $albumName;
+        $$refListAlbums{$albumName}{url}  = $albumURL;
+        $$refListAlbums{$albumName}{name} = $albumName;
       }
     }
     # Number of album
@@ -2722,10 +2729,10 @@ sub dumpAlbums
 				elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/ ) { $albumDir = $1; $type = 2; }
 			} elsif ($$refListAlbums{$album}{'url'} =~ /\?set=([^\&]+)&/ ) { $albumDir = $1; }
       if (!$albumDir) { $albumDir = $count1; }
-      $$refListAlbums{$album}{'dir'} = $albumDir;
+      $$refListAlbums{$album}{dir} = $albumDir;
       # Gather album page
       my $mechAlbum = WWW::Mechanize::Firefox->new(tab => 'current', autodie => 0);
-      if (!exists($$refListAlbums{$album}{'nbrPics'}) and !exists($$refListAlbums{$album}{'nbrVideos'})) {
+      if (!exists($$refListAlbums{$album}{nbrPics}) and !exists($$refListAlbums{$album}{nbrVideos})) {
         if (!-d "$saveDir\\$mainAlbumTitle"                 ) { mkdir("$saveDir\\$mainAlbumTitle");                  }
         if (!-d "$saveDir\\$mainAlbumTitle\\$albumDir"      ) { mkdir("$saveDir\\$mainAlbumTitle\\$albumDir");       }
         if (!-d "$saveDir\\$mainAlbumTitle\\$albumDir\\temp") { mkdir("$saveDir\\$mainAlbumTitle\\$albumDir\\temp"); }
@@ -2740,7 +2747,7 @@ sub dumpAlbums
       while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
       $winPb->lblPbCurr1->Text("$STR{'parsing'}: $encodedName");
       # Video album
-      if ($$refListAlbums{$album}{'url'} =~ /set=vb/ and -T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
+      if ($$refListAlbums{$album}{url} =~ /set=vb/ and -T $albumPath and open(my $fhTemp, "<:encoding(UTF-8)", $albumPath)) {
         my %listVideos;
         my %videoNames;
         # Gather video urls and corresponding preview picture urls
@@ -2750,14 +2757,17 @@ sub dumpAlbums
 				my @sections = split(/function\(Bootloader\)/, $file_as_string);
 				my @parts;
 				foreach my $section (@sections) {
-					if ($section =~ /data-starred-src=/) {
-						@parts = split(/data-starred-src=/, $section);
+					if ($section =~ /fbTimelinePhotosFlexgrid/) {
+						my @partsSection = split(/fbTimelinePhotosFlexgrid/, $section);
+						my $section2;
+						foreach (@partsSection) { if (/fbPhotoCurationControlWrapper/) { $section2 = $_; last; } }
+						@parts = split(/fbPhotoCurationControlWrapper/, $section2);
 						shift(@parts);
 						last;
 					}
 				}
         foreach my $part (@parts) {
-          if ($part =~ /^"([^\"]+)" /) {
+          if ($part =~ /^" data-fbid="([^\"]+)"/ and $part =~ /background-image: url\(([^\)]+)/) {
             my $picURL = $1;
             $picURL    =~ s/&amp;/&/g;
             if ($part =~ /href="([^\"]+)"/) {
@@ -2775,14 +2785,14 @@ sub dumpAlbums
           }
         }
         @parts = ();
-        $$refListAlbums{$album}{'nbrVideos'} = keys %listVideos;
+        $$refListAlbums{$album}{nbrVideos} = keys %listVideos;
         # Gather preview picture
-        if ($$refListAlbums{$album}{'nbrVideos'} > 0) {
+        if ($$refListAlbums{$album}{nbrVideos} > 0) {
           my $count2 = 0;
-          $winPb->pbWinPb2->SetRange(0, $$refListAlbums{$album}{'nbrVideos'});
+          $winPb->pbWinPb2->SetRange(0, $$refListAlbums{$album}{nbrVideos});
           $winPb->pbWinPb2->SetPos(0);
           $winPb->pbWinPb2->SetStep(1);
-          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrVideos'}");
+          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrVideos}");
           foreach my $videoPage (keys %listVideos) {
             my $pic;
             if ($listVideos{$videoPage} =~ /\/([^\/\?]+)(?:\?|$)/) {
@@ -2790,21 +2800,21 @@ sub dumpAlbums
               my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$pic";
               $winPb->lblPbCurr2->Text("$STR{'downloading'}: $pic");
               # Download the picture if does not exist
-              $$refListPics{$album}{$videoPage}{'ind'}          = $count2;
-              $$refListPics{$album}{$videoPage}{'smallPicName'} = $pic;
-              $$refListPics{$album}{$videoPage}{'picPath'}      = $picPath;
+              $$refListPics{$album}{$videoPage}{ind}          = $count2;
+              $$refListPics{$album}{$videoPage}{smallPicName} = $pic;
+              $$refListPics{$album}{$videoPage}{picPath}      = $picPath;
               if (!-e $picPath) {
                 $mechAlbum->save_url($listVideos{$videoPage}, $picPath);
               }
               $count2++;
               $winPb->pbWinPb2->StepIt();
-              $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrVideos'}");
+              $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrVideos}");
             }
           }
           # Gather videos
           $count2 = 0;
           $winPb->pbWinPb2->SetPos(0);
-          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrVideos'}");
+          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrVideos}");
           foreach my $videoPage (keys %listVideos) {
             if ($videoPage =~ /vb\.[^\/]+\/([^\/]+)/) {
               # Gather page with the video
@@ -2827,36 +2837,69 @@ sub dumpAlbums
                 # Load content from file
                 if (-T $pagePath and open(my $fhTemp, "<:encoding(UTF-8)", $pagePath)) {
                   my $file_as_string = do { local $/ = <$fhTemp> };
-                  $file_as_string    =~ s/[\r\n]//g;
                   close($fhTemp);
-                  my @sections       = (split(/<video/, $file_as_string));
-                  $file_as_string    = undef;
-                  if ($sections[1] =~ /src="([^\"]+)/) {
-										my $videoURL = $1;
-										# Get the publication date
-										if ($winAlbums->chPublishDate->Checked and
-												($sections[0] =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
-												 ($sections[0] =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) {
-											$$refListPics{$album}{$videoPage}{'pubDate'} = $1;
+                  $file_as_string =~ s/[\r\n]//g;
+                  my @sections    = (split(/fbUserContent/, $file_as_string));
+                  $file_as_string = undef;
+									my $extractData;
+									my $videoURL;
+									# Look for video url in the page
+									if ($sections[0] =~ /<video(.+?)<\/video>/) {
+										$extractData = $1;
+										if ($extractData =~ /src="([^\"]+)"/) {
+											$videoURL = unescape($1);
+											$videoURL =~ s/&amp;/&/g;
+											if ($videoURL =~ /^blob:/) { # Bad link
+												$videoURL    = '';
+												$extractData = '';
+											}
 										}
-										# Download the video
-										if ($videoURL =~ /\.mp4/) {
-											$videoURL    =~ s/&amp;/&/g;
-											$winPb->lblPbCurr2->Text("$STR{'downloading'}: $videoURL");
-											if (!-e $videoPath) {
-												$mechAlbum->save_url($videoURL, $videoPath); } # Download video
-											$$refListPics{$album}{$videoPage}{'videoPath'} = $videoPath;
+									}
+									# Video url is not in the page
+                  if (!$extractData and !$videoURL and $sections[1] =~ /<a[^>]+class="_5pcq"(.+?)<\/a>/) {
+										$extractData = $1;
+										if ($extractData) {
+											# Get the publication date
+											if ($winAlbums->chPublishDate->Checked and
+													($extractData =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
+													 ($extractData =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) {
+												$$refListPics{$album}{$videoPage}{pubDate} = $1;
+											}
+											# Download the video
+											if ($extractData =~ /href="([^\"]+)"/) {
+												my $newUrl = $1;
+												if ($newUrl !~ /^http/) { $newUrl =  'https://m.facebook.com'.$newUrl; }
+												else                    { $newUrl =~ s/\/\/www.facebook/\/\/m.facebook/}
+												$mechVideo->get($newUrl, synchronize => 0);
+												sleep($CONFIG{'TIME_TO_WAIT'}+1);
+												my $videoMobile = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\mobile.html";
+												my $status      = $mechVideo->save_content($videoMobile);
+												while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+												if (-T $videoMobile and open(my $fhTemp, "<:encoding(UTF-8)", $videoMobile)) {
+													my $file_as_string = do { local $/ = <$fhTemp> };
+													$file_as_string    =~ s/[\r\n]//g;
+													close($fhTemp);
+													if ($file_as_string =~ /video_redirect\/\?src=([^\&]+)/) { $videoURL = unescape($1); }
+												}
+											}
 										}
                   }
+									# Download the video
+									if ($videoURL and $videoURL =~ /\.mp4/) {
+										$winPb->lblPbCurr2->Text("$STR{'downloading'}: $videoURL");
+										if (!-e $videoPath) {
+											$mechAlbum->save_url($videoURL, $videoPath); } # Download video
+										$$refListPics{$album}{$videoPage}{videoPath} = $videoPath;
+									}
                 }
                 $mechVideo = undef;
               # Already exists
-              } elsif (-e $videoPath) { $$refListPics{$album}{$videoPage}{'videoPath'} = $videoPath; }
+              } elsif (-e $videoPath) { $$refListPics{$album}{$videoPage}{videoPath} = $videoPath; }
             }
             # Update progress
             $count2++;
             $winPb->pbWinPb2->StepIt();
-            $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrVideos'}");
+            $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrVideos}");
           }
         }
       # Picture album
@@ -2884,9 +2927,10 @@ sub dumpAlbums
               if (/href=\"([^\"]+)/) { $url   = $1; }
               if (/src=\"([^\"]+)/ ) { $fname = $1; }
               if ($url and $fname) {
-                $$refListPics{$album}{$url}{'ind'}          = $i++;
-                $$refListPics{$album}{$url}{'smallPicName'} = $fname;
-                rcopy("$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\$fname", "$saveDir\\$mainAlbumTitle\\$albumDir\\$fname"); # Copy image
+                $$refListPics{$album}{$url}{ind}          = $i++;
+                $$refListPics{$album}{$url}{smallPicName} = $fname;
+								my $encFName = encode('utf8', $fname);
+                rcopy("$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\$encFName", "$saveDir\\$mainAlbumTitle\\$albumDir\\$encFName"); # Copy image
               }
             }
           }
@@ -2904,54 +2948,55 @@ sub dumpAlbums
 							if ($type == 2 and $section =~ /fbTimelineSectionStarGrid/) {
 								my @partsSection = split(/fbTimelineSectionStarGrid/, $section);
 								foreach (@partsSection) { if (/data-starred-src=/) { $section2 = $_; last; } }
-							} elsif ($section =~ /fbTimelineStarGridSeparator/) {
-								my @partsSection = split(/fbTimelineStarGridSeparator/, $section);
-								foreach (@partsSection) { if (/data-starred-src=/) { $section2 = $_; last; } }
+							} elsif ($section =~ /fbTimelinePhotosFlexgrid/) {
+								my @partsSection = split(/fbTimelinePhotosFlexgrid/, $section);
+								foreach (@partsSection) { if (/fbPhotoCurationControlWrapper/) { $section2 = $_; last; } }
 							}
 						}
-            my @parts = split(/data-starred-src=/, $section2);
+            my @parts = split(/fbPhotoCurationControlWrapper/, $section2);
             shift(@parts);
             my $i = 0;
             foreach my $part (@parts) {
-              if ($part =~ /^"([^\"]+)"/) {
+              if ($part =~ /^" data-fbid="([^\"]+)"/ and $part =~ /background-image: url\(([^\;]+)/) {
                 my $picURL  = $1;
                 $picURL     =~ s/&amp;/&/g;
                 if ($part =~ /ajaxify="([^\"]+)"/) {
                   my $picPage = $1;
                   $picPage    =~ s/&amp;/&/g;
-                  $$refListPics{$album}{$picURL}{'ind'} = $i++;
-                  if ($picPage) { $$refListPics{$album}{$picURL}{'picPage'} = $picPage; }
-                  else          { $$refListPics{$album}{$picURL}{'picPage'} = 0; }
+                  $$refListPics{$album}{$picURL}{ind} = $i++;
+                  if ($picPage) { $$refListPics{$album}{$picURL}{picPage} = $picPage; }
+                  else          { $$refListPics{$album}{$picURL}{picPage} = 0; }
                 }
                 # The small picture
-                if (!$FG_size and $part =~ /data-non-starred-src="([^\"]+)"/) {
+                if (!$FG_size and $part =~ /background-image: url\(([^\)]+)/) {
                   my $smallPicUrl = $1;
                   $smallPicUrl    =~ s/&amp;/&/g;
-                  $$refListPics{$album}{$picURL}{'smallPicUrl'} = $smallPicUrl;
+									$smallPicUrl = encode('utf8', $smallPicUrl);
+                  $$refListPics{$album}{$picURL}{smallPicUrl} = $smallPicUrl;
                 }
               }
             }
           }
         }
         # Gather pictures
-        $$refListAlbums{$album}{'nbrPics'} = (keys %{$$refListPics{$album}});
-        if ($$refListAlbums{$album}{'nbrPics'} > 0) {
-          $winPb->pbWinPb2->SetRange(0, $$refListAlbums{$album}{'nbrPics'});
+        $$refListAlbums{$album}{nbrPics} = (keys %{$$refListPics{$album}});
+        if ($$refListAlbums{$album}{nbrPics} > 0) {
+          $winPb->pbWinPb2->SetRange(0, $$refListAlbums{$album}{nbrPics});
           $winPb->pbWinPb2->SetPos(0);
           $winPb->pbWinPb2->SetStep(1);
           my $count2 = 0;
-          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrPics'}");
-          foreach (sort {$$refListPics{$album}{$a}{'ind'} <=> $$refListPics{$album}{$b}{'ind'}} keys %{$$refListPics{$album}}) {
+          $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrPics}");
+          foreach (sort {$$refListPics{$album}{$a}{ind} <=> $$refListPics{$album}{$b}{'ind'}} keys %{$$refListPics{$album}}) {
             my $picURL = $_;
             my $picOk  = 0;
-            if ($$refListPics{$album}{$picURL}{'picPath'} and -e $$refListPics{$album}{$picURL}{'picPath'}) {
+            if ($$refListPics{$album}{$picURL}{picPath} and -e $$refListPics{$album}{$picURL}{picPath}) {
               # If picture exists, verify integrity
-              my $info = image_info($$refListPics{$album}{$picURL}{'picPath'});
+              my $info = image_info($$refListPics{$album}{$picURL}{picPath});
               if (!$info->{error}) { $picOk = 1; }
             }
             # Facebook group - Pics
             if (!$picOk and $winAlbums->chAlbumGroup->Checked() and $type == 1) {
-              my $picName = $$refListPics{$album}{$picURL}{'smallPicName'};
+              my $picName = $$refListPics{$album}{$picURL}{smallPicName};
               $winPb->lblPbCurr2->Text("$STR{'downloading'}: $picName");
               my $bigSizePicUrl;
               my $mediumSizePicUrl;
@@ -2984,7 +3029,7 @@ sub dumpAlbums
                   if ($FG_size == 1 and $parts[1] =~ /src="([^\"]+$picName[^\"]+)/) {
                     $mediumSizePicUrl                              = $1;
                     $mediumSizePicUrl                              =~ s/&amp;/&/g;
-                    $$refListPics{$album}{$picURL}{'mediumPicURL'} = $mediumSizePicUrl;
+                    $$refListPics{$album}{$picURL}{mediumPicURL} = $mediumSizePicUrl;
                   }
                   # Gather the big size picture Url
                   elsif ($FG_size == 2) {
@@ -2994,61 +3039,60 @@ sub dumpAlbums
                       if ($part =~ /src="([^\"]+)/) {
                         $bigSizePicUrl = $1;
                         if ($bigSizePicUrl !~ /spacer/) {
-                          $bigSizePicUrl                              =~ s/&amp;/&/g;
-                          $$refListPics{$album}{$picURL}{'bigPicURL'} = $bigSizePicUrl;
+                          $bigSizePicUrl =~ s/&amp;/&/g;
+                          $$refListPics{$album}{$picURL}{bigPicURL} = $bigSizePicUrl;
                         } else { $bigSizePicUrl = undef; }
                       }
                     }
                     # Gather big size picture Url was not possible, try medium size instead
                     if (!$bigSizePicUrl and $parts[1] =~ /src="([^\"]+$picName[^\"]+)/) {
-                      $mediumSizePicUrl                           = $1;
-                      $mediumSizePicUrl                           =~ s/&amp;/&/g;
-                      $$refListPics{$album}{$picURL}{'bigPicURL'} = $mediumSizePicUrl;
+                      $mediumSizePicUrl = $1;
+                      $mediumSizePicUrl =~ s/&amp;/&/g;
+                      $$refListPics{$album}{$picURL}{bigPicURL} = $mediumSizePicUrl;
                     }
                   }
                 }
                 # Download the picture (medium or big size)
                 if (($bigSizePicUrl and $bigSizePicUrl =~ /[^\"]+\/([^\?]+)/) or ($mediumSizePicUrl and $mediumSizePicUrl =~ /[^\"]+\/([^\?]+)/)) {
-                  my $picName = $1;
+                  my $picName = encode('utf8', $1);
                   my $picFileUrl;
                   if ($bigSizePicUrl) { $picFileUrl = $bigSizePicUrl;    }
                   else                { $picFileUrl = $mediumSizePicUrl; }
                   my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
                   $picFileUrl =~ s/&amp;/&/g;
                   $mechPic->save_url($picFileUrl, $picPath);
-                  $$refListPics{$album}{$picURL}{'picPath'} = $picPath;
+                  $$refListPics{$album}{$picURL}{picPath} = $picPath;
                   $picPath                                  =~ s/\Q$saveDir\E\\//;
-                  $$refListPics{$album}{$picURL}{'relPath'} = ".\\$picPath";
+                  $$refListPics{$album}{$picURL}{relPath} = ".\\$picPath";
                   undef $mechPic;
                 }
               # Small size only
               } else {
-                $$refListPics{$album}{$picURL}{'picPath'} = "$saveDir\\$mainAlbumTitle\\$albumDir\\" . $$refListPics{$album}{$picURL}{'smallPicName'};
-                $$refListPics{$album}{$picURL}{'relPath'} = $picURL;
+                $$refListPics{$album}{$picURL}{picPath} = "$saveDir\\$mainAlbumTitle\\$albumDir\\" . $$refListPics{$album}{$picURL}{smallPicName};
+                $$refListPics{$album}{$picURL}{relPath} = $picURL;
               }
             # Normal profile album
 						} elsif (!$picOk and $picURL =~ /\/([^\/\?]+)(?:\?|$)/) {
-              my $picName = $1;
-              $picName    = encode($CONFIG{'CHARSET'}, $picName);
+              my $picName = encode('utf8', $1);
               my $picPath = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
               $winPb->lblPbCurr2->Text("$STR{'downloading'}: $picName");
               my $picOk = 0;
               # Download the small picture ?
-              if (!$FG_size and exists($$refListPics{$album}{$picURL}{'smallPicUrl'}) and $$refListPics{$album}{$picURL}{'smallPicUrl'} =~ /\/([^\/\?]+)(?:\?|$)/) {
-                my $picName = $1;
+              if (!$FG_size and exists($$refListPics{$album}{$picURL}{smallPicUrl}) and $$refListPics{$album}{$picURL}{smallPicUrl} =~ /\/([^\/\?]+)(?:\?|$)/) {
+                my $picName = encode('utf8', $1);
                 $picPath  = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
-                if (!-e $picPath) { $mechAlbum->save_url($$refListPics{$album}{$picURL}{'smallPicUrl'}, $picPath); }
-                $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
-                $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
-                $$refListPics{$album}{$picURL}{'relPath'}      = $$refListPics{$album}{$picURL}{'picPage'};
+                if (!-e $picPath) { $mechAlbum->save_url($$refListPics{$album}{$picURL}{smallPicUrl}, $picPath); }
+                $$refListPics{$album}{$picURL}{smallPicName} = $picName;
+                $$refListPics{$album}{$picURL}{picPath}      = $picPath;
+                $$refListPics{$album}{$picURL}{relPath}      = $$refListPics{$album}{$picURL}{picPage};
               }
               # Download the medium picture ?
               if ($FG_size == 1) {
                 if (!-e $picPath) { $mechAlbum->save_url($picURL, $picPath); }
-                $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
-                $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                $$refListPics{$album}{$picURL}{smallPicName} = $picName;
+                $$refListPics{$album}{$picURL}{picPath}      = $picPath;
                 $picPath                                       =~ s/\Q$saveDir\E\\//;
-                $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+                $$refListPics{$album}{$picURL}{relPath}      = ".\\$picPath";
               }
               # Publication date and/or big size picture
               if ($winAlbums->chPublishDate->Checked or $FG_size == 2) {
@@ -3058,7 +3102,7 @@ sub dumpAlbums
                   if ($tabCurrentTitle) {
                     $mechPic = WWW::Mechanize::Firefox->new(tab => qr{$tabCurrentTitle}, create => 1, autodie => 0);
                   } else { $mechPic = WWW::Mechanize::Firefox->new(create => 1, autodie => 0); }
-                  $mechPic->get($$refListPics{$album}{$picURL}{'picPage'}, synchronize => 0);
+                  $mechPic->get($$refListPics{$album}{$picURL}{picPage}, synchronize => 0);
                   sleep($CONFIG{'TIME_TO_WAIT'}*5);
                   my $currentTitle = $mechPic->title;
                   if ($currentTitle =~ /([^\-]+ \- )/) { $tabCurrentTitle = $1; }
@@ -3072,7 +3116,7 @@ sub dumpAlbums
                     if ($winAlbums->chPublishDate->Checked and
                         ($file_as_string =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
                          ($file_as_string =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/))) {
-                      $$refListPics{$album}{$picURL}{'pubDate'} = $1;
+                      $$refListPics{$album}{$picURL}{pubDate} = $1;
                     }
                     if ($FG_size == 2) {
                       my $part        = (split(/_2-sx/, $file_as_string))[1];
@@ -3083,23 +3127,23 @@ sub dumpAlbums
                         if ($bigSizePicUrl !~ /spacer/) {
                           $bigSizePicUrl    =~ s/&amp;/&/g;
                           if ($bigSizePicUrl =~ /\/([^\/\?]+)(?:\?|$)/) {
-                            my $picName = $1;
+                            my $picName = encode('utf8', $1);
                             $picPath    = "$saveDir\\$mainAlbumTitle\\$albumDir\\$picName";
-                            if (!-e $picPath) { $mechAlbum->save_url($bigSizePicUrl, $picPath); }
-                            $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
-                            $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+														$mechAlbum->save_url($bigSizePicUrl, $picPath);
+                            $$refListPics{$album}{$picURL}{smallPicName} = $picName;
+                            $$refListPics{$album}{$picURL}{picPath}      = $picPath;
                             $picPath                                       =~ s/\Q$saveDir\E\\//;
-                            $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+                            $$refListPics{$album}{$picURL}{relPath}      = ".\\$picPath";
                           }
                         } else { $bigSizePicUrl = undef; }
                       }
                       # Download big size picture was not possible, try medium size instead
                       if (!$bigSizePicUrl) {
                         if (!-e $picPath) { $mechAlbum->save_url($picURL, $picPath); }
-                        $$refListPics{$album}{$picURL}{'smallPicName'} = $picName;
-                        $$refListPics{$album}{$picURL}{'picPath'}      = $picPath;
+                        $$refListPics{$album}{$picURL}{smallPicName} = $picName;
+                        $$refListPics{$album}{$picURL}{picPath}      = $picPath;
                         $picPath                                       =~ s/\Q$saveDir\E\\//;
-                        $$refListPics{$album}{$picURL}{'relPath'}      = ".\\$picPath";
+                        $$refListPics{$album}{$picURL}{relPath}      = ".\\$picPath";
                       }
                     }
                   }
@@ -3110,7 +3154,7 @@ sub dumpAlbums
             # Update progress
             $count2++;
             $winPb->pbWinPb2->StepIt();
-            $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{'nbrPics'}");
+            $winPb->lblCount2->Text("$count2/$$refListAlbums{$album}{nbrPics}");
           }
         }
       }
@@ -3148,31 +3192,31 @@ sub dumpAlbums
     print HTML "<table style=\"margin: auto;\">\n";
     # For each album
     foreach my $album (keys %{$refListPics}) {
-      my $albumDir = ".\\$mainAlbumTitle\\$$refListAlbums{$album}{'dir'}";
+      my $albumDir = ".\\$mainAlbumTitle\\$$refListAlbums{$album}{dir}";
       print HTML "<tr><th colspan=4 style=\"height: 50px; color:#003300; background-color:#EEEEEE; font-size: 14pt; font-variant: small-caps; font-weight: bold;\">$album</th></tr>";
       my $count = 0;
-      foreach (sort {$$refListPics{$album}{$a}{'ind'} <=> $$refListPics{$album}{$b}{'ind'}} keys %{$$refListPics{$album}}) {
+      foreach (sort {$$refListPics{$album}{$a}{ind} <=> $$refListPics{$album}{$b}{ind}} keys %{$$refListPics{$album}}) {
         my $pic = $_;
-        my $fileName = $$refListPics{$album}{$pic}{'smallPicName'};
-        my $filePath = $$refListPics{$album}{$pic}{'picPath'};
+        my $fileName = $$refListPics{$album}{$pic}{smallPicName};
+        my $filePath = $$refListPics{$album}{$pic}{picPath};
         if (-e $filePath) { $filePath =~ s/\Q$saveDir\E\\//;    }
         else              { $filePath = "$albumDir\\$fileName"; }
         if (!$count) { print HTML "<tr>\n"; }  # new row for each group of 4 pics
         print HTML "<td style=\"width: 25%; font-size: 11pt;text-align: center;\">\n";
         # Video
-        if ($albumDir =~ /\\vb\./ and exists($$refListPics{$album}{$pic}{'videoPath'})) {
-          my $videoFileName = (split(/\\/, $$refListPics{$album}{$pic}{'videoPath'}))[-1];
+        if ($albumDir =~ /\\vb\./ and exists($$refListPics{$album}{$pic}{videoPath})) {
+          my $videoFileName = (split(/\\/, $$refListPics{$album}{$pic}{videoPath}))[-1];
           my $videoPath     = "$albumDir\\$videoFileName";
           print HTML "<a href=\"$videoPath\">\n";
         # Picture
-        } else { print HTML "<a href=\"$$refListPics{$album}{$pic}{'relPath'}\">\n"; }
+        } else { print HTML "<a href=\"$$refListPics{$album}{$pic}{relPath}\">\n"; }
         print HTML "<img src=\"$albumDir\\$fileName\" alt=\"$fileName\" style=\"max-width:200px;\">\n";
         print HTML "</a><br><br>\n";
         if ($winAlbums->chPublishDate->Checked) {
-          if (exists($$refListPics{$album}{$pic}{'pubDate'})) {
+          if (exists($$refListPics{$album}{$pic}{pubDate})) {
             my $dateStr;
-            if ($$refListPics{$album}{$pic}{'pubDate'}) { $dateStr = &formatDate($$refListPics{$album}{$pic}{'pubDate'}); }
-            else                                        { $dateStr = $STR{'errorDate'};                                   }
+            if ($$refListPics{$album}{$pic}{pubDate}) { $dateStr = &formatDate($$refListPics{$album}{$pic}{pubDate}); }
+            else                                      { $dateStr = $STR{'errorDate'};                                 }
             print HTML "Date: <strong style=\"color:#339900;\">$dateStr</strong>\n";
           }
         }
@@ -3270,6 +3314,7 @@ sub winFriends
       $winFriends->Left($CONFIG{'WINFRIENDS_LEFT'});
       $winFriends->Top($CONFIG{'WINFRIENDS_TOP'});
     } else { $winFriends->Center(); }
+		$winFriends->GridFriends->BringWindowToTop();
     $winFriends->DoModal();
   }
 
@@ -3573,9 +3618,12 @@ sub GridFriends_Click
     my $selStatus = $winFriends->GridFriends->GetCellCheck($row, $column);
     if (!$row) {
       # Check all
-      if (!$selStatus) { for (my $i = 0; $i < $winFriends->GridFriends->GetRows(); $i++) { $winFriends->GridFriends->SetCellCheck($i, 0, 1); } }
+      if (!$selStatus) {
+				for (my $i = 0; $i < $winFriends->GridFriends->GetRows(); $i++) { $winFriends->GridFriends->SetCellCheck($i, 0, 1); }
       # Uncheck all
-      else             { for (my $i = 0; $i < $winFriends->GridFriends->GetRows(); $i++) { $winFriends->GridFriends->SetCellCheck($i, 0, 0); } }
+			} else {
+				for (my $i = 0; $i < $winFriends->GridFriends->GetRows(); $i++) { $winFriends->GridFriends->SetCellCheck($i, 0, 0); }
+			}
     } else {
       # Check
       if (!$selStatus) { $winFriends->GridFriends->SetCellCheck($row, $column, 1); }
@@ -3780,7 +3828,9 @@ sub dumpFriends
         if ($$refListCatFriends{$cat}{status} == 2) {
           $winPb->lblPbCurr1->Text("$STR{'saving'}: $cat");
           $htmlPage = "$saveDir\\temp\\page.html";
-					&saveCurrentTab(\$mechFriends, $includeIcons, $htmlPage, "$saveDir\\temp");
+					if (!-f $htmlPage or $includeIcons or !$winConfig->chDelTempFiles->Checked()) {
+						&saveCurrentTab(\$mechFriends, $includeIcons, $htmlPage, "$saveDir\\temp");
+					}
 					$winPb->lblPbCurr2->Text('');
           $$refListCatFriends{$cat}{status} = 3; # Downloading done
         }
@@ -3837,8 +3887,10 @@ sub dumpFriends
                 $winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
                 if ($includeIcons and ($img =~ /\/([^\/\?]+)\?/ or $img =~ /(\w+\.jpg)/)) { # Include profile icons
                   my $imgFilename = $1; # Replace image name by profil id
-                  rcopy("$saveDir\\temp\\$imgFilename", "$saveDir\\images_$friendName\\$id\.jpg"); # Copy image
-                  $$refListCatFriends{$cat}{profilImg}{$id} = "images_$friendName\\$id\.jpg";
+									my $encID    = encode('utf8', $id);
+									my $encImgFN = encode('utf8', $imgFilename);
+                  rcopy("$saveDir\\temp\\$encImgFN", "$saveDir\\images_$friendName\\$encID\.jpg"); # Copy image
+                  $$refListCatFriends{$cat}{profilImg}{$id} = "images_$friendName\\$encID\.jpg";
                 } elsif ($format == 1) { $$refListCatFriends{$cat}{profilImageUrl}{$id} = $img; } # HTML Report
                 $$refListCatFriends{$cat}{profilUrl}{$id} = $url;
                 $$refListCatFriends{$cat}{profilOrder}{$nbrFriendsDone} = $id;
@@ -4328,23 +4380,23 @@ sub winEventThr
     }
     close($tmp);
     # Adjust Guest list checkbox text
-    if ($glCount{'going'}    and $glText{'going'}   ) {
-      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{'going'} [$glCount{'going'}]");
+    if ($glCount{going}    and $glText{going}   ) {
+      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{going} [$glCount{going}]");
       $encodedStr =~ s/\\u([[:xdigit:]]{4})/chr(hex $1)/eg;
       $winEvent->chGoing->Text($encodedStr);
     }
-    if ($glCount{'maybe'}    and $glText{'maybe'}   ) {
-      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{'maybe'} [$glCount{'maybe'}]");
+    if ($glCount{maybe}    and $glText{maybe}   ) {
+      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{maybe} [$glCount{maybe}]");
       $encodedStr =~ s/\\u([[:xdigit:]]{4})/chr(hex $1)/eg;
       $winEvent->chMaybe->Text($encodedStr);
     }
-    if ($glCount{'invited'}  and $glText{'invited'} ) {
-      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{'invited'} [$glCount{'invited'}]");
+    if ($glCount{invited}  and $glText{invited} ) {
+      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{invited} [$glCount{invited}]");
       $encodedStr =~ s/\\u([[:xdigit:]]{4})/chr(hex $1)/eg;
       $winEvent->chInvited->Text($encodedStr);
     }
-    if ($glCount{'declined'} and $glText{'declined'}) {
-      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{'declined'} [$glCount{'declined'}]");
+    if ($glCount{declined} and $glText{declined}) {
+      my $encodedStr = encode($CONFIG{'CHARSET'}, "$glText{declined} [$glCount{declined}]");
       $encodedStr =~ s/\\u([[:xdigit:]]{4})/chr(hex $1)/eg;
       $winEvent->chDeclined->Text($encodedStr);
     }
@@ -4621,10 +4673,10 @@ sub dumpEvent
   }
   # Selected list
   my %selectedLists;
-  if ($winEvent->chGoing->Checked()   ) { $selectedLists{'going'}    = 1; }
-  if ($winEvent->chMaybe->Checked()   ) { $selectedLists{'maybe'}    = 1; }
-  if ($winEvent->chInvited->Checked() ) { $selectedLists{'invited'}  = 1; }
-  if ($winEvent->chDeclined->Checked()) { $selectedLists{'declined'} = 1; }
+  if ($winEvent->chGoing->Checked()   ) { $selectedLists{going}    = 1; }
+  if ($winEvent->chMaybe->Checked()   ) { $selectedLists{maybe}    = 1; }
+  if ($winEvent->chInvited->Checked() ) { $selectedLists{invited}  = 1; }
+  if ($winEvent->chDeclined->Checked()) { $selectedLists{declined} = 1; }
   # Connect to current tab
   my $mech;
   eval { $mech = WWW::Mechanize::Firefox->new(tab => 'current'); };
@@ -4668,35 +4720,37 @@ sub dumpEvent
             $memberData{$key} = $value;
           }
           # Save member data
-          if ($memberData{'uniqueID'} and $memberData{'tab'} and
-              exists($selectedLists{$memberData{'tab'}}) and
-              !exists($$refLists{$memberData{'tab'}}{'profilUrl'}{$memberData{'uniqueID'}})) {
+          if ($memberData{uniqueID} and $memberData{tab} and
+              exists($selectedLists{$memberData{tab}}) and
+              !exists($$refLists{$memberData{tab}}{profilUrl}{$memberData{uniqueID}})) {
             # Url
-            if (!exists($$refLists{$memberData{'tab'}}{'url'})) { $$refLists{$memberData{'tab'}}{'url'} = $currURL; }
+            if (!exists($$refLists{$memberData{tab}}{url})) { $$refLists{$memberData{tab}}{url} = $currURL; }
             # Profil order
-            $$refLists{$memberData{'tab'}}{'profilOrder'}{$count} = $memberData{'uniqueID'};
+            $$refLists{$memberData{tab}}{profilOrder}{$count} = $memberData{uniqueID};
             # Profil URL
-            if ($memberData{'uri'}) {
-              $memberData{'uri'} =~ s#\\\/#\/#g;
-              $$refLists{$memberData{'tab'}}{'profilUrl'}{$memberData{'uniqueID'}} = $memberData{'uri'};
+            if ($memberData{uri}) {
+              $memberData{uri} =~ s#\\\/#\/#g;
+              $$refLists{$memberData{tab}}{profilUrl}{$memberData{uniqueID}} = $memberData{uri};
             }
             # Profil Img
-            if ($memberData{'photo'}) {
-              $memberData{'photo'} =~ s#\\\/#\/#g;
-              $memberData{'photo'} =~ s/&amp;/&/g;
-              $$refLists{$memberData{'tab'}}{'profilImg'}{$memberData{'uniqueID'}} = $memberData{'photo'};
+            if ($memberData{photo}) {
+              $memberData{photo} =~ s#\\\/#\/#g;
+              $memberData{photo} =~ s/&amp;/&/g;
+              $$refLists{$memberData{tab}}{profilImg}{$memberData{uniqueID}} = $memberData{photo};
               # Download the image
               if ($winEvent->chEventProfileIcons->Checked()) {
-                if (!-e("$saveDir\\images_$eventName\\$memberData{'uniqueID'}\.jpg")) {
-                  $mech->save_url($memberData{'photo'}, "$saveDir\\images_$eventName\\$memberData{'uniqueID'}\.jpg");
+                if (!-e("$saveDir\\images_$eventName\\$memberData{uniqueID}\.jpg")) {
+									my $encPhoto = encode('utf8', $memberData{photo});
+									my $encID    = encode('utf8', $memberData{uniqueID});
+                  $mech->save_url($encPhoto, "$saveDir\\images_$eventName\\$encID\.jpg");
                 }
               }
             }
             # Profil Name
-            if ($memberData{'title'}) {
+            if ($memberData{title}) {
               my $name = $memberData{'title'};
               $name =~ s/\\u([[:xdigit:]]{4})/chr(hex $1)/eg;
-              $$refLists{$memberData{'tab'}}{'profilName'}{$memberData{'uniqueID'}} = $name;
+              $$refLists{$memberData{tab}}{profilName}{$memberData{uniqueID}} = $name;
             }
             $count++;
           }
@@ -4719,27 +4773,28 @@ sub dumpEvent
     $winPb2->lblPbCurr->Text($STR{'checkIcons'}.'...');
     my $count2 = 0;
     foreach my $guestList (keys %{$refLists}) {
-      foreach my $id (keys %{$$refLists{$guestList}{'profilImg'}}) {
+      foreach my $id (keys %{$$refLists{$guestList}{profilImg}}) {
+				my $encID = encode('utf8', $id);
         $count2++;
         $winPb2->lblCount->Text($count2);
-        my $imgPath = "$saveDir\\images_$eventName\\$id\.jpg";
-        if (!-e $imgPath and $$refLists{$guestList}{'profilImg'}{$id}) { # Profile icon doesn't exist, try to download
-          $mech->save_url($$refLists{$guestList}{'profilImg'}{$id}, "$saveDir\\images_$eventName\\$id\.jpg");
+        my $imgPath = "$saveDir\\images_$eventName\\$encID\.jpg";
+        if (!-e $imgPath and $$refLists{$guestList}{profilImg}{$id}) { # Profile icon doesn't exist, try to download
+          $mech->save_url($$refLists{$guestList}{profilImg}{$id}, "$saveDir\\images_$eventName\\$encID\.jpg");
         }
         # Check again
         if (-e $imgPath) { # Profile icon exists, check infos
           my $info = image_info($imgPath);
           my $dim;
           if (!$info->{error}) { $dim = dim($info); } # No error, get dim
-          if (($info->{error} or !$dim) and $$refLists{$guestList}{'profilImg'}{$id}) { # Error with the image or no dim, try to download again
+          if (($info->{error} or !$dim) and $$refLists{$guestList}{profilImg}{$id}) { # Error with the image or no dim, try to download again
             unlink("$saveDir\\images_$eventName\\$id\.jpg");
-            $mech->save_url($$refLists{$guestList}{'profilImg'}{$id}, "$saveDir\\images_$eventName\\$id\.jpg");
+            $mech->save_url($$refLists{$guestList}{profilImg}{$id}, "$saveDir\\images_$eventName\\$encID\.jpg");
             $info = image_info($imgPath);
           }
           # No error, replace profile icon URL by profile icon path
           if (!$info->{error}) {
             $dim = dim($info);
-            if ($dim) { $$refLists{$guestList}{'profilImg'}{$id} = "images_$eventName\\$id\.jpg"; }
+            if ($dim) { $$refLists{$guestList}{profilImg}{$id} = "images_$eventName\\$encID\.jpg"; }
           }
         }
       }
@@ -5193,7 +5248,7 @@ sub dumpContrib
     $winPb->lblCount2->Text("$nbrComments/$nbrCommentsToDo");
     my $i = 0;
     foreach my $commentNode (@commentNodes) {
-      if ($i >= $nbrComments) {
+      if ($i >= $nbrComments and $commentNode !~ /^" role="presentation"/) {
         my $commentId;
         my $commentUrl;
         my $commentImg;
@@ -5209,24 +5264,24 @@ sub dumpContrib
         }
         if ($commentNode =~ /src="([^\"]+)"/) { $commentImg  = $1; }
         if ($commentNode =~ /alt="([^\"]+)"/) { $commentName = $1; }
-        
         if ($commentUrl and $commentId and $commentImg and $commentName and $commentName ne $contribName) {
           if ($currURL =~ /$commentId/) { } # On photo page, profile owner id
           else {
             $winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $commentId...");
             # Already exists, count
-            if (exists($$refComments{$commentUrl}{'Nbr'})) {
-              $$refComments{$commentUrl}{'Nbr'}++;
+            if (exists($$refComments{$commentUrl}{Nbr})) {
+              $$refComments{$commentUrl}{Nbr}++;
             # Add a new entry
             } else {
-              $$refComments{$commentUrl}{'Nbr'}  = 1;
-              $$refComments{$commentUrl}{'Id'}   = $commentId;
-              $$refComments{$commentUrl}{'Name'} = $commentName;
+              $$refComments{$commentUrl}{Nbr}  = 1;
+              $$refComments{$commentUrl}{Id}   = $commentId;
+              $$refComments{$commentUrl}{Name} = $commentName;
               # Include profile icon
+							my $encCommentId = encode('utf8', $commentId);
               if ($winContrib->chContribProfileIcons->Checked() and $commentImg) {
                 my $imgUrl = $commentImg =~ s/&amp;/&/gr;
                 if (!-e("$saveDir\\images_$contribName\\$commentId\.jpg")) {
-                  $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$commentId\.jpg");
+                  $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$encCommentId\.jpg");
                 # File already exists, test if corrupted, if so, download it again
                 } else {
                   my $info = image_info("$saveDir\\images_$contribName\\$commentId\.jpg");
@@ -5234,7 +5289,7 @@ sub dumpContrib
                     $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$commentId\.jpg");
                   }
                 }
-                $$refComments{$commentUrl}{'ImgPath'} = "images_$contribName\\$commentId\.jpg";
+                $$refComments{$commentUrl}{ImgPath} = "images_$contribName\\$encCommentId\.jpg";
               }
             }
           }
@@ -5357,21 +5412,23 @@ sub dumpContrib
               if ($currURL =~ /$likeId/) { } # On photo page, profile owner id
               else {
                 # Already exists, count
-                if (exists($$refLikes{$likeUrl}{'Nbr'})) {
-                  $$refLikes{$likeUrl}{'Nbr'}++;
+                if (exists($$refLikes{$likeUrl}{Nbr})) {
+                  $$refLikes{$likeUrl}{Nbr}++;
                 # Add a new entry
                 } else {
                   $nbrLikes++;
-                  $$refLikes{$likeUrl}{'Nbr'}  = 1;
-                  $$refLikes{$likeUrl}{'Id'}   = $likeId;
-                  $$refLikes{$likeUrl}{'Name'} = $likeName;
+                  $$refLikes{$likeUrl}{Nbr}  = 1;
+                  $$refLikes{$likeUrl}{Id}   = $likeId;
+                  $$refLikes{$likeUrl}{Name} = $likeName;
                   # Save the profil icon
+									my $encLikeId = encode('utf8', $likeId);
                   if ($winContrib->chContribProfileIcons->Checked() and $likeImg =~ /\/([^\/\?]+)\?/ or $likeImg =~ /(\w+\.jpg)/) { # Include profile icons
                     my $imgFilename = $1; # Replace image name by profil id
                     if (!-e "$saveDir\\images_$contribName\\$likeId\.jpg") {
-                      rcopy("$saveDir\\temp\\$imgFilename", "$saveDir\\images_$contribName\\$likeId\.jpg"); # Copy image
+											my $encImgFN  = encode('utf8', $imgFilename);
+                      rcopy("$saveDir\\temp\\$encImgFN", "$saveDir\\images_$contribName\\$encLikeId\.jpg"); # Copy image
                     }
-                    $$refLikes{$likeUrl}{'ImgPath'} = "images_$contribName\\$likeId\.jpg";
+                    $$refLikes{$likeUrl}{ImgPath} = "images_$contribName\\$encLikeId\.jpg";
                   }
                 }
               }
@@ -5438,26 +5495,26 @@ sub dumpContrib
         if ($vPostsUrl and $vPostsId and $vPostsImg and $vPostsName and $vPostsName ne $contribName) {
           $winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $vPostsId...");
           # Already exists, count
-          if (exists($$refVPosts{$vPostsUrl}{'Nbr'})) {
-            $$refVPosts{$vPostsUrl}{'Nbr'}++;
+          if (exists($$refVPosts{$vPostsUrl}{Nbr})) { $$refVPosts{$vPostsUrl}{Nbr}++; }
           # Add a new entry
-          } else {
-            $$refVPosts{$vPostsUrl}{'Nbr'}  = 1;
-            $$refVPosts{$vPostsUrl}{'Id'}   = $vPostsId;
-            $$refVPosts{$vPostsUrl}{'Name'} = $vPostsName;
+          else {
+            $$refVPosts{$vPostsUrl}{Nbr}  = 1;
+            $$refVPosts{$vPostsUrl}{Id}   = $vPostsId;
+            $$refVPosts{$vPostsUrl}{Name} = $vPostsName;
             # Include profile icon
             if ($winContrib->chContribProfileIcons->Checked() and $vPostsImg) {
               my $imgUrl = $vPostsImg =~ s/&amp;/&/gr;
-              if (!-e("$saveDir\\images_$contribName\\$vPostsId\.jpg")) {
-                $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$vPostsId\.jpg");
+							my $encVPostsId = encode('utf8', $vPostsId);
+              if (!-e("$saveDir\\images_$contribName\\$encVPostsId\.jpg")) {
+                $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$encVPostsId\.jpg");
               # File already exists, test if corrupted, if so, download it again
               } else {
-                my $info = image_info("$saveDir\\images_$contribName\\$vPostsId\.jpg");
+                my $info = image_info("$saveDir\\images_$contribName\\$encVPostsId\.jpg");
                 if ($info->{error}) {
-                  $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$vPostsId\.jpg");
+                  $mech->save_url($imgUrl, "$saveDir\\images_$contribName\\$encVPostsId\.jpg");
                 }
               }
-              $$refVPosts{$vPostsUrl}{'ImgPath'} = "images_$contribName\\$vPostsId\.jpg";
+              $$refVPosts{$vPostsUrl}{ImgPath} = "images_$contribName\\$encVPostsId\.jpg";
             }
           }
         }
@@ -5587,10 +5644,10 @@ sub createExcelSheet
   my $maxWidthCol7 = length($STR{'count'});
   foreach my $entry (keys %{$refData}) {
     # Image column
-    if ($includeIcon and -e "$saveDir\\$$refData{$entry}{'ImgPath'}") {
-      my $info = image_info("$saveDir\\$$refData{$entry}{'ImgPath'}");
+    if ($includeIcon and -e "$saveDir\\$$refData{$entry}{ImgPath}") {
+      my $info = image_info("$saveDir\\$$refData{$entry}{ImgPath}");
       if (!$info->{error}) { # Insert only if image is not corrupted
-        $sheet->insert_image($i, 0, "$saveDir\\$$refData{$entry}{'ImgPath'}");
+        $sheet->insert_image($i, 0, "$saveDir\\$$refData{$entry}{ImgPath}");
         if ($info->{height}) { # Set row height
           my $colHeight = $info->{height} / 1.33;
           $sheet->set_row($i, $colHeight);
@@ -5603,29 +5660,29 @@ sub createExcelSheet
       }
     }
     # Profil ID column
-    $sheet->write_string($i, 1, $$refData{$entry}{'Id'});
-    if (length($$refData{$entry}{'Id'}) > $maxWidthCol2) {
+    $sheet->write_string($i, 1, $$refData{$entry}{Id});
+    if (length($$refData{$entry}{Id}) > $maxWidthCol2) {
       $maxWidthCol2 = length($$refData{$entry}{'Id'});
     }
     # URL column
     $sheet->write($i, 2, $entry);
     if (length($entry) > $maxWidthCol3) { $maxWidthCol3 = length($entry); }
     # Name column
-    if ($$refData{$entry}{'Name'}) {
-      $sheet->write($i, 3, $$refData{$entry}{'Name'});
-      if (length($$refData{$entry}{'Name'}) > $maxWidthCol4) {
-        $maxWidthCol4 = length($$refData{$entry}{'Name'});
+    if ($$refData{$entry}{Name}) {
+      $sheet->write($i, 3, $$refData{$entry}{Name});
+      if (length($$refData{$entry}{Name}) > $maxWidthCol4) {
+        $maxWidthCol4 = length($$refData{$entry}{Name});
       }
     }
     # Image Path column
-    $sheet->write($i, 4, $$refData{$entry}{'ImgPath'});
-    if (length($$refData{$entry}{'ImgPath'}) > $maxWidthCol5) {
-      $maxWidthCol5 = length($$refData{$entry}{'ImgPath'});
+    $sheet->write($i, 4, $$refData{$entry}{ImgPath});
+    if (length($$refData{$entry}{ImgPath}) > $maxWidthCol5) {
+      $maxWidthCol5 = length($$refData{$entry}{ImgPath});
     }
     # Original URL column
     $sheet->write($i, 5, $currURL);
     # Count
-    $sheet->write($i, 6, $$refData{$entry}{'Nbr'});
+    $sheet->write($i, 6, $$refData{$entry}{Nbr});
     $i++;
   }
   # Ajust column size
@@ -5741,11 +5798,15 @@ sub winGroupMembersThr
 					if ($currURL !~ /^http/) { $currURL = 'https://www.facebook.com'.$currURL; }
 					$type = 1;
 				}
-			} elsif ($mech->selector('ul._43o4', any => 1)) {
-				if ($currURL =~ /\/$/) { chop($currURL); }
-				if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currURL . '/members'; }
-				else { $load = 0; $newURL  = $currURL; }
-				$type = 2;
+			} elsif (my @menu = $mech->selector('div._2yaa')) {
+				foreach (@menu) {
+					if ($_->{outerHTML} =~ /data-key="members"/) {
+						if ($currURL =~ /\/$/) { chop($currURL); }
+						if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currURL . '/members'; }
+						else { $load = 0; $newURL  = $currURL; }
+						$type = 2;
+					}
+				}
 			}
 			if ($type and $currURL and $load) {
 				$mech->get($currURL, synchronize => 0);
@@ -5944,9 +6005,12 @@ sub GridGroupMembers_Click
     my $selStatus = $winGroupMembers->GridGroupMembers->GetCellCheck($row, $column);
     if (!$row) {
       # Check all
-      if (!$selStatus) { for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1); } }
+      if (!$selStatus) {
+				for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1); }
       # Uncheck all
-      else             { for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 0); } }
+			} else {
+				for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 0); }
+			}
     } else {
       # Check
       if (!$selStatus) { $winGroupMembers->GridGroupMembers->SetCellCheck($row, $column, 1); }
@@ -6007,7 +6071,7 @@ sub btnGroupMembersOk_Click
     my $groupMembersName  	= $winGroupMembers->tfGroupMembersName->Text();
     $groupMembersName     	=~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
     my $saveDir           	= $winGroupMembers->tfDirSaveGroupMembers->Text();
-    my %catGroupMembers; 		# Actually, Admins and Other members seem to be the only category
+    my %catGroupMembers; 		# Actually, It seems there are only two categories (Admins and Other members)
     my $nbrCatGroupMembers  = 0;
 		my $type                = 0; # Type of list: 1 = combobox (Closed group), 2 = tab selection (public group)
     my $posPb1            	= 0;
@@ -6182,6 +6246,9 @@ sub dumpGroupMembers
 								$$refCatGroupMembers{$cat}{name} = $1;
 								$currShownCat = $$refCatGroupMembers{$cat}{name};
 							}
+						} else {
+							$$refCatGroupMembers{$cat}{name} = $STR{'groupMembers'};
+							$currShownCat = $$refCatGroupMembers{$cat}{name};
 						}
 					} else {
 						my $currCatUrl = $mech->uri();
@@ -6213,7 +6280,9 @@ sub dumpGroupMembers
 				if ($$refCatGroupMembers{$cat}{status} < 3) {
 					$winPb->lblPbCurr1->Text("$STR{'saving'}: $cat");
 					$htmlPage = "$saveDir\\temp\\page.html";
-					if (!-T $htmlPage) { &saveCurrentTab(\$mech, $includeIcons, $htmlPage, "$saveDir\\temp"); }
+					if (!-f $htmlPage or $includeIcons or !$winConfig->chDelTempFiles->Checked()) {
+						&saveCurrentTab(\$mech, $includeIcons, $htmlPage, "$saveDir\\temp");
+					}
 					$winPb->lblPbCurr2->Text('');
 					$$refCatGroupMembers{$cat}{status} = 3; # Downloading done
 				}
@@ -6268,8 +6337,10 @@ sub dumpGroupMembers
 								$winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
 								if ($includeIcons and ($img =~ /\/([^\/\?]+)\?/ or $img =~ /(\w+\.jpg)/)) { # Include profile icons
 									my $imgFilename = $1; # Replace image name by profil id
-									rcopy("$saveDir\\temp\\$imgFilename", "$saveDir\\images_$groupMembersName\\$id\.jpg"); # Copy image
-									$$refCatGroupMembers{$cat}{profilImg}{$id} = "images_$groupMembersName\\$id\.jpg";
+									my $encID    = encode('utf8', $id);
+									my $encImgFN = encode('utf8', $imgFilename);
+									rcopy("$saveDir\\temp\\$encImgFN", "$saveDir\\images_$groupMembersName\\$encID\.jpg"); # Copy image
+									$$refCatGroupMembers{$cat}{profilImg}{$id} = "images_$groupMembersName\\$encID\.jpg";
 								} elsif ($format == 1) { $$refCatGroupMembers{$cat}{profilImageUrl}{$id} = $img; } # HTML Report
 								$$refCatGroupMembers{$cat}{profilUrl}{$id} = $url;
 								$$refCatGroupMembers{$cat}{profilOrder}{$nbrGroupMembersDone} = $id;
@@ -6383,18 +6454,18 @@ sub createHTMLGroupMembers
   # List of pages
   my %listPages;
   foreach my $list (sort keys %{$refListGroupMembers}) {
-    my $name = $$refListGroupMembers{$list}{'name'};
+    my $name = $$refListGroupMembers{$list}{name};
     $listPages{$name} = "$name - $list\.html";
   }
   # Create one page per category
   foreach my $list (sort keys %{$refListGroupMembers}) {
-    my $encodedName = encode($CONFIG{'CHARSET'}, $$refListGroupMembers{$list}{'name'});
+    my $encodedName = encode($CONFIG{'CHARSET'}, $$refListGroupMembers{$list}{name});
     $winPb->lblPbCurr1->Text("$STR{'createPage'}: $encodedName");
-    my $filename = "$saveDir\\$listPages{$$refListGroupMembers{$list}{'name'}}";
+    my $filename = "$saveDir\\$listPages{$$refListGroupMembers{$list}{name}}";
     if ($first == 0) { $firstPage = $filename; $first = 1; } # Keep the filename of the first page
     open(HTML, ">:encoding(UTF-8)", $filename);
     print HTML "<!DOCTYPE html>\n";
-    print HTML "<html>\n<head>\n<title>$$refListGroupMembers{$list}{'name'}</title>\n";
+    print HTML "<html>\n<head>\n<title>$$refListGroupMembers{$list}{name}</title>\n";
     print HTML "<meta charset=\"UTF-8\">\n";
 		print HTML "<style>\n";
 		print HTML "table, th, td {\n";
@@ -6413,23 +6484,23 @@ sub createHTMLGroupMembers
     print HTML "<tr><th colspan=4 style=\"height: 50px; color:#003300; background-color:#EEEEEE; font-size: 14pt; font-variant: small-caps; font-weight: bold;\">\n";
     my $header;
     foreach my $listName (sort keys %listPages) {
-      if ($listName eq $$refListGroupMembers{$list}{'name'}) { $header .= "$listName - "; }
-      else                                                   { $header .= "<a href=\"./$listPages{$listName}\">$listName</a> - "; }
+      if ($listName eq $$refListGroupMembers{$list}{name}) { $header .= "$listName - "; }
+      else                                                 { $header .= "<a href=\"./$listPages{$listName}\">$listName</a> - "; }
     }
     chop($header); chop($header); chop($header);
     print HTML "$header</th></tr>\n";
-    print HTML "<tr><td colspan=4 style=\"text-align: center;\">Origin url: <a href=\"$$refListGroupMembers{$list}{'url'}\">$$refListGroupMembers{$list}{'url'}</a></td></tr>\n";
+    print HTML "<tr><td colspan=4 style=\"text-align: center;\">Origin url: <a href=\"$$refListGroupMembers{$list}{url}\">$$refListGroupMembers{$list}{url}</a></td></tr>\n";
     my $col = 0; # 2 columns per friend, first is profile icon, second is details
-    foreach my $no (sort {$a <=> $b} keys %{$$refListGroupMembers{$list}{'profilOrder'}}) {
+    foreach my $no (sort {$a <=> $b} keys %{$$refListGroupMembers{$list}{profilOrder}}) {
       if ($col == 0) { print HTML "<tr>"; }
-      if (my $id = $$refListGroupMembers{$list}{'profilOrder'}{$no}) {
-        if ($$refListGroupMembers{$list}{'profilImg'}{$id}) { print HTML "<td><img src=\"$$refListGroupMembers{$list}{'profilImg'}{$id}\" alt=\"\"></td>";      }
-        else                                                { print HTML "<td><img src=\"$$refListGroupMembers{$list}{'profilImageUrl'}{$id}\" alt=\"\"></td>"; }
+      if (my $id = $$refListGroupMembers{$list}{profilOrder}{$no}) {
+        if ($$refListGroupMembers{$list}{profilImg}{$id}) { print HTML "<td><img src=\"$$refListGroupMembers{$list}{profilImg}{$id}\" alt=\"\"></td>";      }
+        else                                              { print HTML "<td><img src=\"$$refListGroupMembers{$list}{profilImageUrl}{$id}\" alt=\"\"></td>"; }
         $col++;
-        print HTML "<td><strong>Name</strong>: $$refListGroupMembers{$list}{'profilName'}{$id}<br>";
+        print HTML "<td><strong>Name</strong>: $$refListGroupMembers{$list}{profilName}{$id}<br>";
         print HTML "<strong>Profile ID</strong>: $id</strong><br>";
-        print HTML "<strong>Profile url</strong>: <a href=\"$$refListGroupMembers{$list}{'profilUrl'}{$id}\" target=\"_blank\">$$refListGroupMembers{$list}{'profilUrl'}{$id}</a><br>";
-        print HTML "<strong>Details</strong>: $$refListGroupMembers{$list}{'profilDetails'}{$id}</td>";
+        print HTML "<strong>Profile url</strong>: <a href=\"$$refListGroupMembers{$list}{profilUrl}{$id}\" target=\"_blank\">$$refListGroupMembers{$list}{profilUrl}{$id}</a><br>";
+        print HTML "<strong>Details</strong>: $$refListGroupMembers{$list}{profilDetails}{$id}</td>";
         $col++;
       } else { print HTML "<td></td><td></td>"; $col += 2; }
       if ($col == 4) { print HTML "</tr>\n"; $col = 0; }
@@ -6456,10 +6527,10 @@ sub createTXTGroupMembers
   open(my $txt, ">:encoding(UTF-8)", $filename);
   print $txt "GROUP NAME\tGROUP URL\tPROFILE ID\tURL\tNAME\tDETAILS\n"; # Header
   foreach my $list (sort keys %{$refListGroupMembers}) {
-    foreach my $no (sort keys %{$$refListGroupMembers{$list}{'profilOrder'}}) {
-      my $id = $$refListGroupMembers{$list}{'profilOrder'}{$no};
-      print $txt "$$refListGroupMembers{$list}{'name'}\t$$refListGroupMembers{$list}{'url'}\t$id\t$$refListGroupMembers{$list}{'profilUrl'}{$id}".
-                 "\t$$refListGroupMembers{$list}{'profilName'}{$id}\t$$refListGroupMembers{$list}{'profilDetails'}{$id}\n";
+    foreach my $no (sort keys %{$$refListGroupMembers{$list}{profilOrder}}) {
+      my $id = $$refListGroupMembers{$list}{profilOrder}{$no};
+      print $txt "$$refListGroupMembers{$list}{name}\t$$refListGroupMembers{$list}{url}\t$id\t$$refListGroupMembers{$list}{profilUrl}{$id}".
+                 "\t$$refListGroupMembers{$list}{profilName}{$id}\t$$refListGroupMembers{$list}{profilDetails}{$id}\n";
     }
     $count++;
     $winPb->lblCount1->Text("$count/$nbrLists");
@@ -7052,7 +7123,8 @@ sub winChatThr
   if ($mech->uri() =~ /facebook.com/) {
     my $currURL  = $mech->uri();
     if ($currURL =~ /https:\/\/www.facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
-        $currURL =~ /https:\/\/www.facebook.com\/messages\/t\/([^\/\?]+)\/?/) {
+        $currURL =~ /https:\/\/www.facebook.com\/messages\/t\/([^\/\?]+)\/?/ or
+				$currURL =~ /https:\/\/www.facebook.com\/messages\/archived\/t\/([^\/\?]+)\/?/) {
       my $title = $1;
       $title =~ s/[\#\<\>\:\"\/\\\|\?\*]/_/g;
       $winChat->tfChatName->Text("$title - $STR{'chat'}");
@@ -7353,7 +7425,7 @@ sub dumpChat
     if (!-d $tmpDir) { mkdir($tmpDir); }
     my $status;
 		$winPb->lblPbCurr1->Text($STR{'saveTab'}.'...');
-		if (!-T $htmlPage) { &saveCurrentTab(\$mech, $normalMode, $htmlPage, $tmpDir); }
+		if (!-T $htmlPage or !$winConfig->chDelTempFiles->Checked()) { &saveCurrentTab(\$mech, $normalMode, $htmlPage, $tmpDir); }
 		$winPb->lblPbCurr2->Text('');
     $step = 2; # Page have been saved
 		$winPb->pbWinPb1->StepIt();
@@ -7438,7 +7510,7 @@ sub dumpChat
 										if (($dateE and $date and $date > $dateE) or ($dateE and !$date)) { $keepMsg = 0; }
 										if ($keepMsg) {
 											$winPb->lblPbCurr2->Text("$STR{'parsingMsg'} $dateStr...");
-											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $date if $date;
+											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{date} = $date if $date;
 											# Sender name and message time
 											if ($msgHeader =~ /data-tooltip-content="([^\"]+)"/) {
 												my $time = $1;
@@ -7456,38 +7528,38 @@ sub dumpChat
 													$dt->set_year($year);
 												}
 												if ($dt) {
-													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $dt->epoch();
-													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $dt->hms;
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{date} = $dt->epoch();
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{time} = $dt->hms;
 												} else {
-													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $time;
+													$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{time} = $time;
 												}
 											}
 											# Sender name only
 											if ($msgHeader =~ /alt="([^\"]+)"/) {
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderName'} = $1;
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{senderName} = $1;
 												if (!$interlocutor) { $interlocutor = $1; }
 											}
 											# Sender image url or filename
 											if ($msgHeader =~ /src="([^\"]+)"/) {
-												my $profileImgSRC = $1;
+												my $encProfileImgSRC = encode('utf8', $1);
 												my $profileImg;
 												if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
-												if    ($profileImgSRC =~ /\/([^\/\?]+)\?/) { $profileImg = $1;             }
-												elsif ($profileImgSRC =~ /\.jpg$/)         { $profileImg = $profileImgSRC; }
+												if    ($encProfileImgSRC =~ /\/([^\/\?]+)\?/) { $profileImg = $1;                }
+												elsif ($encProfileImgSRC =~ /\.jpg$/)         { $profileImg = $encProfileImgSRC; }
 												if ($normalMode and -e "$tmpDir\\$profileImg" and !-e "$baseDir\\images_$chatName\\$profileImg") {
 													rcopy("$tmpDir\\$profileImg", "$baseDir\\images_$chatName\\$profileImg");
 												} elsif ($normalMode and !-e "$baseDir\\images_$chatName\\$profileImg" and
-																 !-e "$baseDir\\images_$chatName\\$profileImg" and $profileImgSRC) {
-													$mech->save_url($profileImgSRC, "$baseDir\\images_$chatName\\$profileImg");
-												} else { $profileImg = $profileImgSRC; }
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderImg'} = $profileImg;
+																 !-e "$baseDir\\images_$chatName\\$profileImg" and $encProfileImgSRC) {
+													$mech->save_url($encProfileImgSRC, "$baseDir\\images_$chatName\\$profileImg");
+												} else { $profileImg = $encProfileImgSRC; }
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{senderImg} = $profileImg;
 											}
 											# Parse message
 											my $strCount = 0;
 											foreach my $msg (@msgContent) {
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} .= &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{messages} .= &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
 											}
-											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} =~ s/<br>$//;
+											$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{messages} =~ s/<br>$//;
 											$nbrMessagesDone++;
 										}
 									# Sender is me
@@ -7510,8 +7582,8 @@ sub dumpChat
 											if (($dateE and $date and $date > $dateE) or ($dateE and !$date)) { $keepMsg = 0; }
 											if ($keepMsg) {
 												$winPb->lblPbCurr2->Text("$STR{'parsingMsg'} $dateStr...");
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'senderName'} = $STR{'Me'};
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $date if $date;
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{senderName} = $STR{'Me'};
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{date} = $date if $date;
 												if ($msg =~ /data-tooltip-content="([^\"]+)"/) { # Message time
 													my $time = $1;
 													my $dt;
@@ -7528,14 +7600,14 @@ sub dumpChat
 														$dt->set_year($year);
 													}
 													if ($dt) {
-														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'date'} = $dt->epoch();
-														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $dt->hms;
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{date} = $dt->epoch();
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{time} = $dt->hms;
 													} else {
-														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'time'} = $time;
+														$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{time} = $time;
 													}
 												}
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} = &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
-												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{'messages'} =~ s/<br>$//;
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{messages} = &parseMessage($msg, $normalMode, $baseDir, $tmpDir, $chatName, \$mech);
+												$$refMessages{$nbrPartsDone}{$nbrMessagesDone}{messages} =~ s/<br>$//;
 												$nbrMessagesDone++;
 											}
 											$msgCount++;
@@ -7619,9 +7691,9 @@ sub parseMessage
 		if ($message =~ /img[^\>]+src="[^\"]+"/) {
 			while ($message =~ /(<img[^\>]+class="[^\"]+"[^\>]+src="[^\"]+"[^\>]*>)/ or
 						 $message =~ /(<img[^\>]+src="[^\"]+"[^\>]+class="[^\"]+"[^\>]*>)/) {
-				my $emoticonTag = $1;
+				my $emoticonTag = encode('utf8', $1);
 				if ($emoticonTag =~ /src="([^\"]+)"/) {
-					my $emotionSRC = $1;
+					my $emotionSRC = encode('utf8', $1);
 					my $emoticonFn;
 					if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
 					if    ($emotionSRC =~ /\/([^\/\?]+)\?/) { $emoticonFn = $1;          }
@@ -7683,7 +7755,7 @@ sub parseMessage
 			my $sharedLinkTitle;
 			my $sharedLinkTxt;
 			if ($extract2 =~ /<div[^\>]+_4ik6[^\>]+>([^\<]+)/) {
-				$sharedLinkTitle = $1;
+				$sharedLinkTitle = encode('utf8', $1);
 				$sharedLinkTxt  .= "$STR{'sharedLink'}: <a href=\"$sharedLinkUrl\" target=\"_blank\">$sharedLinkTitle</a><br><br>";
 				$extract2           = &truncateText($extract2, length($sharedLinkTitle), $sharedLinkTitle);
 				if ($extract2 =~ /<div[^\>]+_4ik6[^\>]+>([^\<]+)/) { $sharedLinkTxt .= $1; }
@@ -7713,7 +7785,7 @@ sub parseMessage
 	if ($msgCode =~ /<div[^\>]+_3thf[^\>]+>(.+)<\/div>/) {
 		my $extract = $1;
 		if ($extract =~ /src="([^\"]+)"/) {
-			my $imgSRC = $1;
+			my $imgSRC = encode('utf8', $1);
 			if ($extract =~ /<div[^\>]+_1hm6[^\>]+>(.+?)<\/div>/) {
 				my $text = $1;
 				my $imgName;
@@ -7752,7 +7824,7 @@ sub parseMessage
 			}
 			# Download the image ?
 			if ($normalMode and $imgURL =~ /\/([^\/\?]+)(?:\?|$)/) {
-				my $imgName = $1;
+				my $imgName = encode('utf8', $1);
 				if (!-d "$baseDir\\images_$chatName") { mkdir("$baseDir\\images_$chatName"); }
 				$$refMech->save_url($imgURL, "$baseDir\\images_$chatName\\$imgName");
 				$message .= "<img src=\"images_$chatName\\$imgName\" alt=\"\"><br>";
@@ -7771,7 +7843,7 @@ sub parseMessage
 			$message .= $1;
 			while ($message =~ /(<img[^\>]+class="[^\"]+"[^\>]+src="[^\"]+"[^\>]*>)/ or
 						 $message =~ /(<img[^\>]+src="[^\"]+"[^\>]+class="[^\"]+"[^\>]*>)/) {
-				my $emojiTag = $1;
+				my $emojiTag = encode('utf8', $1);
 				if ($emojiTag =~ /src="([^\"]+)"/) {
 					my $emojiSRC = $1;
 					my $emojiFn;
@@ -7806,7 +7878,7 @@ sub parseMessage
 				my $extract3 = $1;
 				my $extract4 = $2;
 				if ($extract3 =~ /style="background-image: ?url\(&quot;(.+?)&quot;\);/) {
-					my $picSRC = $1;
+					my $picSRC = encode('utf8', $1);
 					$picSRC =~ s/&amp;/&/g;
 					my $picFn;
 					if    ($picSRC =~ /\/([^\/\?]+)\?/		) { $picFn = $1;      }
@@ -7814,8 +7886,9 @@ sub parseMessage
 					# Full size
 					my $picURL;
 					if ($winChat->chDownloadImg->Checked() and $extract4 =~ /href="([^\"]+)"/) {
-						$picURL = $1;
+						$picURL = encode('utf8', $1);
 						$picURL =~ s/&amp;/&/g;
+						if ($picURL =~ /\?u=([^\&]+)&/) { $picURL = unescape($1); }
 						$$refMech->save_url($picURL, "$baseDir\\images_$chatName\\$picFn");
 					}
 					# Normal size
@@ -7837,15 +7910,17 @@ sub parseMessage
 		if ($extract2 =~ /(<img[^\>]+(?:_5pf5|_mxz)[^\>]+>.+?<\/a>)/) {
 			$message .= $1;
 			if ($message =~ /src="([^\"]+)"/) {
-				my $picSRC = $1;
+				my $picSRC = encode('utf8', $1);
+				if ($picSRC =~ /\?u=([^\&]+)&/) { $picSRC = unescape($1); }
 				my $picFn;
 				if    ($picSRC =~ /\/([^\/\?]+)\?/		) { $picFn = $1;      }
 				elsif ($picSRC =~ /\.(?:jpg|png|gif)$/) { $picFn = $picSRC; }
 				# Full size
 				my $picURL;
 				if ($winChat->chDownloadImg->Checked() and $message =~ /href="([^\"]+)"/) {
-					$picURL = $1;
+					$picURL = encode('utf8', $1);
 					$picURL =~ s/&amp;/&/g;
+					if ($picURL =~ /\?u=([^\&]+)&/) { $picURL = unescape($1); }
 					$$refMech->save_url($picURL, "$baseDir\\images_$chatName\\$picFn");
 				}
 				# Normal size
@@ -7868,11 +7943,12 @@ sub parseMessage
 	# Attached document
 	if ($msgCode =~ /<a[^\>]+_2uf4.+?<\/a>/) {
 		while ($msgCode =~ /(<a[^\>]+_2uf4.+?)<\/a>/) {
-			my $extract = $1;
+			my $extract = encode('utf8', $1);
 			my $attachedURL;
 			my $attachedName;
-			if ($extract =~ /href="([^\"]+)"/) { $attachedURL  = $1; $attachedURL =~ s/&amp;/&/g; }
-			if ($extract =~ /-->([^\<]+)<!--/) { $attachedName = $1; }
+			if    ($extract =~ /href="([^\"]+)"/) { $attachedURL  = $1; $attachedURL =~ s/&amp;/&/g; }
+			if    ($extract =~ /-->([^\<]+)<!--/) { $attachedName = $1; }
+			elsif ($extract =~ />([^\<]+)$/     ) { $attachedName = $1; }
 			# Download attached document
 			if ($winChat->chDownloadAD->Checked() and $attachedURL and $attachedName) {
 				if (!-d "$baseDir\\docs_$chatName") { mkdir("$baseDir\\docs_$chatName"); }
@@ -7893,7 +7969,7 @@ sub parseMessage
 	}
 	# Video
 	if ($msgCode =~ /(<video[^\>]+_ox1.+?)<\/video>/) {
-		my $extract = $1;
+		my $extract = encode('utf8', $1);
 		if ($extract =~ /src="([^\"]+)"/) {
 			my $videoImgUrl = $1; # Image filename
 			# Create result code
@@ -7979,50 +8055,50 @@ sub createDumpChatReport
 	foreach my $msg (sort { $a <=> $b } keys %{$refMessages}) {
 		foreach my $partMsg (sort { $a <=> $b } keys %{$$refMessages{$msg}}) {
 			print HTML "<tr>\n";
-			my $isMe = 1 if $$refMessages{$msg}{$partMsg}{'senderName'} eq $STR{'Me'};
+			my $isMe = 1 if $$refMessages{$msg}{$partMsg}{senderName} eq $STR{'Me'};
 			# Image
 			my $imgTag;
 			if (!$isMe) {
 				print HTML "<td style=\"background-color:#E0E0E0;text-align: center;vertical-align: center;\">";
 				my $imgPath;
-				if ($normalMode)		 { $imgPath = "images_$chatName\\$$refMessages{$msg}{$partMsg}{'senderImg'}"; 		 }
-				else 			 					 { $imgPath = "$$refMessages{$msg}{$partMsg}{'senderImg'}";                   	   }
+				if ($normalMode)		 { $imgPath = "images_$chatName\\$$refMessages{$msg}{$partMsg}{senderImg}"; 		   }
+				else 			 					 { $imgPath = "$$refMessages{$msg}{$partMsg}{senderImg}";                   	     }
 				if ($imgPath ne '-') { $imgTag  = "<img src=\"$imgPath\" alt=\"\" style=\"width:32px;height:32px;\">"; }
 				else                 { $imgTag  = '-'; };
 			}
 			else { print HTML "<td>"; }
-			if ($$refMessages{$msg}{$partMsg}{'senderImg'}) { print HTML "$imgTag</td>\n"; }
+			if ($$refMessages{$msg}{$partMsg}{senderImg}) { print HTML "$imgTag</td>\n"; }
 			else { print HTML "</td>\n"; }
 			# Name
 			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
 			else				{ print HTML "<td>"; }
-			if ($$refMessages{$msg}{$partMsg}{'senderName'}) { print HTML "$$refMessages{$msg}{$partMsg}{'senderName'}</td>\n"; }
+			if ($$refMessages{$msg}{$partMsg}{senderName}) { print HTML "$$refMessages{$msg}{$partMsg}{senderName}</td>\n"; }
 			else { print HTML "</td>\n"; }
 			# Date
 			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
 			else				{ print HTML "<td>"; }
-			if ($$refMessages{$msg}{$partMsg}{'date'}) {
-				my $dateStr = &formatDate($$refMessages{$msg}{$partMsg}{'date'});
+			if ($$refMessages{$msg}{$partMsg}{date}) {
+				my $dateStr = &formatDate($$refMessages{$msg}{$partMsg}{date});
 				my $date = (split(/ /, $dateStr))[0];
 				print HTML "$date</td>\n";
 			} else { print HTML "</td>\n"; }
 			# Time
 			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
 			else				{ print HTML "<td>"; }
-			if ($$refMessages{$msg}{$partMsg}{'time'}) {
-				my $senderName = $$refMessages{$msg}{$partMsg}{'senderName'};
-				if ($senderName and $$refMessages{$msg}{$partMsg}{'time'} =~ /$senderName /) { $$refMessages{$msg}{$partMsg}{'time'} =~ s/$senderName //; }
-				if ($$refMessages{$msg}{$partMsg}{'time'} =~ /(\w+ \d{1,2}, \d{4} \d{1,2}:\d{2} [ap]m)/) {
+			if ($$refMessages{$msg}{$partMsg}{time}) {
+				my $senderName = $$refMessages{$msg}{$partMsg}{senderName};
+				if ($senderName and $$refMessages{$msg}{$partMsg}{time} =~ /$senderName /) { $$refMessages{$msg}{$partMsg}{time} =~ s/$senderName //; }
+				if ($$refMessages{$msg}{$partMsg}{time} =~ /(\w+ \d{1,2}, \d{4} \d{1,2}:\d{2} [ap]m)/) {
 					my $strp = DateTime::Format::Strptime->new(pattern => '%B %e, %Y %l:%M %p');
 					my $dt   = $strp->parse_datetime($1);
-					$$refMessages{$msg}{$partMsg}{'time'} = $dt->hms;
+					$$refMessages{$msg}{$partMsg}{time} = $dt->hms;
 				}
-				print HTML "$$refMessages{$msg}{$partMsg}{'time'}</td>\n";
+				print HTML "$$refMessages{$msg}{$partMsg}{time}</td>\n";
 			} else { print HTML "</td>\n"; }
 			# Messages
 			if (!$isMe) { print HTML "<td style=\"background-color:#E0E0E0\">"; }
 			else				{ print HTML "<td>"; }
-			if ($$refMessages{$msg}{$partMsg}{'messages'})  { print HTML "$$refMessages{$msg}{$partMsg}{'messages'}</td>\n"; }
+			if ($$refMessages{$msg}{$partMsg}{messages})  { print HTML "$$refMessages{$msg}{$partMsg}{messages}</td>\n"; }
 			else { print HTML "</td>\n"; }
 			print HTML "</tr>\n";
 			$count++;
@@ -8368,7 +8444,7 @@ sub dumpVocalMsg
 			if ($msg->{href} =~ /(audioclip[^\.]+\.mp4)/) {
 				my $name = $1;
 				if ($msg->{href} =~ /u=([^\&]+)\&/) {
-					$$refListVocalMsg{$name}{'url'} = unescape($1);
+					$$refListVocalMsg{$name}{url} = unescape($1);
 				}
 			}
 		}
@@ -8382,7 +8458,7 @@ sub dumpVocalMsg
 				if ($msg->{href} =~ /(audioclip[^\.]+\.mp4)/) {
 					my $name = $1;
 					if ($msg->{href} =~ /u=([^\&]+)\&/) {
-						$$refListVocalMsg{$name}{'url'} = unescape($1);
+						$$refListVocalMsg{$name}{url} = unescape($1);
 					}
 				}
 			}
@@ -8409,9 +8485,9 @@ sub dumpVocalMsg
 				my $vmFilename = "$saveDir\\vm_$vocalMsgName\\$name";
 				if (!-e $vmFilename and $$refListVocalMsg{$name}{'url'}) {
 					$winPb->lblPbCurr2->Text("$STR{'downloading'} $name...");
-					$mech->save_url($$refListVocalMsg{$name}{'url'}, $vmFilename);
+					$mech->save_url($$refListVocalMsg{$name}{url}, $vmFilename);
 				}
-				$$refListVocalMsg{$name}{'path'} = "vm_$vocalMsgName\\$name";
+				$$refListVocalMsg{$name}{path} = "vm_$vocalMsgName\\$name";
 				$nbrVMDone++;
 			}
 			$k++;
@@ -8463,12 +8539,12 @@ sub dumpVocalMsg
 		foreach my $name (sort keys %{$refListVocalMsg}) {
 			print HTML "<tr>";
 			print HTML "<td>$name</td>";
-			print HTML "<td>$$refListVocalMsg{$name}{'url'}</td>";
+			print HTML "<td>$$refListVocalMsg{$name}{url}</td>";
 			if ($name =~ /-(\d{10})/) {
 				my $dt = DateTime->from_epoch(epoch => $1);
 				print HTML "<td>" . $dt->strftime('%F %T') . "</td>";
 			} else { print HTML "<td></td>"; }
-			if ($$refListVocalMsg{$name}{'path'}) {
+			if ($$refListVocalMsg{$name}{path}) {
 				print HTML "<td><audio controls><source src=\"" . $$refListVocalMsg{$name}{'path'} . "\" type=\"audio/mp4\"></audio></td>";
 			}
 			print HTML "</tr>\n";
@@ -9075,11 +9151,11 @@ sub formatDate
   my ($s,$min,$hr,$d,$m,$y,$weekday,$ha,$isDST) = localtime($unixtime);
   $y += 1900;
   $m++;
-  $m   = $m   < 10 ? $m   = "0".$m   : $m;
-  $d   = $d   < 10 ? $d   = "0".$d   : $d;
-  $hr  = $hr  < 10 ? $hr  = "0".$hr  : $hr;
-  $min = $min < 10 ? $min = "0".$min : $min;
-  $s   = $s   < 10 ? $s   = "0".$s   : $s;
+  $m   = $m   < 10 ? $m   = '0'.$m   : $m;
+  $d   = $d   < 10 ? $d   = '0'.$d   : $d;
+  $hr  = $hr  < 10 ? $hr  = '0'.$hr  : $hr;
+  $min = $min < 10 ? $min = '0'.$min : $min;
+  $s   = $s   < 10 ? $s   = '0'.$s   : $s;
   return("$y-$m-$d $hr:$min:$s");
 
 }  #--- End formatDate
@@ -9218,7 +9294,6 @@ sub loadConfig
   else                                              { $winVocalMsg->chSaveVocalMsgDir->Checked(1);  $$refConfig{'REMEMBER_SAVE_VM'}     = 1;  } # Default is checked
   if (exists($$refConfig{'VM_OPEN_OUTPUT'}))   			{ $winVocalMsg->chVocalMsgOpenOutput->Checked($$refConfig{'VM_OPEN_OUTPUT'});             }
   else                                              { $winVocalMsg->chVocalMsgOpenOutput->Checked(1); $$refConfig{'VM_OPEN_OUTPUT'}     = 1;  } # Default is checked
-  
   &saveConfig($refConfig);
 
 }  #--- End loadConfig
@@ -9248,13 +9323,17 @@ sub scrollLikePage
 {
   # Local variables
   my ($refMech, $time) = @_;
-  while (1) {
-    # Click on "See more" button and wait for content to load
+	my $end = 0;
+  while (!$end) { # Click on "See more" button and wait for content to load
     sleep($time);
     my $seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
     if ($seeMore) {
       $seeMore->click();
-    } else { last; } # End
+    } else {
+			sleep($time); # End of the page, done ? Really ? Wait a bit more
+			$seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
+			if (!$seeMore) { $end++; }
+		}
   }
 
 }  #--- End scrollLikePage
@@ -9265,13 +9344,17 @@ sub scrollVPostsPage
 {
   # Local variables
   my ($refMech, $time) = @_;
-  while (1) {
-    # Click on "See more" button and wait for content to load
+	my $end = 0;
+  while (!$end) { # Click on "See more" button and wait for content to load
     sleep($time);
     my $seeMore = $$refMech->selector('a.pam.uiBoxWhite.topborder.uiMorePagerPrimary', any => 1);
     if ($seeMore) {
       $seeMore->click();
-    } else { last; } # End
+    } else {
+			sleep($time); # End of the page, done ? Really ? Wait a bit more
+			$seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
+			if (!$seeMore) { $end++; }
+		}
   }
 
 }  #--- End scrollVPostsPage
@@ -9283,12 +9366,10 @@ sub scrollAlbumPage
   # Local variables
   my ($refMech, $time) = @_;
   while (1) {
-    # End of the page ?
-    sleep($time);
+    sleep($time); # End of the page ?
     my @parts = $$refMech->selector('div._30f');
     if (scalar(@parts) > 1) { return(1); } # End of the page
-    # Scrolling down and wait for content to load
-    else {
+    else { # Scrolling down and wait for content to load
       $$refMech->eval_in_page('window.scrollTo(0,document.body.scrollHeight)');
       sleep($time);
     }
@@ -9304,7 +9385,7 @@ sub scrollFriendPage
   my ($refMech, $time) = @_;
   while (1) {
 		my ($end, $type) = $$refMech->eval_in_page('(window.innerHeight + window.scrollY) >= document.body.offsetHeight');
-		if ($end == 1) { # End of the page, done ? Really ? With a bit more
+		if ($end == 1) { # End of the page, done ? Really ? Wait a bit more
 			sleep($time);
 			$$refMech->eval_in_page('window.scrollTo(0,document.body.scrollHeight)');
 			($end, $type) = $$refMech->eval_in_page('(window.innerHeight + window.scrollY) >= document.body.offsetHeight');
@@ -9329,8 +9410,7 @@ sub scrollToBottom
     my ($d, $m, $y) = $winConfig->dtMaxScrollByDate->GetDate();
     $maxDate        = timelocal(0,0,0,$d,$m-1,$y); # Store in Unixtime format
   } else { $maxScroll = $winConfig->tfMaxScroll->Text(); }
-  while (1) {
-    # Scrolling down and wait for content to load
+  while (1) { # Scrolling down and wait for content to load
     $$refMech->eval_in_page('window.scrollTo(0,document.body.scrollHeight)');
     $count++;
     sleep($time);
@@ -9344,7 +9424,7 @@ sub scrollToBottom
     } elsif ($maxScroll and $count >= $maxScroll) { return(1); } # Stop by page
     # Evaluate end of the page
     my ($end, $type) = $$refMech->eval_in_page('(window.innerHeight + window.scrollY) >= document.body.offsetHeight');
-    if ($end == 1) { # End of the page, done ? Really ? With a bit more
+    if ($end == 1) { # End of the page, done ? Really ? Wait a bit more
       sleep($time);
       $$refMech->eval_in_page('window.scrollTo(0,document.body.scrollHeight)');
       ($end, $type) = $$refMech->eval_in_page('(window.innerHeight + window.scrollY) >= document.body.offsetHeight');
@@ -9402,7 +9482,6 @@ sub expandContent
     my @links = $$refMech->selector('div._43f9 a');
     foreach (@links) { $_->click; }
   }
-  
 
 }  #--- End expandContent
 
