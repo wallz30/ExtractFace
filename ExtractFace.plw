@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-06-03
-my $VERSION     = "5.2.3";
+# Modified      : 2017-06-06
+my $VERSION     = "5.2.4";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -6253,14 +6253,14 @@ sub dumpGroupMembers
 					} else {
 						my $currCatUrl = $mech->uri();
 						if (my $membersPageName = $mech->selector('a._5bv4', any => 1)) {
-							my $url = $membersPageName->{href};
+							my $url = quotemeta($membersPageName->{href});
 							if ($currCatUrl =~ /$url/ and $membersPageName->{innerHTML} =~ /^(\w+)/) {
 								$$refCatGroupMembers{$cat}{name} = $1;
 								$currShownCat = $$refCatGroupMembers{$cat}{name};
 							}
 						}
 						if (!$currShownCat and my $adminsPageName = $mech->selector('a._5bv3', any => 1)) {
-							my $url = $adminsPageName->{href};
+							my $url = quotemeta($adminsPageName->{href});
 							if ($currCatUrl =~ /$url/ and $adminsPageName->{innerHTML}  =~ /^(\w+)/) {
 								$$refCatGroupMembers{$cat}{name} = $1;
 								$currShownCat = $$refCatGroupMembers{$cat}{name};
