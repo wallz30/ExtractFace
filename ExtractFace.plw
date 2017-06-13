@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-06-06
-my $VERSION     = "5.2.4";
+# Modified      : 2017-06-13
+my $VERSION     = "5.2.5";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -2361,25 +2361,25 @@ sub validAlbumPage
   if ($currURL !~ /photos_albums$/ and $currURL !~ /collection_token=\w+%\w+%3A6$/ and
 			$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/) {
     # Trying to get the good page
-    if ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/groups\/([^\/]+)/) { # Album from a Group page (public)
+    if ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/([^\/]+)/) { # Album from a Group page (public)
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/groups/$1/photos/?filter=albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
-		} elsif ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Business page
+		} elsif ($winAlbums->chAlbumGroup->Checked() and $currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/]+)/) { # Business page
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/$1/photos/?tab=albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
-		} elsif ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { # Profile with id
+		} elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { # Profile with id
       my $profilID = $1;
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/profile.php?id=$profilID&sk=photos&collection_token=$profilID%3A2305272732%3A6";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
-    } elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\?\/]+)(?:\/photos_albums)?\?lst=\d+%3A\d+%3A\d+/) { # Profile with id
+    } elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\?\/]+)(?:\/photos_albums)?\?lst=\d+%3A\d+%3A\d+/) { # Profile with id
       my $profilID = $1;
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/$profilID/photos_albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
-    } elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/]+)/) { # Other profile
+    } elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/]+)/) { # Other profile
       $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
       my $goodURL = "https://www.facebook.com/$1/photos_albums";
       ($currURL, $currTitle) = &loadPage($refMech, $goodURL);
@@ -2396,10 +2396,10 @@ sub validAlbumPage
     }
   # You are in the right page, scroll down to load the whole page
   } else {
-    if ($currURL and $currURL =~ /https:\/\/www.facebook.com\//) {
-      if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
-			elsif ($currURL =~ /https:\/\/www.facebook.com\/groups\/([^\/\?]+)/        ) { $currTitle = $1; }
-      elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
+    if ($currURL and $currURL =~ /https:\/\/(?:www|web).facebook.com\//) {
+      if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
+			elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/([^\/\?]+)/        ) { $currTitle = $1; }
+      elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
     }
     $winAlbums->lblInProgress->Text($STR{'loadAlbum'}.'...');
     &scrollPage($refMech, $CONFIG{'TIME_TO_WAIT'});
@@ -2868,8 +2868,8 @@ sub dumpAlbums
 											# Download the video
 											if ($extractData =~ /href="([^\"]+)"/) {
 												my $newUrl = $1;
-												if ($newUrl !~ /^http/) { $newUrl =  'https://m.facebook.com'.$newUrl; }
-												else                    { $newUrl =~ s/\/\/www.facebook/\/\/m.facebook/}
+												if ($newUrl !~ /^http/) { $newUrl =  'https://m.facebook.com'.$newUrl;         }
+												else                    { $newUrl =~ s/\/\/(?:www|web).facebook/\/\/m.facebook/}
 												$mechVideo->get($newUrl, synchronize => 0);
 												sleep($CONFIG{'TIME_TO_WAIT'}+1);
 												my $videoMobile = "$saveDir\\$mainAlbumTitle\\$albumDir\\temp\\mobile.html";
@@ -3402,11 +3402,11 @@ sub winFriendsThr
     my $currTitle;
     if ($currURL !~ /\/friends\/?$/ and $currURL !~ /\&sk=friends/) {
       # Trying to get the good page
-      if ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) {
+      if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) {
         my $profilID = $1;
         my $goodURL = "https://www.facebook.com/profile.php?id=$profilID&sk=friends";
         ($currURL, $currTitle) = &loadPage(\$mech, $goodURL);
-      } elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/) {
+      } elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/) {
         my $goodURL = "https://www.facebook.com/$1/friends";
         ($currURL, $currTitle) = &loadPage(\$mech, $goodURL);
       }
@@ -3418,15 +3418,15 @@ sub winFriendsThr
         $winFriends->lblInProgress->Text('');
         threads->exit();
       } else {
-        if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
-        elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
+        if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
+        elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
         $currTitle =~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
         $winFriends->tfFriendName->Text("$currTitle - $STR{'friends'}");
       }
     # You are in the right page
     } else {
-      if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
-      elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
+      if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
+      elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
       $currTitle =~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
       $winFriends->tfFriendName->Text("$currTitle - $STR{'friends'}");
     }
@@ -4318,7 +4318,7 @@ sub winEventThr
     # Valid current page
     my $currURL = $mech->uri();
     my $idEvent;
-    if ($currURL =~ /https:\/\/www.facebook.com\/events\/(\d+)\/?/) { $idEvent = $1; }
+    if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/events\/(\d+)\/?/) { $idEvent = $1; }
     else {
       $winEvent->btnEventOk->Disable();
       Win32::GUI::MessageBox($winEvent, $STR{'warn3'}, $STR{'warn2T'}, 0x40010);
@@ -4906,8 +4906,8 @@ sub winContribThr
   my $currURL  = $mech->uri();
   if ($currURL =~ /facebook.com/) {
     my $title;
-		if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $title = $1; }
-    elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $title = $1; }
+		if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $title = $1; }
+    elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $title = $1; }
     if ($title =~ /#$/) { chop($title); }
     $winContrib->tfContribName->Text($title);
   } else {
@@ -5790,7 +5790,7 @@ sub winGroupMembersThr
 		my $idGroup;
 		my $newURL;
     # Valid current page
-		if ($currURL =~ /https:\/\/www.facebook.com\/groups\/(\w+)/) {
+		if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/(\w+)/) {
 			$idGroup = $1;
 			my $load = 1;
 			if (my $pageSel = $mech->selector('div.uiHeader.uiHeaderTopAndBottomBorder.uiHeaderSection a', any => 1)) {
@@ -5813,15 +5813,15 @@ sub winGroupMembersThr
 				sleep($CONFIG{'TIME_TO_WAIT'});
 				$newURL = sprintf($mech->uri());
 			}
-		} elsif ($currURL =~ /https:\/\/www.facebook.com\/browse\/group_members\/\?gid=(\w+)/) {
+		} elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/browse\/group_members\/\?gid=(\w+)/) {
 			$idGroup = $1;
 			$type    = 1;
 			$newURL  = $currURL;
 		}
 		# Right page, get the values
-    if ($type and $newURL and ($type == 1 and $newURL =~ /https:\/\/www.facebook.com\/browse\/group_members\/\?gid=$idGroup/) or
-															($type == 2 and (($newURL =~ /https:\/\/www.facebook.com\/groups\/$idGroup\/members\/?/) or
-																							 ($newURL =~ /https:\/\/www.facebook.com\/groups\/$idGroup\/admins\/?/)))) {
+    if ($type and $newURL and ($type == 1 and   $newURL =~ /https:\/\/(?:www|web).facebook.com\/browse\/group_members\/\?gid=$idGroup/) or
+															($type == 2 and (($newURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/$idGroup\/members\/?/) or
+																							 ($newURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/$idGroup\/admins\/?/)))) {
 			$winGroupMembers->tfGroupMembersName->Text($idGroup);
 			my %categories;
 			# Type with single list
@@ -7122,9 +7122,9 @@ sub winChatThr
   }
   if ($mech->uri() =~ /facebook.com/) {
     my $currURL  = $mech->uri();
-    if ($currURL =~ /https:\/\/www.facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
-        $currURL =~ /https:\/\/www.facebook.com\/messages\/t\/([^\/\?]+)\/?/ or
-				$currURL =~ /https:\/\/www.facebook.com\/messages\/archived\/t\/([^\/\?]+)\/?/) {
+    if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
+        $currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/([^\/\?]+)\/?/ or
+				$currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/archived\/t\/([^\/\?]+)\/?/) {
       my $title = $1;
       $title =~ s/[\#\<\>\:\"\/\\\|\?\*]/_/g;
       $winChat->tfChatName->Text("$title - $STR{'chat'}");
@@ -7691,7 +7691,7 @@ sub parseMessage
 		if ($message =~ /img[^\>]+src="[^\"]+"/) {
 			while ($message =~ /(<img[^\>]+class="[^\"]+"[^\>]+src="[^\"]+"[^\>]*>)/ or
 						 $message =~ /(<img[^\>]+src="[^\"]+"[^\>]+class="[^\"]+"[^\>]*>)/) {
-				my $emoticonTag = encode('utf8', $1);
+				my $emoticonTag = $1; # encode('utf8', $1); 
 				if ($emoticonTag =~ /src="([^\"]+)"/) {
 					my $emotionSRC = encode('utf8', $1);
 					my $emoticonFn;
@@ -9132,9 +9132,9 @@ sub loadPage
   sleep($CONFIG{'TIME_TO_WAIT'});
   my $currURL = $$refMech->uri();
   my $currTitle;
-  if ($currURL and $currURL =~ /https:\/\/www.facebook.com\//) {
-    if    ($currURL =~ /https:\/\/www.facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
-    elsif ($currURL =~ /https:\/\/www.facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
+  if ($currURL and $currURL =~ /https:\/\/(?:www|web).facebook.com\//) {
+    if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
+    elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
   }
   return($currURL, $currTitle);
 
