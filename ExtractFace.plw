@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-06-13
-my $VERSION     = "5.2.5";
+# Modified      : 2017-07-06
+my $VERSION     = "5.2.6";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -3881,7 +3881,7 @@ sub dumpFriends
                 $id  = $2;
               }
               # Img
-              if ($friend =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" /) { $img = $1; }
+              if ($friend =~ /<img class="_s0[^\"]+_r[wv] img" src="([^\"]+)" /) { $img = $1; }
               # Minimum details required
               if ($url and $id and $img) {
                 $winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
@@ -6331,7 +6331,7 @@ sub dumpGroupMembers
 								$id  = $2;
 							}
 							# Img
-							if ($member =~ /<img class="_s0 _r[wv] img" src="([^\"]+)" /) { $img = $1; }
+							if ($member =~ /<img class="_s0[^\"]+_r[wv] img" src="([^\"]+)" /) { $img = $1; }
 							# Minimum details required
 							if ($url and $id and $img and !exists($$refCatGroupMembers{$cat}{profilUrl}{$id})) {
 								$winPb->lblPbCurr2->Text("$STR{'friendsExtract'} $id...");
