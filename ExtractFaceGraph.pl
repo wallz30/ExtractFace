@@ -7,10 +7,10 @@
 # CodePlex			        : https://extractface.codeplex.com
 # GitHub				        : https://github.com/arioux/ExtractFace
 # Creation              : 2015-08-01
-# Modified              : 2016-09-08
+# Modified              : 2017-07-08
 # Author                : Alain Rioux (admin@le-tools.com)
 #
-# Copyright (C) 2015-2016  Alain Rioux (le-tools.com)
+# Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

@@ -1,6 +1,6 @@
 ExtractFace
-Description 	: Dump Facebook stuff for analysis or reporting purposes.
-Author 				: Alain Rioux (admin@le-tools.com)
+Description		: Dump Facebook stuff for analysis or reporting purposes.
+Author				: Alain Rioux (admin@le-tools.com)
 WebSite				: http://le-tools.com/ExtractFace.html
 Documentation	: http://le-tools.com/ExtractFaceDoc.html
 CodePlex			: https://extractface.codeplex.com
@@ -10,8 +10,7 @@ GitHub				: https://github.com/arioux/ExtractFace
 Development
 -----------
 
-ExtractFace has been developped using ActivePerl 5.16.3 with the 
-following modules installed:
+ExtractFace has been developped using ActivePerl 5.16.3 with the following modules installed:
 
 - Encode (v2.56)
 - Excel-Writer-XLSX (v0.83)
@@ -25,6 +24,7 @@ following modules installed:
 - MozRepl-RemoteObject (v0.39)
 - threads (v1.96)
 - threads-shared (v1.46)
+- DBI (v1.631)
 - Time-HiRes (v1.9726)
 - DateTime (v1.28)
 - DateTime-Format-Strptime (v1.68)
@@ -38,20 +38,25 @@ following modules installed:
 To do
 -----
 
-- Dump vocal message
-	- Gather the name of the sender
-	- Add filter by dates
-- Dump event members: 
-	- Add possibility to exceed the 500 members limit
-- Dump Visitor Posts (posts, not contributors)
+- More Dump functions!
 
 
 Packaging
 ---------
 
-Executable has been packaged using PerlApp v.9.2.1 (ActiveState). For 
-alternative to PerlApp, see 
+Executable has been packaged using PerlApp v.9.2.1 (ActiveState). For alternative to PerlApp, see 
 http://www.nicholassolutions.com/tutorials/perl-PAR.htm.
 
-Some additional modules may be required or manually added before 
-packaging.
+Before packaging this tool, you can modify WWW::Mechanize::Firefox (around line 1630):
+
+sub uri {
+    my ($self) = @_;
+    my $loc = $self->tab->MozRepl::RemoteObject::Methods::dive(qw[
+        linkedBrowser
+        currentURI
+        asciiSpec ]);
+    $loc = '' if $loc =~ /^about:/; # New tab in Firefox, prevent crashing   <-- Add this line
+    return URI->new( $loc );
+};
+
+Some additional modules may be required or manually added before packaging.
