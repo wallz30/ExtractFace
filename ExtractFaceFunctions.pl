@@ -7,7 +7,7 @@
 # CodePlex			          : https://extractface.codeplex.com
 # GitHub				          : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-08-07
+# Modified                : 2017-08-10
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -237,6 +237,7 @@ sub loadDumpAlbum
       $$refWinAlbums->GridAlbums->Refresh();
       $$refWinAlbums->GridAlbums->AutoSize();
       $$refWinAlbums->GridAlbums->ExpandLastColumn();
+      $$refWinAlbums->GridAlbums->BringWindowToTop();
     } else { Win32::GUI::MessageBox($$refWinAlbums, $$refSTR{'loadAlbumFail'}, $$refSTR{'Error'}, 0x40010); }
   } else { Win32::GUI::MessageBox($$refWinAlbums, $$refSTR{'warn3'}, $$refSTR{'Error'}, 0x40010); }
 
@@ -319,6 +320,7 @@ sub loadDumpFriends
     $$refWinFriends->GridFriends->AutoSize();
     $$refWinFriends->GridFriends->ExpandLastColumn();
     $$refWinFriends->GridFriends->Refresh();
+    $$refWinFriends->GridFriends->BringWindowToTop();
   }
 
 }  #--- End loadDumpFriends
@@ -470,7 +472,7 @@ sub loadDumpGroupMembers
   my ($refMech, $refWinGroupMembers, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
   my $saveDir = $$refWinGroupMembers->tfDirSaveGroupMembers->Text();
   my $currURL = $$refMech->uri();
-  my $type;
+  my $type    = 0;
   my $idGroup;
   my $newURL;
   # Valid current page
@@ -532,6 +534,7 @@ sub loadDumpGroupMembers
         $$refWinGroupMembers->GridGroupMembers->AutoSize();
         $$refWinGroupMembers->GridGroupMembers->ExpandLastColumn();
         $$refWinGroupMembers->GridGroupMembers->Refresh();
+        $$refWinGroupMembers->GridGroupMembers->BringWindowToTop();
       }
     }
   } else { Win32::GUI::MessageBox($$refWinGroupMembers, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010); }
@@ -1901,6 +1904,7 @@ sub getListChats
     }
     $$refWinChat->GridChats->AutoSize();
     $$refWinChat->GridChats->ExpandLastColumn();
+    $$refWinChat->GridChats->BringWindowToTop();
     $$refWinChat->lblInProgress->Text('');
   }
   $$refWin->ChangeCursor($$refARROW);
@@ -2270,7 +2274,7 @@ sub loadConfig
   if (exists($$refConfig{'REMEMBER_POS'}))      { $$refWinConfig->chRememberPos->Checked($$refConfig{'REMEMBER_POS'});                  }
   else                                          { $$refWinConfig->chRememberPos->Checked(0);                                            } # Default is not checked
   if (exists($$refConfig{'DYNAMIC_MENU'}))      { $$refWinConfig->chOptDynamicMenu->Checked($$refConfig{'DYNAMIC_MENU'});               }
-  else                                          { $$refWinConfig->chOptDynamicMenu->Checked(1); $$refConfig{'DYNAMIC_MENU'} = 1;        } # Default is checked
+  else                                          { $$refWinConfig->chOptDynamicMenu->Checked(0); $$refConfig{'DYNAMIC_MENU'} = 0;        } # Default is not checked
   if (exists($$refConfig{'TIME_TO_WAIT'}))      { $$refWinConfig->upTimeToWait->SetPos($$refConfig{'TIME_TO_WAIT'});                    }
   else                                          { $$refWinConfig->upTimeToWait->SetPos(2); $$refConfig{'TIME_TO_WAIT'} =  2;            } # Default value is 2
   if (exists($$refConfig{'CHARSET'}))           { $$refWinConfig->cbCharset->SetCurSel($$refWinConfig->cbCharset->FindString($$refConfig{'CHARSET'})); }

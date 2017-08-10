@@ -8,8 +8,8 @@
 # CodePlex			: https://extractface.codeplex.com
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation      : 2015-08-01
-# Modified      : 2017-08-07
-my $VERSION     = "6.0";
+# Modified      : 2017-08-10
+my $VERSION     = "6.0.1";
 # Author        : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -261,8 +261,8 @@ $winConfig->AddTabStrip(  -name         => 'configTab'           ,
 													-background   => [255, 255, 255]       ,
 													-tabstop      => 1                     , );
 $winConfig->configTab->InsertItem(-text => $STR{'lblGenOpt'});
-$winConfig->configTab->InsertItem(-text => "$STR{'ScrollExpand'} $STR{'Options'}");
-$winConfig->configTab->InsertItem(-text => "$STR{'Dump'} $STR{'Options'}");
+$winConfig->configTab->InsertItem(-text => "$STR{'ScrollExpand'} - $STR{'Options'}");
+$winConfig->configTab->InsertItem(-text => "$STR{'Dump'} - $STR{'Options'}");
 # General options
 # Tool Section
 $winConfig->AddLabel(			-name        => 'lblToolShadowT'			,
@@ -410,7 +410,7 @@ $winConfig->AddLabel(				-name        => 'lblScrollShadowT'		,
 														-pos         => [151, 31]             ,
 														-foreground  => [180, 180, 180]       ,
 														-background  => [255, 255, 255]       ,
-														-text        => "$STR{'Scroll'} $STR{'Options'}:",
+														-text        => "$STR{'Scroll'} - $STR{'Options'}:",
 														-font        => $fontGB2              ,
                             -visible     => 0                     , );
 $winConfig->AddLabel(				-name        => 'lblScrollT'					,
@@ -418,7 +418,7 @@ $winConfig->AddLabel(				-name        => 'lblScrollT'					,
 														-pos         => [150, 30]             ,
 														-addstyle    => 11                    , # Transparent
 														-foreground  => [  0, 102, 204]       ,
-														-text        => "$STR{'Scroll'} $STR{'Options'}:",
+														-text        => "$STR{'Scroll'} - $STR{'Options'}:",
 														-font        => $fontGB2              ,
                             -visible     => 0                     , );
 $winConfig->AddLabel(       -name        => 'lblMaxScrollChat'    ,
@@ -514,14 +514,14 @@ $winConfig->AddLabel(				-name        => 'lblExpandShadowT'		,
 														-pos         => [151,116]             ,
 														-foreground  => [180, 180, 180]       ,
 														-background  => [255, 255, 255]       ,
-														-text        => "$STR{'Expand'} $STR{'Options'}:",
+														-text        => "$STR{'Expand'} - $STR{'Options'}:",
 														-font        => $fontGB2              , );
 $winConfig->AddLabel(				-name        => 'lblExpandT'					,
 														-size        => [170, 25]             ,
 														-pos         => [150,115]             ,
 														-addstyle    => 11                    , # Transparent
 														-foreground  => [  0, 102, 204]       ,
-														-text        => "$STR{'Expand'} $STR{'Options'}:",
+														-text        => "$STR{'Expand'} - $STR{'Options'}:",
 														-font        => $fontGB2              , );
 $winConfig->AddCheckbox(  	-name        => 'chOptSeemore'        ,
 														-size        => [300, 20]             ,
@@ -869,80 +869,84 @@ sub Tray_RightClick
 		# Dynamic menu
 		my $mech;
 		eval { $mech = WWW::Mechanize::Firefox->new(tab => 'current'); };
-		my ($pidCode, $pageType) = &getCurrPidCode(\$mech);
-		# pageType: 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = Messenger, 5 = Event, 6 = Mutual Friends
-		if ($pageType) {
-			if ($pageType == 1) { # Normal profile (people)
-				$trayMenu->{MenuPID}->Enabled(1);
-				$trayMenu->{MenuAlbums}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(1);
-				$trayMenu->{MenuContributors}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(1);
-				$trayMenu->{MenuMutualFriends}->Enabled(0);
-				$trayMenu->{MenuEvents}->Enabled(0);
-				$trayMenu->{MenuGroupMembers}->Enabled(0);
-				$trayMenu->{MenuMessenger}->Enabled(0);
-			} elsif ($pageType == 2) { # Groups profile
-				$trayMenu->{MenuPID}->Enabled(1);
-				$trayMenu->{MenuAlbums}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuContributors}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuMutualFriends}->Enabled(0);
-				$trayMenu->{MenuEvents}->Enabled(0);
-				$trayMenu->{MenuGroupMembers}->Enabled(1);
-				$trayMenu->{MenuMessenger}->Enabled(0);
-			} elsif ($pageType == 3) { # Page profile (business)
-				$trayMenu->{MenuPID}->Enabled(1);
-				$trayMenu->{MenuAlbums}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuContributors}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuMutualFriends}->Enabled(0);
-				$trayMenu->{MenuEvents}->Enabled(0);
-				$trayMenu->{MenuGroupMembers}->Enabled(0);
-				$trayMenu->{MenuMessenger}->Enabled(0);
-			} elsif ($pageType == 4) { # In Messenger
-				$trayMenu->{MenuPID}->Enabled(0);
-				$trayMenu->{MenuAlbums}->Enabled(0);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuContributors}->Enabled(0);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuMutualFriends}->Enabled(0);
-				$trayMenu->{MenuEvents}->Enabled(0);
-				$trayMenu->{MenuGroupMembers}->Enabled(0);
-				$trayMenu->{MenuMessenger}->Enabled(1);
-			} elsif ($pageType == 5) { # Event
-				$trayMenu->{MenuPID}->Enabled(0);
-				$trayMenu->{MenuAlbums}->Enabled(0);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuContributors}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuMutualFriends}->Enabled(0);
-				$trayMenu->{MenuEvents}->Enabled(1);
-				$trayMenu->{MenuGroupMembers}->Enabled(0);
-				$trayMenu->{MenuMessenger}->Enabled(0);
-			} elsif ($pageType == 6) { # Mutual Friends
-				$trayMenu->{MenuPID}->Enabled(0);
-				$trayMenu->{MenuAlbums}->Enabled(0);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuContributors}->Enabled(0);
-				$trayMenu->{MenuFriends}->Enabled(0);
-				$trayMenu->{MenuMutualFriends}->Enabled(1);
-				$trayMenu->{MenuEvents}->Enabled(0);
-				$trayMenu->{MenuGroupMembers}->Enabled(0);
-				$trayMenu->{MenuMessenger}->Enabled(0);
-			} else { # Unknown: Enable all
-				$trayMenu->{MenuAlbums}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(1);
-				$trayMenu->{MenuContributors}->Enabled(1);
-				$trayMenu->{MenuFriends}->Enabled(1);
-				$trayMenu->{MenuMutualFriends}->Enabled(1);
-				$trayMenu->{MenuEvents}->Enabled(1);
-				$trayMenu->{MenuGroupMembers}->Enabled(1);
-				$trayMenu->{MenuMessenger}->Enabled(1);
-			}
-		}
+		if ($mech) {
+			if ($mech->uri() =~ /facebook.com/) {
+				my ($pidCode, $pageType) = &getCurrPidCode(\$mech);
+				# pageType: 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = Messenger, 5 = Event, 6 = Mutual Friends
+				if ($pageType) {
+					if ($pageType == 1) { # Normal profile (people)
+						$trayMenu->{MenuPID}->Enabled(1);
+						$trayMenu->{MenuAlbums}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(1);
+						$trayMenu->{MenuContributors}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(1);
+						$trayMenu->{MenuMutualFriends}->Enabled(0);
+						$trayMenu->{MenuEvents}->Enabled(0);
+						$trayMenu->{MenuGroupMembers}->Enabled(0);
+						$trayMenu->{MenuMessenger}->Enabled(0);
+					} elsif ($pageType == 2) { # Groups profile
+						$trayMenu->{MenuPID}->Enabled(1);
+						$trayMenu->{MenuAlbums}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuContributors}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuMutualFriends}->Enabled(0);
+						$trayMenu->{MenuEvents}->Enabled(0);
+						$trayMenu->{MenuGroupMembers}->Enabled(1);
+						$trayMenu->{MenuMessenger}->Enabled(0);
+					} elsif ($pageType == 3) { # Page profile (business)
+						$trayMenu->{MenuPID}->Enabled(1);
+						$trayMenu->{MenuAlbums}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuContributors}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuMutualFriends}->Enabled(0);
+						$trayMenu->{MenuEvents}->Enabled(0);
+						$trayMenu->{MenuGroupMembers}->Enabled(0);
+						$trayMenu->{MenuMessenger}->Enabled(0);
+					} elsif ($pageType == 4) { # In Messenger
+						$trayMenu->{MenuPID}->Enabled(0);
+						$trayMenu->{MenuAlbums}->Enabled(0);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuContributors}->Enabled(0);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuMutualFriends}->Enabled(0);
+						$trayMenu->{MenuEvents}->Enabled(0);
+						$trayMenu->{MenuGroupMembers}->Enabled(0);
+						$trayMenu->{MenuMessenger}->Enabled(1);
+					} elsif ($pageType == 5) { # Event
+						$trayMenu->{MenuPID}->Enabled(0);
+						$trayMenu->{MenuAlbums}->Enabled(0);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuContributors}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuMutualFriends}->Enabled(0);
+						$trayMenu->{MenuEvents}->Enabled(1);
+						$trayMenu->{MenuGroupMembers}->Enabled(0);
+						$trayMenu->{MenuMessenger}->Enabled(0);
+					} elsif ($pageType == 6) { # Mutual Friends
+						$trayMenu->{MenuPID}->Enabled(0);
+						$trayMenu->{MenuAlbums}->Enabled(0);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuContributors}->Enabled(0);
+						$trayMenu->{MenuFriends}->Enabled(0);
+						$trayMenu->{MenuMutualFriends}->Enabled(1);
+						$trayMenu->{MenuEvents}->Enabled(0);
+						$trayMenu->{MenuGroupMembers}->Enabled(0);
+						$trayMenu->{MenuMessenger}->Enabled(0);
+					} else { # Unknown: Enable all
+						$trayMenu->{MenuAlbums}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(1);
+						$trayMenu->{MenuContributors}->Enabled(1);
+						$trayMenu->{MenuFriends}->Enabled(1);
+						$trayMenu->{MenuMutualFriends}->Enabled(1);
+						$trayMenu->{MenuEvents}->Enabled(1);
+						$trayMenu->{MenuGroupMembers}->Enabled(1);
+						$trayMenu->{MenuMessenger}->Enabled(1);
+					}
+				}
+			} else { Win32::GUI::MessageBox($win, $STR{'warn4'}, $STR{'Error'}, 0x40010); }
+		} else { Win32::GUI::MessageBox($win, $STR{'errMozRepl'}, $STR{'Error'}, 0x40010); }
 	}
   $win->TrackPopupMenu($trayMenu->{SysTray});
   return(1);
@@ -1413,6 +1417,7 @@ sub createWinAlbums
 																		-size         => [ 22, 22]                      ,
 																		-pos          => [564, 45]                      ,
 																		-bitmap       => $browseBmp                     ,
+																		-tip          => $STR{'SelectDir'}           		,
 																		-tabstop			=> 1															, );
 	$winAlbums->AddButton(            -name         => 'btnBrowseDirSaveAlbums'       ,
 																		-size         => [ 22, 22]                      ,
@@ -1492,8 +1497,8 @@ sub createWinAlbums
 																		-font         => $font10                        ,
 																		-tabstop			=> 1															, );
 	$winAlbums->AddButton(						-name       	=> 'btnAlbumsDumpNow'          		,
-																		-size       	=> [120, 30]                    	,
-																		-pos        	=> [260,310]                    	,
+																		-size       	=> [150, 30]                    	,
+																		-pos        	=> [245,310]                    	,
 																		-text       	=> $STR{'DumpNow'}              	,
 																		-font       	=> $font10                      	,
 																		-disabled   	=> 1                            	,
@@ -1548,9 +1553,9 @@ sub winAlbums_Resize
 	$winAlbums->chAlbumsIncLarge->Top($winAlbums->ScaleHeight()-64);
 	$winAlbums->chAlbumsIncVideos->Top($winAlbums->ScaleHeight()-64);
 	$winAlbums->chPublishDate->Top($winAlbums->ScaleHeight()-64);
-	$winAlbums->btnAlbumsDumpNow->Left(($winAlbums->ScaleWidth()/2)-145);
+	$winAlbums->btnAlbumsDumpNow->Left(($winAlbums->ScaleWidth()/2)-155);
 	$winAlbums->btnAlbumsDumpNow->Top($winAlbums->ScaleHeight()-35);
-	$winAlbums->btnAlbumsAddQueue->Left(($winAlbums->ScaleWidth()/2)-5);
+	$winAlbums->btnAlbumsAddQueue->Left(($winAlbums->ScaleWidth()/2)+5);
 	$winAlbums->btnAlbumsAddQueue->Top($winAlbums->ScaleHeight()-35);	
 
 }  #--- End winAlbums_Resize
@@ -1562,6 +1567,7 @@ sub cbAlbumsFormat_Change
   my $selFormat = $winAlbums->cbAlbumsFormat->GetCurSel();
 	$CONFIG{'ALBUMS_REPORT_FORMAT'} = $selFormat;
 	&saveConfig(\%CONFIG, $CONFIG_FILE);
+	&isDumpAlbumsReady(\$winAlbums);
 	return(1);
 
 }  #--- End cbAlbumsFormat_Change
@@ -1778,6 +1784,7 @@ sub createWinFriends
 																			-size       => [ 22, 22]                      ,
 																			-pos        => [564, 45]                      ,
 																			-bitmap     => $browseBmp                     ,
+																			-tip        => $STR{'SelectDir'}           		,
 																			-tabstop    => 1                              , );
 	$winFriends->AddButton(             -name       => 'btnBrowseDirSaveFriends'      ,
 																			-size       => [ 22, 22]                      ,
@@ -1820,8 +1827,8 @@ sub createWinFriends
 	$winFriends->GridFriends->SetListMode(1);
 	$winFriends->GridFriends->SetHeaderSort();
 	$winFriends->AddButton(             -name       	=> 'btnFriendsDumpNow'          ,
-																			-size       	=> [120, 30]                    ,
-																			-pos        	=> [260,242]                    ,
+																			-size       	=> [150, 30]                    ,
+																			-pos        	=> [245,242]                    ,
 																			-text       	=> $STR{'DumpNow'}              ,
 																			-font       	=> $font10                      ,
 																			-disabled   	=> 1                            ,
@@ -1872,9 +1879,9 @@ sub winFriends_Resize
 	$winFriends->GridFriends->Height($winFriends->ScaleHeight()-140);
 	$winFriends->GridFriends->AutoSize();
 	$winFriends->GridFriends->ExpandLastColumn();
-	$winFriends->btnFriendsDumpNow->Left(($winFriends->ScaleWidth()/2)-145);
+	$winFriends->btnFriendsDumpNow->Left(($winFriends->ScaleWidth()/2)-155);
 	$winFriends->btnFriendsDumpNow->Top($winFriends->ScaleHeight()-35);
-	$winFriends->btnFriendsAddQueue->Left(($winFriends->ScaleWidth()/2)-5);
+	$winFriends->btnFriendsAddQueue->Left(($winFriends->ScaleWidth()/2)+5);
 	$winFriends->btnFriendsAddQueue->Top($winFriends->ScaleHeight()-35);
 
 }  #--- End winFriends_Resize
@@ -2076,6 +2083,7 @@ sub createWinMutualFriends
 																				-size       	=> [ 22, 22]              ,
 																				-pos        	=> [744, 45]              ,
 																				-bitmap     	=> $browseBmp             ,
+																				-tip          => $STR{'SelectDir'}			,
 																				-tabstop    	=> 1                      , );
 	$winMutualFriends->AddButton(         -name       	=> 'btnBrowseDirSaveMutualFriends',
 																				-size       	=> [ 22, 22]              ,
@@ -2117,8 +2125,8 @@ sub createWinMutualFriends
 																				-tip        	=> $STR{'ReloadPage'}  		,
 																				-tabstop    	=> 1                      , );
 	$winMutualFriends->AddButton(					-name       	=> 'btnMutualFriendsDumpNow',
-																				-size       	=> [120, 30]              ,
-																				-pos        	=> [260,105]              ,
+																				-size       	=> [150, 30]              ,
+																				-pos        	=> [245,105]              ,
 																				-text       	=> $STR{'DumpNow'}        ,
 																				-font       	=> $font10                ,
 																				-disabled   	=> 1                      ,
@@ -2339,6 +2347,7 @@ sub createWinEvent
 																		-size         => [ 22, 22]                      ,
 																		-pos          => [744, 45]                      ,
 																		-bitmap       => $browseBmp                     ,
+																		-tip          => $STR{'SelectDir'}							,
 																		-tabstop      => 1                              , );
 	$winEvent->AddButton(             -name         => 'btnBrowseDirSaveEvent'        ,
 																		-size         => [ 22, 22]                      ,
@@ -2415,8 +2424,8 @@ sub createWinEvent
 																		-tabstop      => 1                              ,
 																		-checked      => 0                              , );
 	$winEvent->AddButton(             -name         => 'btnEventDumpNow'							,
-																		-size         => [120, 30]                      ,
-																		-pos          => [260,155]                      ,
+																		-size         => [150, 30]                      ,
+																		-pos          => [245,155]                      ,
 																		-text         => $STR{'DumpNow'}                ,
 																		-font         => $font10                        ,
 																		-disabled     => 1                              ,
@@ -2625,6 +2634,7 @@ sub createWinContrib
 																		-size       	=> [ 22, 22]                      ,
 																		-pos        	=> [744, 45]                      ,
 																		-bitmap     	=> $browseBmp                     ,
+																		-tip          => $STR{'SelectDir'}							,
 																		-tabstop    	=> 1                              , );
 	$winContrib->AddButton(           -name       	=> 'btnBrowseDirSaveContrib'      ,
 																		-size       	=> [ 22, 22]                      ,
@@ -2700,8 +2710,8 @@ sub createWinContrib
 																		-tabstop    	=> 1                              ,
 																		-checked    	=> 0                              , );
 	$winContrib->AddButton(           -name       	=> 'btnContribDumpNow'            ,
-																		-size       	=> [120, 30]                      ,
-																		-pos        	=> [260,130]                      ,
+																		-size       	=> [150, 30]                      ,
+																		-pos        	=> [245,130]                      ,
 																		-text       	=> $STR{'DumpNow'}                ,
 																		-font       	=> $font10                        ,
 																		-disabled   	=> 1                              ,
@@ -2910,6 +2920,7 @@ sub createWinGroupMembers
 																			-size       => [ 22, 22]                      ,
 																			-pos        => [744, 45]                      ,
 																			-bitmap     => $browseBmp                     ,
+																			-tip        => $STR{'SelectDir'}							,
 																			-tabstop    => 1                              , );
 	$winGroupMembers->AddButton(        -name       => 'btnBrowseDirSaveGroupMembers' ,
 																			-size       => [ 22, 22]                      ,
@@ -2952,8 +2963,8 @@ sub createWinGroupMembers
 	$winGroupMembers->GridGroupMembers->SetListMode(1);
 	$winGroupMembers->GridGroupMembers->SetHeaderSort();
 	$winGroupMembers->AddButton(				-name       	=> 'btnGroupMembersDumpNow'     ,
-																			-size       	=> [120, 30]                    ,
-																			-pos        	=> [260,200]                    ,
+																			-size       	=> [150, 30]                    ,
+																			-pos        	=> [245,200]                    ,
 																			-text       	=> $STR{'DumpNow'}              ,
 																			-font       	=> $font10                      ,
 																			-disabled   	=> 1                            ,
@@ -3195,6 +3206,7 @@ sub createWinChat
 																		-size       	=> [ 22, 22]              ,
 																		-pos        	=> [564, 45]              ,
 																		-bitmap     	=> $browseBmp             ,
+																		-tip          => $STR{'SelectDir'}			,
 																		-tabstop    	=> 1                      , );
 	$winChat->AddButton(              -name       	=> 'btnBrowseDirSaveChat' ,
 																		-size       	=> [ 22, 22]              ,
@@ -3356,8 +3368,8 @@ sub createWinChat
 	$winChat->GridChats->SetListMode(1);
 	$winChat->GridChats->SetHeaderSort();
 	$winChat->AddButton(							-name       	=> 'btnChatDumpNow'				,
-																		-size       	=> [120, 30]              ,
-																		-pos        	=> [260,165]              ,
+																		-size       	=> [150, 30]              ,
+																		-pos        	=> [245,165]              ,
 																		-text       	=> $STR{'DumpNow'}        ,
 																		-font       	=> $font10                ,
 																		-disabled   	=> 1                      ,
@@ -3407,9 +3419,9 @@ sub winChat_Resize
 	$winChat->GridChats->Height($winChat->ScaleHeight()-235);
 	$winChat->GridChats->AutoSize();
 	$winChat->GridChats->ExpandLastColumn();
-	$winChat->btnChatDumpNow->Left(($winChat->ScaleWidth()/2)-145);
+	$winChat->btnChatDumpNow->Left(($winChat->ScaleWidth()/2)-155);
 	$winChat->btnChatDumpNow->Top($winChat->ScaleHeight()-35);
-	$winChat->btnChatAddQueue->Left(($winChat->ScaleWidth()/2)-5);
+	$winChat->btnChatAddQueue->Left(($winChat->ScaleWidth()/2)+5);
 	$winChat->btnChatAddQueue->Top($winChat->ScaleHeight()-35);	
 
 }  #--- End winChat_Resize
@@ -3664,6 +3676,7 @@ sub createWinContacts
 																		-size       	=> [ 22, 22]              ,
 																		-pos        	=> [744, 45]              ,
 																		-bitmap     	=> $browseBmp             ,
+																		-tip          => $STR{'SelectDir'}			,
 																		-tabstop    	=> 1                      , );
 	$winContacts->AddButton(          -name       	=> 'btnBrowseDirSaveContacts',
 																		-size       	=> [ 22, 22]              ,
@@ -3705,8 +3718,8 @@ sub createWinContacts
 																		-tip        	=> $STR{'ReloadPage'}  		,
 																		-tabstop    	=> 1                      , );
 	$winContacts->AddButton(					-name       	=> 'btnContactsDumpNow'		,
-																		-size       	=> [120, 30]              ,
-																		-pos        	=> [260,105]              ,
+																		-size       	=> [150, 30]              ,
+																		-pos        	=> [245,105]              ,
 																		-text       	=> $STR{'DumpNow'}        ,
 																		-font       	=> $font10                ,
 																		-disabled   	=> 1                      ,
