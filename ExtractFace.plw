@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
-# Tool name     : ExtractFace
-# Description   : Dump Facebook stuff for analysis or reporting purposes
+# Tool name			: ExtractFace
+# Description		: Dump Facebook stuff for analysis or reporting purposes
 # WebSite				: http://le-tools.com/ExtractFace.html
 # Documentation	: http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			: https://extractface.codeplex.com
+# SourceForge		: https://sourceforge.net/p/extractface
 # GitHub				: https://github.com/arioux/ExtractFace
-# Creation      : 2015-08-01
-# Modified      : 2017-08-10
-my $VERSION     = "6.0.1";
-# Author        : Alain Rioux (admin@le-tools.com)
+# Creation			: 2015-08-01
+# Modified			: 2017-08-20
+my $VERSION			= "6.1";
+# Author				: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
 #
@@ -206,6 +206,13 @@ my $trayMenu = Win32::GUI::Menu->new(
   ">$STR{'ScrollExpand'}"										=> { -name => 'MenuScrollExpand'	},
   ">$STR{'Scroll'}"													=> { -name => 'MenuScroll'				},
   ">$STR{'Expand'}"													=> { -name => 'MenuExpand'				},
+	">$STR{'Remove'}"													=> { -name => 'MenuRemove'			, -item => 1 },
+  ">>$STR{'Top'}"														=> { -name => 'MenuRemTop'				},
+  ">>$STR{'leftCol'}"												=> { -name => 'MenuRemLeftCol'		},
+  ">>$STR{'rightCol'}"											=> { -name => 'MenuRemRightCol'		},
+  ">>$STR{'Bottom'}"												=> { -name => 'MenuRemBottom'			},
+	" >> -" => 0,
+  ">>$STR{'All'}"														=> { -name => 'MenuRemAll'				},
   " > -" => 0,
   ">$STR{'currProfileID'}..."								=> { -name => 'MenuPID'						},
   ">$STR{'Dump'} $STR{'Albums'}..."					=> { -name => 'MenuAlbums'				},
@@ -977,6 +984,7 @@ sub MenuExpand_Click
 														 \$winPb2, \$win, \%STR);
     } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
   }
+	
 }  #--- End MenuExpand_Click
 
 #--------------------------#
@@ -989,6 +997,86 @@ sub MenuScrollExpand_Click
 																\$winPb2, \$win, \%STR); }
 	
 }  #--- End MenuScrollExpand_Click
+
+#--------------------------#
+sub MenuRemTop_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
+      my $nbrRetries = 0;
+      $THR = threads->create(\&handlePageThr, \$THR, 8, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+														 \$winPb2, \$win, \%STR);
+    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+  }
+	
+}  #--- End MenuRemTop_Click
+
+#--------------------------#
+sub MenuRemLeftCol_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
+      my $nbrRetries = 0;
+      $THR = threads->create(\&handlePageThr, \$THR, 9, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+														 \$winPb2, \$win, \%STR);
+    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+  }
+	
+}  #--- End MenuRemLeftCol_Click
+
+#--------------------------#
+sub MenuRemRightCol_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
+      my $nbrRetries = 0;
+      $THR = threads->create(\&handlePageThr, \$THR, 10, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+														 \$winPb2, \$win, \%STR);
+    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+  }
+	
+}  #--- End MenuRemRightCol_Click
+
+#--------------------------#
+sub MenuRemBottom_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
+      my $nbrRetries = 0;
+      $THR = threads->create(\&handlePageThr, \$THR, 11, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+														 \$winPb2, \$win, \%STR);
+    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+  }
+	
+}  #--- End MenuRemBottom_Click
+
+#--------------------------#
+sub MenuRemAll_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
+      my $nbrRetries = 0;
+      $THR = threads->create(\&handlePageThr, \$THR, 12, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+														 \$winPb2, \$win, \%STR);
+    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+  }
+	
+}  #--- End MenuRemAll_Click
 
 #--------------------------#
 sub MenuPID_Click
@@ -2709,6 +2797,14 @@ sub createWinContrib
 																		-font       	=> $font10                        ,
 																		-tabstop    	=> 1                              ,
 																		-checked    	=> 0                              , );
+	$winContrib->AddCheckbox(         -name       	=> 'chContribEventPosts'          ,
+																		-size       	=> [140, 20]                      ,
+																		-pos        	=> [570,101]                      ,
+																		-text       	=> $STR{'EventPosts'}        			,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-tabstop    	=> 1                              ,
+																		-checked    	=> 0                              , );
 	$winContrib->AddButton(           -name       	=> 'btnContribDumpNow'            ,
 																		-size       	=> [150, 30]                      ,
 																		-pos        	=> [245,130]                      ,
@@ -2829,9 +2925,10 @@ sub chContribProfileIcons_Click
 }  #--- End chContribProfileIcons_Click
 
 #--------------------------#
-sub chContribComments_Click { &isDumpContribReady(\$winContrib); }
-sub chContribLikes_Click    { &isDumpContribReady(\$winContrib); }
-sub chContribVPosts_Click		{ &isDumpContribReady(\$winContrib); }
+sub chContribComments_Click 	{ &isDumpContribReady(\$winContrib); }
+sub chContribLikes_Click    	{ &isDumpContribReady(\$winContrib); }
+sub chContribVPosts_Click			{ &isDumpContribReady(\$winContrib); }
+sub chContribEventPosts_Click	{ &isDumpContribReady(\$winContrib); }
 #--------------------------#
 
 #--------------------------#

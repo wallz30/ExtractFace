@@ -2,13 +2,13 @@
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
 # ExtractFace-Process.plw : ExtractFace process for Dump functions
-# WebSite				          : http://le-tools.com/ExtractFace.html
-# Documentation	          : http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			          : https://extractface.codeplex.com
-# GitHub				          : https://github.com/arioux/ExtractFace
+# WebSite                 : http://le-tools.com/ExtractFace.html
+# Documentation           : http://le-tools.com/ExtractFaceDoc.html
+# SourceForge             : https://sourceforge.net/p/extractface
+# GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-08-07
-my $VERSION               = '6.0';
+# Modified                : 2017-08-20
+my $VERSION               = '6.1';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -198,8 +198,8 @@ $winPb->AddButton(      -name        => 'btnCancel'      ,
 #------------------------------------------------------------------------------#
 # Execute process
 #------------------------------------------------------------------------------#
-my $dbFile        = "$USERDIR\\Queue\\$PROCNAME-$PROCID\.db";
-my $dsn           = "DBI:SQLite:dbname=$dbFile";
+my $dbFile  = "$USERDIR\\Queue\\$PROCNAME-$PROCID\.db";
+my $dsn     = "DBI:SQLite:dbname=$dbFile";
 if (-f $dbFile and my $dbh = DBI->connect($dsn, undef, undef, { sqlite_unicode => 1})) {
   # Get current infos
   my $refInfos;
@@ -535,25 +535,21 @@ sub dumpContrib
   my $dsn  = "DBI:SQLite:dbname=$dbFile";
   $$refDbh = DBI->connect($dsn, undef, undef, { RaiseError => 1, AutoCommit => 0, sqlite_unicode => 1});
   # Steps (based on selected options)
-  #  1: Open the page (if currURL is different from startingURL, scroll if autoscroll option has been selected)
-  #  2: Save the page
-  #  3: Dump Comments - Parse the page
-  #  4: Dump Comments - Download profile icons (if option has been selected)
-  #  5: Dump Likes    - Parse the page (get Likes Pages)
-  #  6: Dump Likes    - Browse Likes Pages (open, save and parse)
-  #  7: Dump VPosts   - Open Visitor Posts popup
-  #  8: Dump VPosts   - Scroll Visitor Posts popup (if autoscroll option has been selected)
-  #  9: Dump VPosts   - Parse Visitor Posts
-  # 10: Dump VPosts   - Download profiles icons (if option has been selected)
-  # 11: Create report
+  # 1: Open the page (if currURL is different from startingURL, scroll if autoscroll option has been selected)
+  # 2: Scroll and expand the page (if option has been selected)
+  # 3: Save the page
+  # 4: Parse the page
+  # 5: Dump Likes - Browse Likes Pages (open, save and parse)
+  # 6: Download profiles icons (for Comments, VPosts and Event Posts, if option has been selected)
+  # 7: Create report
   
   # First execution, turn on progress bar
   if (!$firstExec) {
     # Turn on progress bar
-    $winPb->pbWinPb1->SetRange(0, 11);
+    $winPb->pbWinPb1->SetRange(0, 7);
     $winPb->pbWinPb1->SetPos(0);
     $winPb->pbWinPb1->SetStep(1);
-    $winPb->lblCount1->Text("0/11");
+    $winPb->lblCount1->Text("0/7");
     &createProfilesDB($refDbh); # Create table PROFILES
     $winPb->Text("$STR{'Dump'} $STR{'contributors'} $STR{'inProgress'}...");
     $$refInfos{nbrTabs} = &getNbrTabs() if $$refInfos{closeUsedTabs};
@@ -561,128 +557,78 @@ sub dumpContrib
   } else { $winPb->lblPbCurr1->Text("$STR{'resumeProcess'}..."); }
   # Connect to current tab
   my $mech = WWW::Mechanize::Firefox->new(tab => 'current');
-  # Open and scroll the page (if currURL is different from startingURL)
+  # Open the page (if currURL is different from startingURL)
   if (!exists($$refInfos{step}) or !$$refInfos{step}) {
     if ($mech->uri() ne $$refInfos{startingURL}) {
       $winPb->lblPbCurr1->Text("$STR{'Opening'} $STR{'thePage'}...");
       $mech->get($$refInfos{startingURL}, synchronize => 0);
       sleep($$refInfos{timeToWait});
-    }
-    if ($$refInfos{autoScroll} and ($$refInfos{comments} or $$refInfos{likes})) { # Scroll and Expand
-      $winPb->lblPbCurr1->Text("$STR{'Scrolling'} $STR{'thePage'}...");
-      &scrollExpand(\$mech, $$refInfos{timeToWait});
-    }
-    $$refInfos{step} = 1;
-    &updateDumpDB_INFOS($refDbh, $refInfos);
-  }
-  $winPb->pbWinPb1->SetPos($$refInfos{step});
-  $winPb->lblCount1->Text("$$refInfos{step}/11");
-  # Save the page
-  if ($$refInfos{step} == 1 or !exists($$refInfos{tmp}) or !-e $$refInfos{tmp}) {
-    $winPb->lblPbCurr1->Text("$STR{'Saving'} $STR{'thePage'}...");
-    mkdir("$$refInfos{saveDir}\\temp") if !-d "$$refInfos{saveDir}\\temp";
-    $$refInfos{tmp} = "$$refInfos{saveDir}\\temp\\temp.html";
-    my $status = $mech->save_content($$refInfos{tmp});
-    while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
-    # Create image folder
-    mkdir("$$refInfos{saveDir}\\images_$$refInfos{filename}")
-    if !-d "$$refInfos{saveDir}\\images_$$refInfos{filename}" and $$refInfos{incIcons};
-    $$refInfos{step} = 2;
-    &updateDumpDB_INFOS($refDbh, $refInfos);
-  }
-  $winPb->pbWinPb1->SetPos($$refInfos{step});
-  $winPb->lblCount1->Text("$$refInfos{step}/11");
-  # Gather Comments
-  if ($$refInfos{comments}) {
-    $winPb->lblPbCurr1->Text("$STR{'Dump'} $STR{'Comments'} $STR{'inProgress'}...");
-    if ($$refInfos{step} == 2) { # Parse the page
-      &parseContribComments($refDbh, $refInfos);
-      $$refInfos{step} = 3;
-      &updateDumpDB_INFOS($refDbh, $refInfos);
-    }
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-    if ($$refInfos{step} == 3) { # Download the icons (if option has been selected)
-      if ($$refInfos{incIcons}) {
-        &dlProfilesIcons(\$mech, $refDbh, $refInfos, $STR{'Comments'});
-        $$refInfos{step} = 4;
-        &updateDumpDB_INFOS($refDbh, $refInfos);
-      } else { $$refInfos{step} = 4; }
-    }
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-  } elsif ($$refInfos{step} < 4) {
-    $$refInfos{step} = 4;
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-  }
-  # Gather Likes
-  if ($$refInfos{likes}) {
-    $winPb->lblPbCurr1->Text("$STR{'Dump'} $STR{'Likes'} $STR{'inProgress'}...");
-    if ($$refInfos{step} == 4) { # Parse the page (get Likes Pages)
-      &parseContribLikes($refDbh, $refInfos);
-      $$refInfos{step} = 5;
-      &updateDumpDB_INFOS($refDbh, $refInfos);
-    }
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-    if ($$refInfos{step} == 5) { # Browse Likes Pages (open, save and parse)
-      &dumpContribLikes($refDbh, $refInfos);
-      $$refInfos{step} = 6;
-      &updateDumpDB_INFOS($refDbh, $refInfos);
-    }
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-  } elsif ($$refInfos{step} < 6) {
-    $$refInfos{step} = 6;
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-  }
-  # Gather VPosts (Visitor Posts)
-  if ($$refInfos{vPosts}) {
-    $winPb->lblPbCurr1->Text("$STR{'Dump'} $STR{'VPosts'} $STR{'inProgress'}...");
-    if ($$refInfos{autoScroll}) {
-      # Open the Visitor Posts popup
-      if ($$refInfos{step} == 6) {
+      if ($$refInfos{vPosts}) { # Visitor posts, open the popup
         my $vPostsHeader = $mech->selector('div._2h4b._50f3', any => 1);
         if (!$vPostsHeader) {
           my @vPostsUrl = $mech->selector('a._g3j');
           foreach (@vPostsUrl) { $_->click() if $_->{href} =~ /posts_to_page/; }
           sleep($$refInfos{timeToWait});
         }
-        $$refInfos{step} = 7;
-        &updateDumpDB_INFOS($refDbh, $refInfos);
       }
-      $winPb->pbWinPb1->SetPos($$refInfos{step});
-      $winPb->lblCount1->Text("$$refInfos{step}/11");
-      # Scroll the Visitor Posts popup
-      if ($$refInfos{step} == 7) {
-        $winPb->lblPbCurr1->Text("$STR{'Scrolling'} $STR{'VPosts'}...");
-        &scrollVPostsPage(\$mech, $$refInfos{timeToWait});
-        $$refInfos{step} = 8;
-        &updateDumpDB_INFOS($refDbh, $refInfos);
-      }
-      $winPb->pbWinPb1->SetPos($$refInfos{step});
-      $winPb->lblCount1->Text("$$refInfos{step}/11");
-    } else { $$refInfos{step} = 8; }
-    # Dump Visitor Posts profiles
-    &parseContribVPosts($refDbh, $refInfos, $$refInfos{tmp});
-    $$refInfos{step} = 9;
-    &updateDumpDB_INFOS($refDbh, $refInfos);
-    if ($$refInfos{step} == 9) { # Download the icons (if option has been selected)
-      if ($$refInfos{incIcons}) {
-        &dlProfilesIcons(\$mech, $refDbh, $refInfos, $STR{'VPosts'});
-        $$refInfos{step} = 10;
-        &updateDumpDB_INFOS($refDbh, $refInfos);
-      } else { $$refInfos{step} = 10; }
     }
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
-  } elsif ($$refInfos{step} < 10) {
-    $$refInfos{step} = 10;
-    $winPb->pbWinPb1->SetPos($$refInfos{step});
-    $winPb->lblCount1->Text("$$refInfos{step}/11");
+    $$refInfos{step} = 1;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
   }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
+  # Scroll and expand the page (if option has been selected)
+  if ($$refInfos{step} == 1) {
+    if ($$refInfos{autoScroll}) {
+      $winPb->lblPbCurr1->Text("$STR{'ScrollExpand'} $STR{'thePage'}...");
+      if ($$refInfos{vPosts}) { &scrollVPostsPage(\$mech, $$refInfos{timeToWait}); }
+      else                    { &scrollExpand(    \$mech, $$refInfos{timeToWait}); }
+    }
+    $$refInfos{step} = 2;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
+  # Save the page
+  if ($$refInfos{step} == 2 or !exists($$refInfos{tmp}) or !-e $$refInfos{tmp}) {
+    $winPb->lblPbCurr1->Text("$STR{'Saving'} $STR{'thePage'}...");
+    mkdir("$$refInfos{saveDir}\\temp") if !-d "$$refInfos{saveDir}\\temp";
+    $$refInfos{tmp} = "$$refInfos{saveDir}\\temp\\temp.html";
+    my $status = $mech->save_content($$refInfos{tmp});
+    while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+    $$refInfos{step} = 3;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
+  # Parse the page
+  if ($$refInfos{step} == 3) {
+    $winPb->lblPbCurr1->Text("$STR{'Parsing'} $STR{'thePage'}...");
+    &parseContrib($refDbh, $refInfos);
+    $$refInfos{step} = 4;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
+  # Dump Likes - Browse Likes Pages (open, save and parse)
+  if ($$refInfos{step} == 4) {
+    if ($$refInfos{likes}) {
+      $winPb->lblPbCurr1->Text("$STR{'Dump'} $STR{'Likes'} $STR{'inProgress'}...");
+      &dumpContribLikes($refDbh, $refInfos);
+    }
+    $$refInfos{step} = 5;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
+  # Download profiles icons (for Comments, VPosts and Event Posts, if option has been selected)
+  if ($$refInfos{step} == 5) {
+    if ($$refInfos{incIcons}) { &dlProfilesIcons(\$mech, $refDbh, $refInfos); }
+    $$refInfos{step} = 6;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
   # Count profiles
   if (!$$refInfos{nbrProfiles}) {
     $$refInfos{nbrProfiles} = $$refDbh->selectrow_array('SELECT COUNT(id) FROM PROFILES');
@@ -703,9 +649,9 @@ sub dumpContrib
     $winPb->Hide();
     Win32::GUI::MessageBox($winPb, $STR{'noProfileDumped'}, $STR{'Error'}, 0x40010) if !$$refInfos{silentProgress};
   }
-  $$refInfos{step} = 11;
+  $$refInfos{step} = 7;
   $winPb->pbWinPb1->SetPos($$refInfos{step});
-  $winPb->lblCount1->Text("$$refInfos{step}/11");
+  $winPb->lblCount1->Text("$$refInfos{step}/7");
   $winPb->ChangeCursor($ARROW);
   $$refDbh->disconnect();
   remove_tree("$$refInfos{saveDir}\\temp") if $$refInfos{delTempFiles};
@@ -1336,15 +1282,15 @@ sub parseAlbumPage
   $ind        = $$refDbh->selectrow_array('SELECT COUNT(ind) FROM PICTURES WHERE album = ?', undef, $albumId);
   my $tmpPage = $$refDbh->selectrow_array('SELECT tmpPage FROM ALBUMS WHERE id = ?'        , undef, $albumId);
   # Load content from file
-  my $file_as_string;
+  my $fileAsStr;
   if (-T $tmpPage and open(my $fhTemp, "<:encoding(utf8)", $tmpPage)) {
-    $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
+    $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr =~ s/[\r\n]//g;
     close($fhTemp);
   }
   # Page profile
   if ($$refInfos{pageType} == 3) {
-    my @sections = split(/function\(Bootloader\)/, $file_as_string);
+    my @sections = split(/function\(Bootloader\)/, $fileAsStr);
     my @parts;
     foreach my $section (@sections) {
       if    ($section =~ /_2eea/) { @parts = split(/_2eea/, $section); last; }
@@ -1376,7 +1322,7 @@ sub parseAlbumPage
     }
   # Group or People profile
   } else {
-    my @sections = split(/function\(Bootloader\)/, $file_as_string);
+    my @sections = split(/function\(Bootloader\)/, $fileAsStr);
     my @partsSection;
     foreach my $section (@sections) {
       if ($section =~ /fbPhotoCurationControlWrapper/) {
@@ -1461,30 +1407,30 @@ sub dumpAlbumPicturePage
       my $title = &openPicturePage(\$mechPic, $refInfos, $$entry[2]);
       if ($title and $title ne 'Facebook') {
         # Save the picture page
-        my $file_as_string;
+        my $fileAsStr;
         my $pagePath  = $albumPath.'\temp\page.html';
         my $status    = $mechPic->save_content($pagePath);
         while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
         # Parse the picture page
         if (-T $pagePath and open(my $fhTemp, "<:encoding(utf8)", $pagePath)) {
-          $file_as_string = do { local $/ = <$fhTemp> };
-          $file_as_string =~ s/[\r\n]//g;
+          $fileAsStr = do { local $/ = <$fhTemp> };
+          $fileAsStr =~ s/[\r\n]//g;
           close($fhTemp);
         }
         # Get the publication date
         if ($$refInfos{incPublishDate} and !$$entry[3]) {
-          if ($file_as_string =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
-              $file_as_string =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/) {
+          if ($fileAsStr =~ /data-utime="([^\"]+)"[^\>]+class="_5ptz"/ or
+              $fileAsStr =~ /class="_5ptz"[^\>]+data-utime="([^\"]+)/) {
             $pubDate = $1;
           }
         }
         # Get the video URL
         if (($$refInfos{incVideos} or $$refInfos{reportFormat} ne 'HTML') and
             ($$entry[2] =~ /vb\./ or $$entry[2] =~ /videos/)) {
-          $videoURL = &getVideoURL(\$mechPic, \$file_as_string, $refInfos, $albumPath);
+          $videoURL = &getVideoURL(\$mechPic, \$fileAsStr, $refInfos, $albumPath);
         # Get the large picture URL
         } elsif ($$refInfos{incLargePics} or $$refInfos{reportFormat} ne 'HTML') {
-          if ($file_as_string =~ /<div[^\>]+_2-sx[^\>]+>(.+?)<\/div>/) {
+          if ($fileAsStr =~ /<div[^\>]+_2-sx[^\>]+>(.+?)<\/div>/) {
             my $imgCode = $1;
             if ($imgCode =~ /src="([^\"]+)/) {
               my $tmpLargeUrl = $1;
@@ -1608,8 +1554,8 @@ sub getVideoURL
 #--------------------------#
 {
   # Local variables
-  my ($refMechPic, $refFile_as_string, $refInfos, $albumPath) = @_;
-  my @sections    = (split(/fbUserContent/, $$refFile_as_string));
+  my ($refMechPic, $refFileAsStr, $refInfos, $albumPath) = @_;
+  my @sections    = (split(/fbUserContent/, $$refFileAsStr));
   my $videoURL    = '-';
   my $extractData;
   # Look for video url in the page
@@ -1633,10 +1579,10 @@ sub getVideoURL
   my $status      = $$refMechPic->save_content($videoMobile);
   while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
   if (-T $videoMobile and open(my $fhTemp, "<:encoding(utf8)", $videoMobile)) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string    =~ s/[\r\n]//g;
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
     close($fhTemp);
-    if ($file_as_string =~ /video_redirect\/\?src=([^\&]+)/) { $videoURL = unescape($1); }
+    if ($fileAsStr =~ /video_redirect\/\?src=([^\&]+)/) { $videoURL = unescape($1); }
   }
   return($videoURL) if $videoURL;
   
@@ -1722,13 +1668,13 @@ sub parseFriendCat
   # Parse by section and groups
   if (-T $$refInfos{"$cat-tmpPage"}) {
     if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{"$cat-tmpPage"})) {
-      my $file_as_string = do { local $/ = <$fhTemp> };
-      $file_as_string    =~ s/[\r\n]//g;
-      if ($file_as_string =~ /a[^\>]+_3c_ _3s-[^\>]+name="([^\"]+)"/) { $$refInfos{"$cat-name"} = $1; } # Get original utf-8 current cat name
+      my $fileAsStr = do { local $/ = <$fhTemp> };
+      $fileAsStr    =~ s/[\r\n]//g;
+      if ($fileAsStr =~ /a[^\>]+_3c_ _3s-[^\>]+name="([^\"]+)"/) { $$refInfos{"$cat-name"} = $1; } # Get original utf-8 current cat name
       my @partsID   = split(/\:/, $$refInfos{"$cat-id"});
       my $id        = pop(@partsID);
       my $separator = join(':', @partsID);
-      my @sections  = split(/id=\"$separator/, $file_as_string);
+      my @sections  = split(/id=\"$separator/, $fileAsStr);
       my $section;
       foreach (@sections) { if (/^\:$id\"/) { $section = $_; last; } }
       if ($section =~ /_3cz/) { $section = (split(/_3cz/, $section))[0]; }
@@ -1870,88 +1816,119 @@ sub parseEventMembersData
 }  #--- End parseEventMembersData
 
 #--------------------------#
-sub dlProfilesIcons
+sub parseContrib
 #--------------------------#
 {
   # Local variables
-  my ($refMech, $refDbh, $refInfos, $cat) = @_;
-  $winPb->lblPbCurr2->Text("$STR{'Downloading'} $STR{'profileIcons'}");
-  my $all;
-  if ($cat) {
-    $all = $$refDbh->selectall_arrayref('SELECT cat,id,pictureURL FROM PROFILES WHERE pictureURL IS NOT NULL AND cat = ?', undef, $cat);
-  } else { $all = $$refDbh->selectall_arrayref('SELECT cat,id,pictureURL FROM PROFILES WHERE pictureURL IS NOT NULL'); }
-  # PROFILES fields: 0=cat, 1=id, 2=ind, 3=name, 4=url, 5=details, 6=pictureURL, 7=picturePath, 8=pictureRelPath, 9=nbr
-  my $nbrToDL = scalar(@$all);
+  my ($refDbh, $refInfos) = @_;
+  # If on resume state, all profiles must be deleted (or it will corrupt nbr value)
+  my $sthFlush = $$refDbh->prepare('DELETE FROM PROFILES');
+  $sthFlush->execute();
+  $$refDbh->commit();
+  $sthFlush->finish();
+  my $sthProfiles    = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,nbr) VALUES(?,?,?,?,?,?,?)');
+  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
+  # Whole file on a single line
+  if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{tmp})) {
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
+    close($fhTemp);
+    # Visitor Posts, we must select scrollable area
+    if ($$refInfos{vPosts}) {
+      $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'VPosts'} $STR{'inProgress'}...");
+      $fileAsStr      = (split(/id="pages_posts_to_page_pagelet"/, $fileAsStr))[1];
+      $fileAsStr      = (split(/uiContextualLayerPositioner /, $fileAsStr))[0];
+      my @vPostsNodes = split(/_5x46/, $fileAsStr);
+      shift(@vPostsNodes);
+      &parseContribProfiles($refDbh, $refInfos, $STR{'VPosts'}, \@vPostsNodes, \$sthProfiles, \$sthProfilesUpd);
+    # Event Posts
+    } elsif ($$refInfos{eventPosts}) {
+      $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'EventPosts'} $STR{'inProgress'}...");
+      my @eventPostsNodes = split(/_5x46/, $fileAsStr);
+      shift(@eventPostsNodes);
+      &parseContribProfiles($refDbh, $refInfos, $STR{'EventPosts'}, \@eventPostsNodes, \$sthProfiles, \$sthProfilesUpd);
+    }
+    # Comments
+    if ($$refInfos{comments}) {
+      $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'Comments'} $STR{'inProgress'}...");
+      my @commentNodes = split(/UFIImageBlockImage/, $fileAsStr);
+      shift(@commentNodes);
+      &parseContribComments($refDbh, $refInfos, \@commentNodes, \$sthProfiles, \$sthProfilesUpd);
+    }
+    # Likes
+    if ($$refInfos{likes}) {
+      $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'Likes'} $STR{'inProgress'}...");
+      &parseContribLikesPages($refDbh, $refInfos, \$fileAsStr);
+    }
+  }
+  
+}  #--- End parseContrib
+
+#--------------------------#
+sub parseContribProfiles
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $type, $refParts, $refSthProfiles, $refSthProfilesUpd) = @_;
   # Progress
-  my $count = 0;
-  $winPb->pbWinPb2->SetRange(0, $nbrToDL);
-  $winPb->pbWinPb2->SetPos(0);
-  $winPb->lblCount2->Text("$count/$nbrToDL");
-  # Download each member profile icon
-  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET picturePath = ?, pictureRelPath = ? WHERE cat = ? AND id = ?');
-  foreach my $entry (@$all) {
-    my $path = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$$entry[1]\.jpg";
-    my $relPath;
-    if (!-e $path) {
-      $$refMech->save_url($$entry[2], $path);
-      $relPath = $path =~ s/\Q$$refInfos{saveDir}\E\\/\.\//r;
-    } else { # If file already exist, verify integrity
-      my $info = image_info($path);
-      my $dim  = dim($info) if !$info->{error}; # No error, get dim
-      if (($info->{error} or !$dim)) { # Error with the image or no dim, try to download again
-        unlink($path);
-        $$refMech->save_url($$entry[2], $path);
-        $info = image_info($path);
-      }
-      if (!$info->{error}) { # No error, replace profile icon URL by profile icon path
-        $dim     = dim($info);
-        $relPath = $path =~ s/\Q$$refInfos{saveDir}\E\\/\.\//r if $dim;
+  my $ind     = 0;
+  my $count2  = 0;
+  my $nbrProfiles = scalar(@$refParts);
+  $winPb->pbWinPb2->SetRange(0, $nbrProfiles);
+  $winPb->pbWinPb2->SetStep(1);
+  $winPb->lblCount2->Text("0/$refParts");
+  $winPb->lblPbCurr2->Text("$STR{'Parsing'} $type $STR{'inProgress'}...");
+  foreach my $profileCode (@$refParts) {
+    my $id;
+    my $url;
+    my $name;
+    my $profileImg;
+    if ($profileCode =~ / href="([^\&\"]+)(?:&|")[^\>]+hovercard\/user\.php\?id=([^\&\"]+)(?:&|")[^\>]+\>([^\<]+)\</) {
+      $url  = $1;
+      $id   = $2;
+      $name = $3;
+      $url  = (split(/\?/, $url))[0] if $url =~ /\?/;
+    }
+    if ($profileCode =~ /src="([^\"]+)"/) { $profileImg = $1; $profileImg =~ s/&amp;/&/g; }
+    if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename}) {
+      if ($$refInfos{startingID} != $id) { # Contribution by owner of the page are ignored
+        # Already exists, count
+        if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
+                                                   $type, $id)) {
+          $$refSthProfilesUpd->execute($exists+1, $type, $id);
+        # Add a new entry
+        } else {
+          $$refSthProfiles->execute($type, $id, $ind, $name, $url, $profileImg, 1);
+          $ind++;
+        }
       }
     }
-    $sthProfilesUpd->execute($path, $relPath, $$entry[0], $$entry[1]) if $path and $relPath;    
-    $count++;
+    $count2++;
     $winPb->pbWinPb2->StepIt();
-    $winPb->lblCount2->Text("$count/$nbrToDL");
+    $winPb->lblCount2->Text("$count2/$nbrProfiles");
   }
+  $$refDbh->commit();
   $winPb->lblPbCurr2->Text('');
   $winPb->pbWinPb2->SetPos(0);
   $winPb->lblCount2->Text('');
-  $$refDbh->commit();
   
-}  #--- End dlProfilesIcons
+}  #--- End parseContribProfiles
 
 #--------------------------#
 sub parseContribComments
 #--------------------------#
 {
   # Local variables
-  my ($refDbh, $refInfos) = @_;
-  $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
-  # If on resume state, all comment profiles must be deleted
-  my $sthFlush = $$refDbh->prepare('DELETE FROM PROFILES WHERE cat = ?');
-  $sthFlush->execute($STR{'Comments'});
-  $$refDbh->commit();
-  $sthFlush->finish();
-  # Get the comment nodes
-  my @commentNodes;
-  if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{tmp})) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
-    @commentNodes = split(/UFIImageBlockImage/, $file_as_string);
-    shift(@commentNodes);
-    close($fhTemp);
-  }
+  my ($refDbh, $refInfos, $refCommentNodes, $refSthProfiles, $refSthProfilesUpd) = @_;
   # Progress
   my $count2 = 0;
-  my $nbrComments = scalar(@commentNodes);
+  my $nbrComments = scalar(@$refCommentNodes);
   $winPb->pbWinPb2->SetRange(0, $nbrComments);
   $winPb->pbWinPb2->SetStep(1);
   $winPb->lblCount2->Text("0/$nbrComments");
   my $ind = 0;
-  my $sthProfiles    = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,nbr) VALUES(?,?,?,?,?,?,?)');
-  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
   # Parse each comment
-  foreach my $commentNode (@commentNodes) {
+  foreach my $commentNode (@$refCommentNodes) {
     if ($commentNode !~ /^" role="presentation"/) {
       my $id;
       my $url;
@@ -1973,10 +1950,10 @@ sub parseContribComments
           # Already exists, count
           if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
                                                      $STR{'Comments'}, $id)) {
-            $sthProfilesUpd->execute($exists+1, $STR{'Comments'}, $id);
+            $$refSthProfilesUpd->execute($exists+1, $STR{'Comments'}, $id);
           # Add a new entry
           } else {
-            $sthProfiles->execute($STR{'Comments'}, $id, $ind, $name, $url, $profileImg, 1);
+            $$refSthProfiles->execute($STR{'Comments'}, $id, $ind, $name, $url, $profileImg, 1);
             $ind++;
           }
         }
@@ -1994,61 +1971,53 @@ sub parseContribComments
 }  #--- End parseContribComments
 
 #--------------------------#
-sub parseContribLikes
+sub parseContribLikesPages
 #--------------------------#
 {
   # Local variables
-  my ($refDbh, $refInfos) = @_;
-  $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
+  my ($refDbh, $refInfos, $refFileAsStr) = @_;
+  my @section = split(/fbTimelineSection fbTimelineCompactSection fbTimelineSectionTransparent/, $$refFileAsStr);
   &createlikesPagesDB($refDbh);
   my $sthLikesPages = $$refDbh->prepare('INSERT OR REPLACE INTO LIKES_PAGES (url,status) VALUES(?,?)');
-  # Parse the page
-  if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{tmp})) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
-    my @section = split(/fbTimelineSection fbTimelineCompactSection fbTimelineSectionTransparent/, $file_as_string);
-    undef($file_as_string);
-    # Progress
-    my $count2      = 0;
-    my $nbrSections = scalar(@section);
-    $winPb->pbWinPb2->SetRange(0, $nbrSections);
-    $winPb->pbWinPb2->SetStep(1);
-    $winPb->lblCount2->Text("0/$nbrSections");
-    foreach my $section (@section) {
-      my @parts = split(/_ipp/, $section);
-      shift(@parts);
-      foreach my $part (@parts) {
-        if ($part =~ /href=\"([^\"]+)\"/) {
-          my $url = $1;
-          if ($url =~ /ft_ent_identifier/) {
-            $url =~ s/&amp;/&/g;
-            $sthLikesPages->execute($url, 0);
-          }
+  # Progress
+  my $count2      = 0;
+  my $nbrSections = scalar(@section);
+  $winPb->pbWinPb2->SetRange(0, $nbrSections);
+  $winPb->pbWinPb2->SetStep(1);
+  $winPb->lblCount2->Text("0/$nbrSections");
+  foreach my $section (@section) {
+    my @parts = split(/_ipp/, $section);
+    shift(@parts);
+    foreach my $part (@parts) {
+      if ($part =~ /href=\"([^\"]+)\"/) {
+        my $url = $1;
+        if ($url =~ /ft_ent_identifier/) {
+          $url =~ s/&amp;/&/g;
+          $sthLikesPages->execute($url, 0);
         }
       }
-      my @parts2 = split(/UFICommentLikeButton/, $section);
-      shift(@parts2);
-      foreach my $part (@parts2) {
-        if ($part =~ /href=\"([^\"]+)\"/) {
-          my $url = $1;
-          if ($url =~ /likes/) {
-            $url =~ s/&amp;/&/g;
-            $sthLikesPages->execute($url, 0);
-          }
-        }
-      }
-      $count2++;
-      $winPb->pbWinPb2->StepIt();
-      $winPb->lblCount2->Text("$count2/$nbrSections");
     }
-    close($fhTemp);
+    my @parts2 = split(/UFICommentLikeButton/, $section);
+    shift(@parts2);
+    foreach my $part (@parts2) {
+      if ($part =~ /href=\"([^\"]+)\"/) {
+        my $url = $1;
+        if ($url =~ /likes/) {
+          $url =~ s/&amp;/&/g;
+          $sthLikesPages->execute($url, 0);
+        }
+      }
+    }
+    $count2++;
+    $winPb->pbWinPb2->StepIt();
+    $winPb->lblCount2->Text("$count2/$nbrSections");
   }
   $winPb->lblPbCurr2->Text('');
   $winPb->pbWinPb2->SetPos(0);
   $winPb->lblCount2->Text('');
   $$refDbh->commit();
   
-}  #--- End parseContribLikes
+}  #--- End parseContribLikesPages
   
 #--------------------------#
 sub dumpContribLikes
@@ -2056,9 +2025,11 @@ sub dumpContribLikes
 {
   # Local variables
   my ($refDbh, $refInfos) = @_;
-  my $allLikesPages    = $$refDbh->selectall_arrayref('SELECT url FROM LIKES_PAGES WHERE status = 0');
-  my $sthLikesPagesUpd = $$refDbh->prepare('UPDATE LIKES_PAGES SET status = 1 WHERE url = ?');
-  my $nbrLikesPages    = scalar(@$allLikesPages);
+  my $allLikesPages     = $$refDbh->selectall_arrayref('SELECT url FROM LIKES_PAGES WHERE status = 0');
+  my $sthLikesPagesUpd  = $$refDbh->prepare('UPDATE LIKES_PAGES SET status = 1 WHERE url = ?');
+  my $sthProfiles       = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,nbr) VALUES(?,?,?,?,?,?,?)');
+  my $sthProfilesUpd    = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
+  my $nbrLikesPages     = scalar(@$allLikesPages);
   if ($nbrLikesPages > 0) {
     # Progress
     my $count2 = 0;
@@ -2079,14 +2050,21 @@ sub dumpContribLikes
       # Save the page
       $winPb->lblPbCurr2->Text("$STR{'Downloading'} $STR{'LikesPage'}");
       my $htmlPage = "$$refInfos{saveDir}\\temp\\likePage.html";
-      my $status;
-      if ($$refInfos{incIcons}) {
-        $status = $mechLikePage->save_content($htmlPage, "$$refInfos{saveDir}\\temp");
-      } else { $status = $mechLikePage->save_content($htmlPage); }
+      my $status   = $mechLikePage->save_content($htmlPage);
       while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
       # Gather each profile details
       $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'LikesPage'}");
-      &parseContribLikesPage($refDbh, $refInfos, $htmlPage);
+      if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
+        my $fileAsStr = do { local $/ = <$fhTemp> };
+        $fileAsStr    =~ s/[\r\n]//g;
+        close($fhTemp);
+        my @likesNodes = split(/_5i_q/, $fileAsStr);
+        shift(@likesNodes);
+        my @likesNodes2 = split(/fbProfileBrowserListItem/, $fileAsStr);
+        shift(@likesNodes2);
+        push(@likesNodes, @likesNodes2);
+        &parseContribProfiles($refDbh, $refInfos, $STR{'Likes'}, \@likesNodes, \$sthProfiles, \$sthProfilesUpd);
+      }
       # Progress
       $sthLikesPagesUpd->execute($$likePageUrl[0]);
       $count2++;
@@ -2100,133 +2078,6 @@ sub dumpContribLikes
   }
   
 }  #--- End dumpContribLikes
-
-#--------------------------#
-sub parseContribLikesPage
-#--------------------------#
-{
-  # Local variables
-  my ($refDbh, $refInfos, $htmlPage) = @_;
-  my $sthProfiles    = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,picturePath,pictureRelPath,nbr) VALUES(?,?,?,?,?,?,?,?,?)');
-  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
-  my @likesNodes;
-  if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
-    @likesNodes      = split(/_5i_q/, $file_as_string);
-    shift(@likesNodes);
-    my @likesNodes2 = split(/fbProfileBrowserListItem/, $file_as_string);
-    shift(@likesNodes2);
-    push(@likesNodes, @likesNodes2);
-    close($fhTemp);
-  }
-  # Progress
-  my $ind    = 0;
-  my $count2 = 0;
-  foreach my $likeProfile (@likesNodes) {
-    my $id;
-    my $url;
-    my $name;
-    my $profileImg;
-    if ($likeProfile =~ /<(a[^\>]+)\>\<([^\<]+)\</) {
-      my $profileTag = $1;
-      my $imgTag     = $2;
-      if ($profileTag =~ /href="([^\&\"]+)(?:&|")[^\>]+data-hovercard="([^\"]+)\"/) {
-        $url     = $1;
-        my $temp = $2;
-        if ($temp =~ /hovercard\/user\.php\?id=([^\&]+)&/) { $id = $1; }
-      }
-    }
-    if ($likeProfile =~ / src="([^\"]+)\"/     ) { $profileImg = $1; }
-    if ($likeProfile =~ /\<a[^\>]+\>([^\<]+)\</) { $name       = $1; }
-    if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename}) {
-      if ($$refInfos{startingID} != $id) { # Comments by owner of the page are ignored
-        # Already exists, count
-        if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
-                                                   $STR{'Likes'}, $id)) {
-          $sthProfilesUpd->execute($exists+1, $STR{'Likes'}, $id);
-        # Add a new entry
-        } else {
-          my $picturePath    = undef;
-          my $pictureRelPath = undef;
-          # Save the profil icon
-          if ($$refInfos{incIcons} and $profileImg =~ /\/([^\/\?]+)\?/ or $profileImg =~ /(\w+\.(?:jpg|png))/) { # Include profile icons
-            my $encLikeId   = encode('utf8', $id);
-            my $encImgFN    = encode('utf8', $1);
-            $picturePath    = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$encLikeId\.jpg";
-            $pictureRelPath = "images_$$refInfos{filename}\\$encLikeId\.jpg";
-            rcopy("$$refInfos{saveDir}\\temp\\$encImgFN", $picturePath)
-            if -e "$$refInfos{saveDir}\\temp\\$encImgFN" and !-e $picturePath; # Copy image
-          }
-          $sthProfiles->execute($STR{'Likes'}, $id, $ind, $name, $url, $profileImg, $picturePath, $pictureRelPath, 1);
-          $ind++;
-        }
-      }
-    }
-  }
-  
-}  #--- End parseContribLikesPage
-
-#--------------------------#
-sub parseContribVPosts
-#--------------------------#
-{
-  # Local variables
-  my ($refDbh, $refInfos, $htmlPage) = @_;
-  my $sthProfiles    = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,nbr) VALUES(?,?,?,?,?,?,?)');
-  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
-  my @vPostsNodes;
-  if (open(my $fhTemp, "<:encoding(UTF-8)", $htmlPage)) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
-    my $section     = (split(/"dialog_title_close_button"/, $file_as_string))[1];
-    @vPostsNodes    = split(/_5x46/, $section);
-    close($fhTemp);
-    shift(@vPostsNodes);
-  }
-  # Progress
-  my $ind       = 0;
-  my $count2    = 0;
-  my $nbrVPosts = scalar(@vPostsNodes);
-  $winPb->pbWinPb2->SetRange(0, $nbrVPosts);
-  $winPb->pbWinPb2->SetStep(1);
-  $winPb->lblCount2->Text("0/$nbrVPosts");
-  $winPb->lblPbCurr2->Text("$STR{'Dump'} $STR{'VPosts'} $STR{'inProgress'}...");
-  foreach my $vPostsProfile (@vPostsNodes) {
-    my $id;
-    my $url;
-    my $name;
-    my $profileImg;
-    if ($vPostsProfile =~ / href="([^\&\"]+)(?:&|")[^\>]+hovercard\/user\.php\?id=([^\&\"]+)(?:&|")[^\>]+\>([^\<]+)\</) {
-      $url  = $1;
-      $id   = $2;
-      $name = $3;
-      $url  = (split(/\?/, $url))[0] if $url =~ /\?/;
-    }
-    if ($vPostsProfile =~ /src="([^\"]+)"/) { $profileImg = $1; $profileImg =~ s/&amp;/&/g; }
-    if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename}) {
-      if ($$refInfos{startingID} != $id) { # Comments by owner of the page are ignored
-        # Already exists, count
-        if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
-                                                   $STR{'VPosts'}, $id)) {
-          $sthProfilesUpd->execute($exists+1, $STR{'VPosts'}, $id);
-        # Add a new entry
-        } else {
-          $sthProfiles->execute($STR{'VPosts'}, $id, $ind, $name, $url, $profileImg, 1);
-          $ind++;
-        }
-      }
-    }
-    $count2++;
-    $winPb->pbWinPb2->StepIt();
-    $winPb->lblCount2->Text("$count2/$nbrVPosts");
-  }
-  $$refDbh->commit();
-  $winPb->lblPbCurr2->Text('');
-  $winPb->pbWinPb2->SetPos(0);
-  $winPb->lblCount2->Text('');
-  
-}  #--- End parseContribVPosts
 
 #--------------------------#
 sub dumpGroupMembersCat
@@ -2306,14 +2157,14 @@ sub parseGroupMembersCat
   # Load content from file
   if (-T $$refInfos{"$cat-tmpPage"}) {
     if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{"$cat-tmpPage"})) {
-      my $file_as_string = do { local $/ = <$fhTemp> };
-      $file_as_string    =~ s/[\r\n]//g;
+      my $fileAsStr = do { local $/ = <$fhTemp> };
+      $fileAsStr    =~ s/[\r\n]//g;
       if ($$refInfos{groupType} == 1) {
-        @members = split(/fbProfileBrowserListItem/, $file_as_string);
-        undef($file_as_string);
+        @members = split(/fbProfileBrowserListItem/, $fileAsStr);
+        undef($fileAsStr);
       } else {
-        @members = split(/GroupProfileGridItem/, $file_as_string);
-        undef($file_as_string);
+        @members = split(/GroupProfileGridItem/, $fileAsStr);
+        undef($fileAsStr);
       }
       shift(@members);
       $nbrMembers = scalar(@members);
@@ -2387,6 +2238,90 @@ sub parseGroupMembersCat
 }  #--- End parseGroupMembersCat
 
 #--------------------------#
+sub dlProfilesIcons
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refDbh, $refInfos) = @_;
+  my $all = $$refDbh->selectall_arrayref('SELECT id,pictureURL FROM PROFILES WHERE pictureURL IS NOT NULL');
+  # PROFILES fields: 0=cat, 1=id, 2=ind, 3=name, 4=url, 5=details, 6=pictureURL, 7=picturePath, 8=pictureRelPath, 9=nbr
+  
+  # Create a temp page with all icons
+  my $count   = 0;
+  my $nbrToDL = scalar(@$all);
+  $winPb->pbWinPb2->SetRange(0, $nbrToDL);
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text("$count/$nbrToDL");
+  $winPb->lblPbCurr2->Text("$STR{'Creating'} $STR{'profileIcons'} $STR{'page'}...");
+  my $iconsPage = "$$refInfos{saveDir}\\temp\\tempIcons.html";
+  if (open(HTML, ">:encoding(utf8)", $iconsPage)) {
+    print HTML "<!DOCTYPE html><html>\n<body>";
+    foreach my $entry (@$all) {
+      print HTML "<img src=\"$$entry[1]\" alt=\"$$entry[0]\" />";
+      $count++;
+      $winPb->pbWinPb2->StepIt();
+      $winPb->lblCount2->Text("$count/$nbrToDL");
+    }
+    print HTML "</body></html>";
+    close(HTML);
+  }
+  $winPb->lblPbCurr2->Text('');
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');
+  # Open the temp page in Firefox
+  $winPb->lblPbCurr2->Text("$STR{'Opening'} $STR{'thePage'}...");
+  my $mechIcons = WWW::Mechanize::Firefox->new(create => 1, autodie => 0);
+  $mechIcons->get('file:///'.$iconsPage, synchronize => 1);
+  # Save the page
+  $winPb->lblPbCurr2->Text("$STR{'Saving'} $STR{'thePage'}...");
+  mkdir("$$refInfos{saveDir}\\images_$$refInfos{filename}") if !-d "$$refInfos{saveDir}\\images_$$refInfos{filename}";
+  my $status = $mechIcons->save_content("$$refInfos{saveDir}\\temp\\tempIcons2.html", "$$refInfos{saveDir}\\temp");
+  while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
+  # Parse the saved page and move the icons
+  $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
+  my $sthProfilesUpd = $$refDbh->prepare('UPDATE PROFILES SET picturePath = ?, pictureRelPath = ? WHERE id = ?');
+  if (open(my $fhTemp, "<:encoding(UTF-8)", "$$refInfos{saveDir}\\temp\\tempIcons2.html")) {
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
+    close($fhTemp);
+    my @icons = split(/<img src=/, $fileAsStr);
+    shift(@icons);
+    # Progress
+    $count = 0;
+    my $nbrIcons = scalar(@icons);
+    $winPb->pbWinPb2->SetRange(0, $nbrIcons);
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->lblCount2->Text("$count/$nbrIcons");    
+    foreach my $iconCode (@icons) {
+      if ($iconCode =~ /^\"([^\"]+)\" alt=\"([^\"]+)\"/) {
+        my $iconPath = $1;
+        my $profilID = $2;
+        my $filename;
+        if    ($iconPath =~ /^http/ and $iconPath =~ /\/([^\/\?]+)(?:\?|$)/) { $filename = $1;        }
+        elsif ($iconPath !~ /^http/ and $iconPath !~ /\//                  ) { $filename = $iconPath; }
+        if ($filename) {
+          my $tmpPath = "$$refInfos{saveDir}\\temp\\$filename";
+          my $path    = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$profilID\.jpg";
+          my $relPath = ".\\images_$$refInfos{filename}\\$profilID\.jpg";
+          # Download or copy file
+          if (-e $tmpPath and !-e $path) { rename($tmpPath, $path);               } # File exist in temp directory, move it
+          elsif ($iconPath =~ /^http/  ) { $$refMech->save_url($iconPath, $path); } # File must be downloaded
+          $sthProfilesUpd->execute($path, $relPath, $profilID);
+        }
+      }
+      $count++;
+      $winPb->pbWinPb2->StepIt();
+      $winPb->lblCount2->Text("$count/$nbrIcons");
+    }
+  }
+  $winPb->lblPbCurr2->Text('');
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');
+  $$refDbh->commit();
+  
+}  #--- End dlProfilesIcons
+
+#--------------------------#
 sub parseChatPage
 #--------------------------#
 {
@@ -2399,10 +2334,10 @@ sub parseChatPage
   # Parse HTML file
   my @byDateParts;
   if (-T $$refInfos{tmp} and open(my $fhTemp, "<:encoding(utf8)", $$refInfos{tmp})) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
+    my $fileAsStr = do { local $/ = <$fhTemp> };
     close($fhTemp);
-    $file_as_string =~ s/[\r\n]//g;
-    my @sections = split(/function\(Bootloader\)/, $file_as_string);
+    $fileAsStr =~ s/[\r\n]//g;
+    my @sections = split(/function\(Bootloader\)/, $fileAsStr);
     foreach my $section (@sections) {
       my $partnerName;
       my $partnerURL;
@@ -2949,10 +2884,10 @@ sub findMobileChat
   while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
   # Parse the contact links
   if (-T $tmpVMPage and open(my $fhTemp, "<:encoding(UTF-8)", $tmpVMPage)) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
+    my $fileAsStr = do { local $/ = <$fhTemp> };
     close($fhTemp);
-    $file_as_string    =~ s/[\r\n]//g;
-    if ($file_as_string =~ /<a href="([^\"]+)">$partnerName</) {
+    $fileAsStr =~ s/[\r\n]//g;
+    if ($fileAsStr =~ /<a href="([^\"]+)">$partnerName</) {
       my $url = $1;
       $url    =~ s/&amp;/&/g;
       $url    = 'https://m.facebook.com'.$url if $url !~ /^http/;
@@ -2983,12 +2918,12 @@ sub browseMobileChat
     while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
     # Parse current page
     if (-T $tmpVMPage and open(my $fhTemp, "<:encoding(UTF-8)", $tmpVMPage)) {
-      my $file_as_string = do { local $/ = <$fhTemp> };
+      my $fileAsStr = do { local $/ = <$fhTemp> };
       close($fhTemp);
-      $file_as_string =~ s/[\r\n]//g;
+      $fileAsStr =~ s/[\r\n]//g;
       my $seeOlderURL;
       # Get See Older URL (if there is one)
-      if ($file_as_string =~ /<div[^\>]+see_older[^\>]+>(.+?)<\/div>/) {
+      if ($fileAsStr =~ /<div[^\>]+see_older[^\>]+>(.+?)<\/div>/) {
         my $seeOlderCode = $1;
         if ($seeOlderCode =~ /href="([^\"]+)"/) {
           my $tempSeeOlderURL = $1;
@@ -3000,8 +2935,8 @@ sub browseMobileChat
         }
       }
       # Get Vocal Message URLs
-      if ($file_as_string =~ /audioclip-/) {
-        while ($file_as_string =~ /<a href="([^\"]+)"[^\>]+>(.+?)<\/a>/) {
+      if ($fileAsStr =~ /audioclip-/) {
+        while ($fileAsStr =~ /<a href="([^\"]+)"[^\>]+>(.+?)<\/a>/) {
           my $tmpURL  = $1;
           my $content = $2;
           if ($content =~ /audioclip-/ and $tmpURL =~ /\?u=([^\&]+)&/) {
@@ -3010,7 +2945,7 @@ sub browseMobileChat
             $sthChatVocalMsg->execute($url);
             $$refDbh->commit();
           }
-          $file_as_string = &truncateText($file_as_string, length($tmpURL)+length($content), $tmpURL);
+          $fileAsStr = &truncateText($fileAsStr, length($tmpURL)+length($content), $tmpURL);
         }
       }
       # Get the next page
@@ -3075,9 +3010,9 @@ sub parseContacts
   # Get the contacts nodes
   my @contactsNodes;
   if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{tmp})) {
-    my $file_as_string = do { local $/ = <$fhTemp> };
-    $file_as_string =~ s/[\r\n]//g;
-    @contactsNodes = split(/row_header_id_user/, $file_as_string);
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
+    @contactsNodes = split(/row_header_id_user/, $fileAsStr);
     shift(@contactsNodes);
     close($fhTemp);
   }

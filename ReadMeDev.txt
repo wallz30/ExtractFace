@@ -3,7 +3,7 @@ Description		: Dump Facebook stuff for analysis or reporting purposes.
 Author				: Alain Rioux (admin@le-tools.com)
 WebSite				: http://le-tools.com/ExtractFace.html
 Documentation	: http://le-tools.com/ExtractFaceDoc.html
-CodePlex			: https://extractface.codeplex.com
+SourceForge		: https://sourceforge.net/p/extractface
 GitHub				: https://github.com/arioux/ExtractFace
 
 

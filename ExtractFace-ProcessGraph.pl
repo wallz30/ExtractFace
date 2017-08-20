@@ -2,10 +2,10 @@
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
 # ExtractFace-ProcessGraph.pl : Graphic elements for ExtractFace Process
-# WebSite				              : http://le-tools.com/ExtractFace.html
-# Documentation	              : http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			              : https://extractface.codeplex.com
-# GitHub				              : https://github.com/arioux/ExtractFace
+# WebSite                     : http://le-tools.com/ExtractFace.html
+# Documentation               : http://le-tools.com/ExtractFaceDoc.html
+# SourceForge                 : https://sourceforge.net/p/extractface
+# GitHub                      : https://github.com/arioux/ExtractFace
 # Creation                    : 2015-08-01
 # Modified                    : 2017-08-07
 # Author                      : Alain Rioux (admin@le-tools.com)

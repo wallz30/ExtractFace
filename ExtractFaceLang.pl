@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
-# ExtractFaceLang.pl    : Strings for ExtractFace
-# WebSite				        : http://le-tools.com/ExtractFace.html
-# Documentation	        : http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			        : https://extractface.codeplex.com
-# GitHub				        : https://github.com/arioux/ExtractFace
-# Creation              : 2015-08-01
-# Modified              : 2017-08-07
-# Author                : Alain Rioux (admin@le-tools.com)
+# ExtractFaceLang.pl  : Strings for ExtractFace
+# WebSite             : http://le-tools.com/ExtractFace.html
+# Documentation       : http://le-tools.com/ExtractFaceDoc.html
+# SourceForge         : https://sourceforge.net/p/extractface
+# GitHub              : https://github.com/arioux/ExtractFace
+# Creation            : 2015-08-01
+# Modified            : 2017-08-20
+# Author              : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
 #
@@ -82,6 +82,11 @@ sub loadDefaultStr
   $$refSTR{'Scroll'}      = 'Scroll';
   $$refSTR{'Scrolling'}   = 'Scrolling';
   $$refSTR{'Expand'}      = 'Expand';
+  $$refSTR{'Remove'}      = 'Remove';
+  $$refSTR{'Top'}         = 'Top';
+  $$refSTR{'leftCol'}     = 'Left column';
+  $$refSTR{'rightCol'}    = 'Right column';
+  $$refSTR{'Bottom'}      = 'Bottom';
   $$refSTR{'Expanding'}   = 'Expanding';
   $$refSTR{'ScrollExpand'} = 'Scroll and Expand';
   $$refSTR{'Downloading'} = 'Downloading';
@@ -167,6 +172,7 @@ sub loadDefaultStr
   $$refSTR{'Comments'}      = 'Comments';
   $$refSTR{'Likes'}         = 'Likes';
   $$refSTR{'VPosts'}        = 'Visitor Posts';
+  $$refSTR{'EventPosts'}    = 'Event Posts';
   $$refSTR{'LikesPage'}     = 'Likes page';
   $$refSTR{'groupMembers'}  = 'Group Members';
   $$refSTR{'loadOlderMsg'}  = 'Load Older Messages';

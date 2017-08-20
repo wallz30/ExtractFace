@@ -1,14 +1,14 @@
 #!/usr/bin/perl
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
-# ExtractFaceGraph.pl   : Graphic elements for ExtractFace
-# WebSite				        : http://le-tools.com/ExtractFace.html
-# Documentation	        : http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			        : https://extractface.codeplex.com
-# GitHub				        : https://github.com/arioux/ExtractFace
-# Creation              : 2015-08-01
-# Modified              : 2017-07-08
-# Author                : Alain Rioux (admin@le-tools.com)
+# ExtractFaceGraph.pl : Graphic elements for ExtractFace
+# WebSite             : http://le-tools.com/ExtractFace.html
+# Documentation       : http://le-tools.com/ExtractFaceDoc.html
+# SourceForge         : https://sourceforge.net/p/extractface
+# GitHub              : https://github.com/arioux/ExtractFace
+# Creation            : 2015-08-01
+# Modified            : 2017-07-08
+# Author              : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
 #

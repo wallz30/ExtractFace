@@ -2,12 +2,12 @@
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
 # ExtractFaceFunctions.pl : Functions for ExtractFace
-# WebSite				          : http://le-tools.com/ExtractFace.html
-# Documentation	          : http://le-tools.com/ExtractFaceDoc.html
-# CodePlex			          : https://extractface.codeplex.com
-# GitHub				          : https://github.com/arioux/ExtractFace
+# WebSite                 : http://le-tools.com/ExtractFace.html
+# Documentation           : http://le-tools.com/ExtractFaceDoc.html
+# SourceForge             : https://sourceforge.net/p/extractface
+# GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-08-10
+# Modified                : 2017-08-20
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -103,9 +103,9 @@ sub getCurrPidCode
   # In Messenger
   } elsif ($$refMech->uri =~ /\/messages/) {
     my $currURL = $$refMech->uri;
-    if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
-        $currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/([^\/\?]+)\/?/         or
-        $currURL =~ /https:\/\/(?:www|web).facebook.com\/messages\/archived\/t\/([^\/\?]+)\/?/) {
+    if ($currURL =~ /facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ or
+        $currURL =~ /facebook.com\/messages\/t\/([^\/\?]+)\/?/         or
+        $currURL =~ /facebook.com\/messages\/archived\/t\/([^\/\?]+)\/?/) {
       $pidCode = $1;
     }
     return($pidCode, 4);
@@ -361,14 +361,15 @@ sub loadDumpContrib
   $$refWinContrib->tfContribName->Text("$title - $$refSTR{'contributors'}");
   $$refWinContrib->tfStartURL->Text($currURL);
   if (my ($pidCode, $pageType) = &getCurrPidCode($refMech)) { $$refWinContrib->tfContribID->Text($pidCode); }
-  if ($currURL =~ /posts_to_page/) { 
+  if ($currURL =~ /posts_to_page/) { # Visitor posts popup is open
     $$refWinContrib->chContribVPosts->Enable();
-    $$refWinContrib->chContribComments->Disable();
-    $$refWinContrib->chContribLikes->Disable();
-  } else {
-    $$refWinContrib->chContribComments->Enable();
-    $$refWinContrib->chContribLikes->Enable();
+    $$refWinContrib->chContribEventPosts->Disable();
+  } elsif ($pageType == 5) { # On Event Page
+    $$refWinContrib->chContribEventPosts->Enable();
     $$refWinContrib->chContribVPosts->Disable();
+  } else { # Other pages
+    $$refWinContrib->chContribVPosts->Disable();
+    $$refWinContrib->chContribEventPosts->Disable();
   }
 
 }  #--- End loadDumpContrib
@@ -714,8 +715,8 @@ sub isDumpContribReady
     return(0);
   }
   # At least one type checked
-  if (!$$refWinContrib->chContribComments->Checked() and !$$refWinContrib->chContribLikes->Checked() and
-      !$$refWinContrib->chContribVPosts->Checked()) {
+  if (!$$refWinContrib->chContribComments->Checked()  and !$$refWinContrib->chContribLikes->Checked() and
+      !$$refWinContrib->chContribVPosts->Checked()    and !$$refWinContrib->chContribEventPosts->Checked()) {
     $$refWinContrib->btnContribDumpNow->Disable();
     $$refWinContrib->btnContribAddQueue->Disable();
     return(0);
@@ -1055,6 +1056,7 @@ sub dumpContrib
 	$dumpParams{comments}			  = 1 if $$refWinContrib->chContribComments->Checked();
 	$dumpParams{likes}				  = 1 if $$refWinContrib->chContribLikes->Checked();
 	$dumpParams{vPosts}				  = 1 if $$refWinContrib->chContribVPosts->Checked();
+	$dumpParams{eventPosts}     = 1 if $$refWinContrib->chContribEventPosts->Checked();
 	$dumpParams{autoScroll}     = 1 if $$refWinContrib->chContribAutoScroll->Checked();
 	# Create database
   mkdir("$USERDIR\\Queue") if !-d "$USERDIR\\Queue";
@@ -1588,9 +1590,12 @@ sub handlePageThr
   # Local variables
   my ($refTHR, $typeHandle, $nbrRetries, $count, $refARROW, $refHOURGLASS, $DEBUG_FILE, $refCONFIG, $refWinConfig,
       $refWinPb2, $refWin, $refSTR) = @_;
-  # $typeHandle: 1=Scroll, 2=Expand, 3=Scroll and Expand, 4=Scroll contacts, 5=Scroll chat, 6=Load Newer Msg, 7=Load Older Msg
+  # $typeHandle: 1=Scroll, 2=Expand, 3=Scroll and Expand, 4=Scroll contacts, 5=Scroll chat, 6=Load Newer Msg, 7=Load Older Msg, 8=Remove header (blue bar, menu),
+  #              9=Remove left column, 10=Remove rigth column, 11=Remove bottom, 12=Remove all
   my @processName = (undef, $$refSTR{'Scrolling'}, $$refSTR{'Expanding'}, $$refSTR{'ScrollExpand'}, "$$refSTR{'Scrolling'} $$refSTR{'Contacts'}",
-                     "$$refSTR{'Scrolling'} $$refSTR{'Chat'}", $$refSTR{'loadNewerMsg'}, $$refSTR{'loadOlderMsg'});
+                     "$$refSTR{'Scrolling'} $$refSTR{'Chat'}", $$refSTR{'loadNewerMsg'}, $$refSTR{'loadOlderMsg'}, "$$refSTR{'Remove'} $$refSTR{'Top'}",
+                     "$$refSTR{'Remove'} $$refSTR{'leftCol'}", "$$refSTR{'Remove'} $$refSTR{'rightCol'}", "$$refSTR{'Remove'} $$refSTR{'Bottom'}",
+                     "$$refSTR{'Remove'} $$refSTR{'All'}");
   # Cancel button
   $SIG{'KILL'} = sub {
     # Turn off progress bar
@@ -1774,6 +1779,27 @@ sub handlePageThr
               $loadOlderCode[0]->click();
               sleep($$refCONFIG{'TIME_TO_WAIT'});
             } else { last; }
+          }
+        # Remove
+        } elsif ($typeHandle >= 8 and $typeHandle <= 12) {
+          if ($typeHandle == 8 or $typeHandle == 12) {  # Remove Header
+            $mech->eval_in_page('var div = document.getElementById("pagelet_bluebar"); if (div) { div.parentNode.removeChild(div); }'); # Blue bar
+            $mech->eval_in_page('var div = document.getElementById("timeline_top_section"); if (div) { div.parentNode.removeChild(div); }'); # People Profile header
+          }
+          if ($typeHandle == 9 or $typeHandle == 12) { # Remove Left column
+            $mech->eval_in_page('var div = document.getElementById("entity_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # Event
+            $mech->eval_in_page('var div = document.getElementById("leftCol"); if (div) { div.parentNode.removeChild(div); }'); # Group and page
+            $mech->eval_in_page('var div = document.getElementById("u_0_16"); if (div) { div.parentNode.removeChild(div); }'); # People profile
+          }
+          if ($typeHandle == 10 or $typeHandle == 12) { # Remove Right menu
+            $mech->eval_in_page('var div = document.getElementById("u_0_n"); if (div) { div.parentNode.removeChild(div); }'); # Event
+            $mech->eval_in_page('var div = document.getElementById("u_0_s"); if (div) { div.parentNode.removeChild(div); }'); # Page
+            $mech->eval_in_page('var div = document.getElementById("rightCol"); if (div) { div.parentNode.removeChild(div); }'); # Group
+            $mech->eval_in_page('var div = document.getElementsByClassName("_14i5"); if (div[0]) { div[0].style.right = "0px"; div[0].style.left = "0px"; }'); # Modify scrollable area css
+          }
+          if ($typeHandle == 11 or $typeHandle == 12) { # Remove Bottom
+            $mech->eval_in_page('var div = document.getElementById("pagelet_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+            $mech->eval_in_page('var div = document.getElementById("pagelet_dock"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
           }
         }
       }
