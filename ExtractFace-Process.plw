@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-08-20
-my $VERSION               = '6.1';
+# Modified                : 2017-09-22
+my $VERSION               = '6.1.1';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -1202,7 +1202,8 @@ sub dumpAlbumPage
     # Create the directories
     mkdir("$$refInfos{saveDir}\\$$refInfos{filename}")
     if !-d "$$refInfos{saveDir}\\$$refInfos{filename}"; # Base directory
-    my $albumsPath = "$$refInfos{saveDir}\\$$refInfos{filename}\\$encodedName";
+    my $albumDirName = $encodedName =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/gr;
+    my $albumsPath   = "$$refInfos{saveDir}\\$$refInfos{filename}\\$albumDirName";
     mkdir($albumsPath) if !-d $albumsPath; # Directory for album
     mkdir($albumsPath.'\temp') if !-d $albumsPath.'\temp'; # Temp directory for album
     # Save the current tab in a temp file
@@ -1210,7 +1211,7 @@ sub dumpAlbumPage
     my $status;
     eval {
       if ($$refInfos{incIcons}) { $status = $$refMechAlbum->save_content($albumsTmpPage,
-                                                                         "$$refInfos{saveDir}\\$encodedName\\temp"); }
+                                                                         "$$refInfos{saveDir}\\$albumDirName\\temp"); }
       else                      { $status = $$refMechAlbum->save_content($albumsTmpPage); }
       while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
     };
@@ -1360,6 +1361,7 @@ sub parseAlbumPage
           $part =~ /background-image: url\(\'?([^\)\']+)/) {
         my $smallURL = $1;
         $smallURL    =~ s/&amp;/&/g;
+        $smallURL    =~ s/\\([0-9a-fA-F]{2}) /chr(hex($1))/eg if $smallURL =~ /^https\\3a/;
         if ($part =~ /ajaxify="([^\"]+)"/) {
           my $url = $1;
           $url    =~ s/&amp;/&/g;
@@ -2563,7 +2565,7 @@ sub parseMessage
 				my $mapURL = $1;
 				$mapURL    =~ s/&amp;/&/g;
         my $mapFn  = $sharedLinkTitle . '.jpg';
-        $mapFn     =~ s/[\<\>\:\"\/\\\|\?\*]/_/g;
+        $mapFn     =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
         $sthChatFiles->execute($mapURL, 1);
 				$mapImgTag .= "<img src=\"$mapURL\" alt=\"\"><br>";
 			}
@@ -4215,7 +4217,7 @@ sub selectCatFriendPage
   foreach my $link (@links) {
 		my $currentName = $link->{name};
 		my $catName = encode($charSet, $currentName);
-		$catName =~ s/[\<\>\:\"\/\\\|\?\*]/_/g;
+		$catName =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
     if ($catName eq $cat) {
       $link->click();
       return(1);

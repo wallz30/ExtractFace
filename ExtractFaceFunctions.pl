@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-08-20
+# Modified                : 2017-09-22
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -272,7 +272,7 @@ sub loadDumpFriends
       } else {
         if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
         elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
-        $currTitle =~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
+        $currTitle =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
         $$refWinFriends->tfFriendName->Text("$currTitle - $$refSTR{'friends'}");
       }
     } else { Win32::GUI::MessageBox($$refWinFriends, $$refSTR{'warn3'}, $$refSTR{'Error'}, 0x40010); }
@@ -280,7 +280,7 @@ sub loadDumpFriends
   } else {
     if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
     elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
-    $currTitle =~ s/[\<\>\:\"\/\\\|\?\*]/-/g;
+    $currTitle =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
     $$refWinFriends->tfFriendName->Text("$currTitle - $$refSTR{'friends'}");
   }
   # List available categories
@@ -297,7 +297,7 @@ sub loadDumpFriends
         if (/name=\"([^\"]+)\"/) { $catName = $1; }
         if ($catName) {
           my $cat = encode($$refCONFIG{'CHARSET'}, $catName);
-          $cat =~ s/[\<\>\:\"\/\\\|\?\*]/_/g;
+          $cat =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
           $categories{$cat}{name} = $catName;
           $categories{$cat}{url}  = $url;
           if (/aria-controls=\"([^\"]+)\"/) {
@@ -835,7 +835,7 @@ sub dumpAlbums
 	$dumpParams{processName}	  = 'DumpAlbums';
 	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinAlbums->tfAlbumTitle->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinAlbums->tfDirSaveAlbums->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -909,7 +909,7 @@ sub dumpFriends
 	$dumpParams{processName}	  = 'DumpFriends';
 	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinFriends->tfFriendName->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinFriends->tfDirSaveFriends->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -981,7 +981,7 @@ sub dumpMutualFriends
 	$dumpParams{processName}	  = 'DumpMutualFriends';
 	$dumpParams{charSet}    	  = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinMutualFriends->tfMutualFriendsName->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}  	    = encode($dumpParams{charSet}, $$refWinMutualFriends->tfDirSaveMutualFriends->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -1040,7 +1040,7 @@ sub dumpContrib
 	$dumpParams{processName}	  = 'DumpContrib';
 	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinContrib->tfContribName->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinContrib->tfDirSaveContrib->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -1105,7 +1105,7 @@ sub dumpEventMembers
 	$dumpParams{processName}	  = 'DumpEvent';
 	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinEvent->tfEventFilename->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinEvent->tfDirSaveEvent->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -1169,7 +1169,7 @@ sub dumpGroupMembers
 	$dumpParams{processName}	  = 'DumpGroupMembers';
 	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinGroupMembers->tfGroupMembersName->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinGroupMembers->tfDirSaveGroupMembers->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -1236,7 +1236,7 @@ sub dumpContacts
 	$dumpParams{processName}	  = 'DumpContacts';
 	$dumpParams{charSet}    	  = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinContacts->tfContactsName->Text());
-	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
 	$dumpParams{saveDir}  	    = encode($dumpParams{charSet}, $$refWinContacts->tfDirSaveContacts->Text());
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
@@ -1325,7 +1325,7 @@ sub dumpChat
   if ($now or $$refWinChat->rbChatCurrent->Checked()) {
     $dumpParams{procID}      = time;
     $dumpParams{filename} 	 = encode($dumpParams{charSet}, $$refWinChat->tfChatName->Text());
-    $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+    $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
     $dumpParams{startingURL} = $$refWinChat->tfChatCurrURL->Text();
   }
   # Dump Now
@@ -1352,7 +1352,7 @@ sub dumpChat
     if ($$refWinChat->rbChatCurrent->Checked()) {
       $dumpParams{procID}      = time;
       $dumpParams{filename} 	 = encode($dumpParams{charSet}, $$refWinChat->tfChatName->Text());
-      $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+      $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
       $dumpParams{startingURL} = $$refWinChat->tfChatCurrURL->Text();
       $return  = &addDumpChatToQueue(\%dumpParams, $refWinQueue, $USERDIR);
       $nbrChat = 1;
@@ -1390,7 +1390,7 @@ sub dumpChat
               $dumpParams{procID}      = gettimeofday;
               $dumpParams{procID}      =~ s/\.//;
               $dumpParams{filename} 	 = $$refWinChat->GridChats->GetCellText($i, 2);
-              $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*]/-/g; # Remove invalid characters for Windows filename
+              $dumpParams{filename} 	 =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
               $dumpParams{startingURL} = $$refWinChat->GridChats->GetCellText($i, 3);
               $return += &addDumpChatToQueue(\%dumpParams, $refWinQueue, $USERDIR);
               $count++;
@@ -1421,7 +1421,8 @@ sub validAlbumPage
   my $currURL = $$refMech->uri();
   my $valid   = 0;
   if ($currURL !~ /photos_albums/        and $currURL !~ /photos\?lst=[\w\%]+\&collection_token=\w+%\w+%3A6/ and
-			$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/) { # Not in the album page
+			$currURL !~ /photos\/\?tab=albums/ and $currURL !~ /sk=photos\&collection_token=\w+%\w+%3A6/ and
+      $currURL !~ /photos\/\?filter=albums/) { # Not in the album page
     return(0) if !$$refCONFIG{'AUTO_LOAD_SCROLL'}; # Don't load and scroll automatically
     # Determine type of page
     ($pageType, $goodAlbumUrl) = &guessPageType($refMech, $currURL); # Page type: 0=unknown, 1=People, 2=Groups, 3=Pages (Business)
@@ -1494,18 +1495,20 @@ sub getListAlbums
     $file_as_string =~ s/[\r\n]//g;
     close($fhTemp);
     my @albumsCode;
-    if ($pageType == 3) { @albumsCode = split(/_3rte/         , $file_as_string); }
-    else                { @albumsCode = split(/photoTextTitle/, $file_as_string); }
+    if    ($pageType == 1) { @albumsCode = split(/_51m-/         , $file_as_string); }
+    elsif ($pageType == 3) { @albumsCode = split(/_3rte/         , $file_as_string); }
+    else                   { @albumsCode = split(/photoTextTitle/, $file_as_string); }
     shift(@albumsCode);
     my %tmpAlbums;
     foreach my $albumCode (@albumsCode) {
       my $url;
       my $name;
       my $id;
-      if ($pageType == 3 and $albumCode =~ /href="([^\"]+)"/) {
+      if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) {
         $url = $1;
-        if ($albumCode =~ /_50f4">([^\<]*)</) { $name = $1; }
-        if ($url       =~ /album_id=(\d+)/  ) { $id   = $1; }
+        if    ($albumCode =~ /_50f4[^\>]*>([^\<]*)</) { $name = $1; }
+        if    ($url       =~ /album_id=(\d+)/       ) { $id   = $1; }
+        elsif ($url       =~ /set=([^\&]+)/         ) { $id   = $1; }
       } elsif ($albumCode =~ /href="([^\"]+)"><strong>([^\<]*)\</ or
                $albumCode =~ /href="([^\"]+)"><i[^\>]+><\/i><strong>([^\<]*)\</) {
         $url  = $1;
@@ -2177,7 +2180,7 @@ sub selectCatFriendPage
   foreach my $link (@links) {
 		my $currentName = $link->{name};
 		my $catName = encode($charSet, $currentName);
-		$catName =~ s/[\<\>\:\"\/\\\|\?\*]/_/g;
+		$catName =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
     if ($catName eq $cat) {
       $link->click();
       return(1);
