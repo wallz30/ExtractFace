@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-09-22
+# Modified                : 2017-10-27
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -1793,9 +1793,11 @@ sub handlePageThr
             $mech->eval_in_page('var div = document.getElementById("entity_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # Event
             $mech->eval_in_page('var div = document.getElementById("leftCol"); if (div) { div.parentNode.removeChild(div); }'); # Group and page
             $mech->eval_in_page('var div = document.getElementById("u_0_16"); if (div) { div.parentNode.removeChild(div); }'); # People profile
+            $mech->eval_in_page('var div = document.getElementsByClassName("_1vc-"); if (div[0]) { div[0].parentNode.removeChild(div[0]); }'); # People profile
           }
           if ($typeHandle == 10 or $typeHandle == 12) { # Remove Right menu
-            $mech->eval_in_page('var div = document.getElementById("u_0_n"); if (div) { div.parentNode.removeChild(div); }'); # Event
+            $mech->eval_in_page('var div = document.getElementById("event_related_events"); if (div) { div.parentNode.removeChild(div); }'); # Event
+            $mech->eval_in_page('var div = document.getElementById("pagelet_rhc_footer"); if (div) { div.parentNode.removeChild(div); }'); # Event
             $mech->eval_in_page('var div = document.getElementById("u_0_s"); if (div) { div.parentNode.removeChild(div); }'); # Page
             $mech->eval_in_page('var div = document.getElementById("rightCol"); if (div) { div.parentNode.removeChild(div); }'); # Group
             $mech->eval_in_page('var div = document.getElementsByClassName("_14i5"); if (div[0]) { div[0].style.right = "0px"; div[0].style.left = "0px"; }'); # Modify scrollable area css
@@ -1803,6 +1805,7 @@ sub handlePageThr
           if ($typeHandle == 11 or $typeHandle == 12) { # Remove Bottom
             $mech->eval_in_page('var div = document.getElementById("pagelet_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
             $mech->eval_in_page('var div = document.getElementById("pagelet_dock"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+            $mech->eval_in_page('var div = document.getElementById("pageFooter"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
           }
         }
       }

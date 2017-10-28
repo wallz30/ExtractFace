@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-09-22
-my $VERSION               = '6.1.1';
+# Modified                : 2017-10-28
+my $VERSION               = '6.1.2';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -2563,9 +2563,8 @@ sub parseMessage
 			my $mapImgTag;
 			if ($msgCode =~ /<div[^\>]+_3xn1[^\>]+style="background-image: ?url\(&quot;(.+?)&quot;\);/) {
 				my $mapURL = $1;
-				$mapURL    =~ s/&amp;/&/g;
-        my $mapFn  = $sharedLinkTitle . '.jpg';
-        $mapFn     =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
+        if ($mapURL =~ /url=([^\&]+)/) { $mapURL = unescape($1); }
+				$mapURL =~ s/&amp;/&/g;
         $sthChatFiles->execute($mapURL, 1);
 				$mapImgTag .= "<img src=\"$mapURL\" alt=\"\"><br>";
 			}
@@ -2837,7 +2836,7 @@ sub dumpChatVocalMsg
     }
     # Search the conversation
     if ($$refInfos{'dlVocalMsg-step'} == 1) {
-      $winPb->lblPbCurr2->Text("STR{'Searching'} $STR{'theConv'}...");
+      $winPb->lblPbCurr2->Text("$STR{'Searching'} $STR{'theConv'}...");
       $$refInfos{"$partnerName-vmURL"} = &findMobileChat(\$mechVM, $refInfos, $partnerName);
       $$refInfos{'dlVocalMsg-step'} = 2;
       &updateDumpDB_INFOS($refDbh, $refInfos);
