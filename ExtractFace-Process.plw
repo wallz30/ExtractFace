@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-10-28
-my $VERSION               = '6.1.2';
+# Modified                : 2017-11-05
+my $VERSION               = '6.1.3';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -1357,16 +1357,17 @@ sub parseAlbumPage
     $winPb->lblCount2->Text("0/$nbrParts");
     my $sthPictures = $$refDbh->prepare('INSERT OR REPLACE INTO PICTURES (album,ind,pageURL,smallURL) VALUES(?,?,?,?)');
     foreach my $part (@parts) {
-      if (($part =~ /^" data-fbid="[^\"]+"/ or $part =~ /" data-starred-src/ or $part =~ /uiVideoLinkLarge/) and
+      if (($part =~ /^" data-fbid="[^\"]+"/ or $part =~ /" data-starred-src/ or $part =~ /openFromVideoLinkHelper/) and
           $part =~ /background-image: url\(\'?([^\)\']+)/) {
         my $smallURL = $1;
         $smallURL    =~ s/&amp;/&/g;
         $smallURL    =~ s/\\([0-9a-fA-F]{2}) /chr(hex($1))/eg if $smallURL =~ /^https\\3a/;
         if ($part =~ /ajaxify="([^\"]+)"/) {
           my $url = $1;
-          $url    =~ s/&amp;/&/g;
-          $url    =~ s/&source=17//g;
-          $url    = 'https://www.facebook.com'.$url if $url !~ /^http/;
+          if ($url =~ /#/ and $part =~ /href="([^\"]+vb\.[^\"]+)"/) { $url = $1; }
+          $url =~ s/&amp;/&/g;
+          $url =~ s/&source=17//g;
+          $url = 'https://www.facebook.com'.$url if $url !~ /^http/;
           $sthPictures->execute($albumId, $ind, $url, $smallURL);
           $ind++;
         }
@@ -2341,8 +2342,6 @@ sub parseChatPage
     $fileAsStr =~ s/[\r\n]//g;
     my @sections = split(/function\(Bootloader\)/, $fileAsStr);
     foreach my $section (@sections) {
-      my $partnerName;
-      my $partnerURL;
       if ($section =~ /aria-label="Messages"/) {
         my @parts = split(/aria-label="Messages"/, $section);
         foreach my $part (@parts) {
@@ -2353,7 +2352,8 @@ sub parseChatPage
         push(@byDateParts, $section) if scalar(@byDateParts) == 0;
       }
       # Get partner profile Name
-      if ($section =~ /<h2[^\>]+_17w2[^\>]+\>(.+?)<\/h2>/) {
+      # if ($section =~ /<h2[^\>]+_17w2[^\>]+\>(.+?)<\/h2>/) {
+      if ($section =~ /<div[^\>]+_3eur[^\>]+\>(.+?)<\/div>/) {
         $$refInfos{partnerName} = $1;
         $$refInfos{partnerName} =~ s/<[^\>]+>//g;
       }
@@ -2454,7 +2454,7 @@ sub parseChatPage
             } else { $name = $STR{'Me'}; }
             # Parse message
             my $strCount = 0;
-            foreach my $msgCode (@msgContent) { $message .= &parseMessage($refDbh, $msgCode, $ind, $refInfos); }
+            foreach my $msgCode (@msgContent) { $message .= &parseMessage($refDbh, $msgCode, $ind, $refInfos) if $msgCode; }
             $message =~ s/<br>$//;
             # Add message to database
             $sthChat->execute($ind, $name, $datetime, $dateStr, $message);
@@ -3915,61 +3915,62 @@ sub createVocalMsgReportHTML
   my ($refDbh, $refInfos) = @_;
   $winPb->lblPbCurr2->Text("$STR{'Writing'} $STR{'vocalMsg'}...");
   my $htmlVMPage = "$$refInfos{saveDir}\\$$refInfos{filename} $STR{'vocalMsg'}.html";
-  open(HTML_VM, ">:encoding(UTF-8)", $htmlVMPage);
-  print HTML_VM "<!DOCTYPE html>\n";
-  print HTML_VM "<html>\n<head>\n<title>$$refInfos{filename} $STR{'vocalMsg'}</title>\n";
-  print HTML_VM "<meta charset=\"UTF-8\">\n";
-  print HTML_VM "<meta name=\"generator\" content=\"ExtractFace $VERSION\">\n";
-  print HTML_VM "<style>\n";
-  print HTML_VM "table, th, td {\n";
-  print HTML_VM "  border: 1px solid black;\n";
-  print HTML_VM "  border-collapse: collapse;\n";
-  print HTML_VM "}\n";
-  print HTML_VM "th, td {\n";
-  print HTML_VM "  padding: 5px;\n";
-  print HTML_VM "}\n";
-  print HTML_VM "</style>\n";
-  print HTML_VM "</head>\n";
-  print HTML_VM "<body>\n";
-  print HTML_VM "<h1 style=\"color:#003300;font-size: 18pt;font-variant: small-caps;font-weight: bold;\;text-align: center;\">";
-  print HTML_VM "$$refInfos{filename} $STR{'vocalMsg'}</h1>\n";
-  print HTML_VM "<table style=\"margin: auto;\">\n";
-  print HTML_VM "<tr>\n";
-  print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Filename'}</td>\n";
-  print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'url'}</td>\n";
-  print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Date'}</td>\n";
-  print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Listen'}</td>\n";
-  print HTML_VM "</tr>\n";
-  my $refVocalMsg = $$refDbh->selectall_arrayref('SELECT * FROM VOCAL_MSG');
-  # VOCAL_MSG fields: url, name, path, relPath
-  # Progress
-  my $count2 = 0;
-  my $nbrVM  = scalar(@$refVocalMsg);
-  $winPb->pbWinPb2->SetRange(0, $nbrVM);
-  $winPb->pbWinPb2->SetPos(0);
-  $winPb->pbWinPb2->SetStep(1);
-  $winPb->lblCount2->Text("0/$nbrVM");
-  foreach my $vocalMsg (@$refVocalMsg) {
-    print HTML_VM "<tr>";
-    if ($$vocalMsg[1]) { print HTML_VM "<td>$$vocalMsg[1]</td>"; }
-    else               { print HTML_VM "<td></td>"; }
-    print HTML_VM "<td>$$vocalMsg[0]</td>";
-    if ($$vocalMsg[1] and $$vocalMsg[1] =~ /-(\d{10})/) {
-      my $dt = DateTime->from_epoch(epoch => $1);
-      print HTML_VM "<td>" . $dt->strftime('%F %T') . "</td>";
-    } else { print HTML_VM "<td></td>"; }
-    my $srcVM;
-    if ($$vocalMsg[2] and -e $$vocalMsg[2] and $$vocalMsg[3]) {
-      $srcVM = $$vocalMsg[3];
-    } else { $srcVM = $$vocalMsg[0]; }
-    print HTML_VM "<td><audio controls><source src=\"$srcVM\" type=\"audio/mp4\"></audio></td>";
+  if (my $refVocalMsg = $$refDbh->selectall_arrayref('SELECT * FROM VOCAL_MSG')) {
+    open(HTML_VM, ">:encoding(UTF-8)", $htmlVMPage);
+    print HTML_VM "<!DOCTYPE html>\n";
+    print HTML_VM "<html>\n<head>\n<title>$$refInfos{filename} $STR{'vocalMsg'}</title>\n";
+    print HTML_VM "<meta charset=\"UTF-8\">\n";
+    print HTML_VM "<meta name=\"generator\" content=\"ExtractFace $VERSION\">\n";
+    print HTML_VM "<style>\n";
+    print HTML_VM "table, th, td {\n";
+    print HTML_VM "  border: 1px solid black;\n";
+    print HTML_VM "  border-collapse: collapse;\n";
+    print HTML_VM "}\n";
+    print HTML_VM "th, td {\n";
+    print HTML_VM "  padding: 5px;\n";
+    print HTML_VM "}\n";
+    print HTML_VM "</style>\n";
+    print HTML_VM "</head>\n";
+    print HTML_VM "<body>\n";
+    print HTML_VM "<h1 style=\"color:#003300;font-size: 18pt;font-variant: small-caps;font-weight: bold;\;text-align: center;\">";
+    print HTML_VM "$$refInfos{filename} $STR{'vocalMsg'}</h1>\n";
+    print HTML_VM "<table style=\"margin: auto;\">\n";
+    print HTML_VM "<tr>\n";
+    print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Filename'}</td>\n";
+    print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'url'}</td>\n";
+    print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Date'}</td>\n";
+    print HTML_VM "<td style=\"font-weight: bold;text-align: center;\">$STR{'Listen'}</td>\n";
     print HTML_VM "</tr>\n";
-    $count2++;
-    $winPb->lblCount2->Text("$count2/$nbrVM");
-    $winPb->pbWinPb2->StepIt();
-  }
-  print HTML_VM "</table>\n</body>\n</html>\n";
-  close(HTML_VM);
+    # VOCAL_MSG fields: url, name, path, relPath
+    # Progress
+    my $count2 = 0;
+    my $nbrVM  = scalar(@$refVocalMsg);
+    $winPb->pbWinPb2->SetRange(0, $nbrVM);
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->pbWinPb2->SetStep(1);
+    $winPb->lblCount2->Text("0/$nbrVM");
+    foreach my $vocalMsg (@$refVocalMsg) {
+      print HTML_VM "<tr>";
+      if ($$vocalMsg[1]) { print HTML_VM "<td>$$vocalMsg[1]</td>"; }
+      else               { print HTML_VM "<td></td>"; }
+      print HTML_VM "<td>$$vocalMsg[0]</td>";
+      if ($$vocalMsg[1] and $$vocalMsg[1] =~ /-(\d{10})/) {
+        my $dt = DateTime->from_epoch(epoch => $1);
+        print HTML_VM "<td>" . $dt->strftime('%F %T') . "</td>";
+      } else { print HTML_VM "<td></td>"; }
+      my $srcVM;
+      if ($$vocalMsg[2] and -e $$vocalMsg[2] and $$vocalMsg[3]) {
+        $srcVM = $$vocalMsg[3];
+      } else { $srcVM = $$vocalMsg[0]; }
+      print HTML_VM "<td><audio controls><source src=\"$srcVM\" type=\"audio/mp4\"></audio></td>";
+      print HTML_VM "</tr>\n";
+      $count2++;
+      $winPb->lblCount2->Text("$count2/$nbrVM");
+      $winPb->pbWinPb2->StepIt();
+    }
+    print HTML_VM "</table>\n</body>\n</html>\n";
+    close(HTML_VM);
+  } else { Win32::GUI::MessageBox($winPb, $STR{'noVocalMsgDumped'}, $STR{'Error'}, 0x40010) if !$$refInfos{silentProgress}; }
   
 }  #--- End createVocalMsgReportHTML
 

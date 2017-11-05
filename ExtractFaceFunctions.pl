@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-10-27
+# Modified                : 2017-11-05
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -1495,20 +1495,20 @@ sub getListAlbums
     $file_as_string =~ s/[\r\n]//g;
     close($fhTemp);
     my @albumsCode;
-    if    ($pageType == 1) { @albumsCode = split(/_51m-/         , $file_as_string); }
-    elsif ($pageType == 3) { @albumsCode = split(/_3rte/         , $file_as_string); }
-    else                   { @albumsCode = split(/photoTextTitle/, $file_as_string); }
+    if    ($pageType == 1 or $pageType == 3) { @albumsCode = split(/photoTextTitle/, $file_as_string); } # People or Group
+    elsif ($pageType == 3                  ) { @albumsCode = split(/_3rte/         , $file_as_string); } # Business
     shift(@albumsCode);
     my %tmpAlbums;
     foreach my $albumCode (@albumsCode) {
       my $url;
       my $name;
       my $id;
-      if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) {
+      if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) { # People or group
         $url = $1;
-        if    ($albumCode =~ /_50f4[^\>]*>([^\<]*)</) { $name = $1; }
-        if    ($url       =~ /album_id=(\d+)/       ) { $id   = $1; }
-        elsif ($url       =~ /set=([^\&]+)/         ) { $id   = $1; }
+        if    ($albumCode =~ /_50f4[^\>]*>([^\<]*)</               ) { $name = $1; }
+        elsif ($pageType == 1 and $albumCode =~ /<strong>([^\<]+)</) { $name = $1; }
+        if    ($url       =~ /album_id=(\d+)/) { $id = $1; }
+        elsif ($url       =~ /set=([^\&]+)/  ) { $id = $1; }
       } elsif ($albumCode =~ /href="([^\"]+)"><strong>([^\<]*)\</ or
                $albumCode =~ /href="([^\"]+)"><i[^\>]+><\/i><strong>([^\<]*)\</) {
         $url  = $1;

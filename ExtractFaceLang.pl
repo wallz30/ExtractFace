@@ -7,7 +7,7 @@
 # SourceForge         : https://sourceforge.net/p/extractface
 # GitHub              : https://github.com/arioux/ExtractFace
 # Creation            : 2015-08-01
-# Modified            : 2017-08-20
+# Modified            : 2017-11-05
 # Author              : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -193,6 +193,7 @@ sub loadDefaultStr
   $$refSTR{'SharedLink'}    = 'Shared link';
   $$refSTR{'Video'}         = 'Video';
   $$refSTR{'noMsgDumped'}   = 'No message were dumped';
+  $$refSTR{'noVocalMsgDumped'} = 'No vocal message were dumped';
   $$refSTR{'MobileFacebook'} = 'Mobile Facebook';
   $$refSTR{'Searching'}     = 'Searching';
   $$refSTR{'browseAllChat'} = 'Browsing all messages';
