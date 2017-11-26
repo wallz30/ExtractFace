@@ -28,6 +28,7 @@ ExtractFace has been developped using ActivePerl 5.16.3 with the following modul
 - Time-HiRes (v1.9726)
 - DateTime (v1.28)
 - DateTime-Format-Strptime (v1.68)
+- DateTime-TimeZone (v2.00)
 - URI-Escape-JavaScript (v0.04)
 - Win32-API (v0.75)
 - Win32-GUI (v1.08)

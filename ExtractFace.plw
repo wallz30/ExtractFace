@@ -8,8 +8,8 @@
 # SourceForge		: https://sourceforge.net/p/extractface
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation			: 2015-08-01
-# Modified			: 2017-11-05
-my $VERSION			= "6.1.3";
+# Modified			: 2017-11-26
+my $VERSION			= "6.2";
 # Author				: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -52,6 +52,7 @@ use Time::Local;
 use Time::HiRes qw(usleep);
 use DateTime;
 use DateTime::Format::Strptime;
+use DateTime::TimeZone;
 use Win32::API();
 use Win32::GUI;
 use Win32::GUI qw( WS_POPUP WS_CAPTION WS_THICKFRAME WS_EX_TOPMOST );
@@ -229,6 +230,10 @@ my $trayMenu = Win32::GUI::Menu->new(
 		">>$STR{'loadOlderMsg'}"									=> { -name => 'MenuLoadOldMsg'		},
 		">>$STR{'loadNewerMsg'}"									=> { -name => 'MenuLoadNewMsg'		},
 		">>$STR{'Dump'} $STR{'Chat'}..."					=> { -name => 'MenuChat'					},
+		">> -" => 0,
+		">>$STR{'Open'} $STR{'CurrChat'} - $STR{'MobileFacebook'}"		=> { -name => 'MenuChatMobileFB'	},
+		">>$STR{'Dump'} $STR{'vocalMsg'} - $STR{'MobileFacebook'}..."	=> { -name => 'MenuVocalMessages'	},
+		
 	" > -" => 0,
 	">$STR{'ShowQueue'}..."										=> { -name => 'MenuShowQueue'	},
   " > -" => 0,
@@ -802,6 +807,7 @@ my $winEvent;
 my $winContrib;
 my $winGroupMembers;
 my $winChat;
+my $winVocalMessages;
 my $winContacts;
 my $winQueue;
 my $gridQueueMenu;
@@ -1262,7 +1268,7 @@ sub MenuContacts_Click
 		&createWinContacts() if !$winContacts;
 		$winContacts->tfContactsCurrURL->Text('');
     # Start the thread
-    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winContacts, 8, $USERDIR, $DEBUG_FILE,
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winContacts, 9, $USERDIR, $DEBUG_FILE,
 													 \%CONFIG, \$win, \%STR);
     if ($winConfig->chRememberPos->Checked() and $CONFIG{'WINCONTACTS_LEFT'} and $CONFIG{'WINCONTACTS_TOP'}) {
       $winContacts->Left($CONFIG{'WINCONTACTS_LEFT'});
@@ -1323,6 +1329,38 @@ sub MenuChat_Click
   }
 
 }  #--- End MenuChat_Click
+
+#--------------------------#
+sub MenuChatMobileFB_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win,$STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { $THR = threads->create(\&handlePageThr, \$THR, 13, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+																\$winPb2, \$win, \%STR); }
+	
+}  #--- End MenuChatMobileFB_Click
+
+#--------------------------#
+sub MenuVocalMessages_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else {
+		&createWinVocalMessages() if !$winVocalMessages;
+		$winVocalMessages->tfVocalMessagesCurrURL->Text('');
+    # Start the thread
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winVocalMessages, 8, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+    if ($winConfig->chRememberPos->Checked() and $CONFIG{'WINVOCALMESSAGES_LEFT'} and $CONFIG{'WINVOCALMESSAGES_TOP'}) {
+      $winVocalMessages->Left($CONFIG{'WINVOCALMESSAGES_LEFT'});
+      $winVocalMessages->Top($CONFIG{'WINVOCALMESSAGES_TOP'});
+    } else { $winVocalMessages->Center(); }
+    $winVocalMessages->Show();
+  }
+
+}  #--- End MenuVocalMessages_Click
 
 #--------------------------#
 sub MenuShowQueue_Click
@@ -2674,12 +2712,13 @@ sub createWinContrib
 	$winContrib = Win32::GUI::Window->new(-name        => 'winContrib'        ,
 																				-text        => "$STR{'Dump'} $STR{'contributors'}",
 																				-pos         => [$winPosX, $winPosY],
-																				-size        => [800,200]           ,
+																				-size        => [800,380]           ,
+																				-minsize		 => [800,380]           ,
 																				-background  => [255, 255, 255]     ,
-																				-hasmaximize => 0                   ,
+																				-hasmaximize => 1                   ,
 																				-hasminimize => 1                   ,
 																				-helpbutton  => 0                   ,
-																				-resizable   => 0                   ,
+																				-resizable   => 1                   ,
 																				-dialogui    => 1                   , );
 	$winContrib->SetIcon($winICO);
 	$winContrib->AddLabel(            -name       	=> 'lblLogo'                      ,
@@ -2697,10 +2736,6 @@ sub createWinContrib
 																		-size       	=> [512, 22]                      ,
 																		-pos        	=> [220, 15]                      ,
 																		-tabstop    	=> 1                              , );
-	$winContrib->AddTextfield(        -name       	=> 'tfContribID'                	,
-																		-size       	=> [332, 22]                      ,
-																		-pos        	=> [220, 15]                      ,
-																		-visible    	=> 0                              , );
 	$winContrib->AddCombobox(         -name       	=> 'cbContribFormat'              ,
 																		-size       	=> [ 55, 22]                      ,
 																		-pos        	=> [735, 15]                      ,
@@ -2744,18 +2779,19 @@ sub createWinContrib
 																		-font       	=> $font10                        ,
 																		-checked    	=> 0                              , );
 	$winContrib->AddCheckbox(         -name       	=> 'chContribAutoScroll'    			,
-																		-size       	=> [220, 22]                      ,
+																		-size       	=> [200, 22]                      ,
 																		-pos        	=> [395, 74]                      ,
 																		-text       	=> $STR{'ScrollExpand'}       		,
 																		-background 	=> [255, 255, 255]                ,
 																		-font       	=> $font10                        ,
 																		-checked    	=> 0                              , );
 	$winContrib->AddLabel(						-name       	=> 'lblInProgress'        				,
-																		-size       	=> [100, 22]              				,
-																		-pos        	=> [656, 76]              				,
+																		-size       	=> [180, 22]              				,
+																		-pos        	=> [676, 76]              				,
 																		-font       	=> $font10                				,
 																		-foreground 	=> [0, 153, 0]            				,
 																		-background 	=> [255, 255, 255]        				,
+																		-align				=> 'right'												,
 																		-visible    	=> 1                      				, );
 	$winContrib->AddButton(           -name         => 'btnContribRefresh'            ,
 																		-size         => [ 22, 22]                      ,
@@ -2763,10 +2799,6 @@ sub createWinContrib
 																		-bitmap       => $refresh16                     ,
 																		-tip          => $STR{'ReloadPage'}          		,
 																		-tabstop      => 1                              , );
-	$winContrib->AddTextfield(        -name         => 'tfStartURL'                   ,
-																		-size         => [530, 22]                      ,
-																		-pos          => [260,100]                      ,
-																		-visible      => 0                              , );
 	$winContrib->AddLabel(            -name         => 'lblContribCat'                ,
 																		-size         => [ 75, 22]                      ,
 																		-pos          => [140,102]                      ,
@@ -2805,9 +2837,58 @@ sub createWinContrib
 																		-font       	=> $font10                        ,
 																		-tabstop    	=> 1                              ,
 																		-checked    	=> 0                              , );
+	$winContrib->AddLabel(            -name         => 'lblContribPages'							,
+																		-size         => [ 75, 22]                      ,
+																		-pos          => [140,129]                      ,
+																		-text         => $STR{'Pages'}.':'    					,
+																		-font         => $font10                        ,
+																		-background   => [255, 255, 255]                , );
+	$winContrib->AddCheckbox(         -name       	=> 'chContribPageCurr'            ,
+																		-size       	=> [120, 20]                      ,
+																		-pos        	=> [220,127]                      ,
+																		-text       	=> $STR{'CurrPage'}      					,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-tabstop    	=> 1                              ,
+																		-checked    	=> 1                              , );
+	$winContrib->AddTextfield(        -name       	=> 'tfStartURL'										,
+																		-size       	=> [527, 22]                      ,
+																		-pos        	=> [220,127]                      ,
+																		-font         => $font10                        ,
+																		-visible    	=> 0                              , );
+	$winContrib->AddTextfield(        -name       	=> 'tfContribID'                	,
+																		-size       	=> [332, 22]                      ,
+																		-pos        	=> [220,127]                      ,
+																		-visible    	=> 0                              , );
+	$winContrib->AddCheckbox(         -name       	=> 'chContribAlbums'          		,
+																		-size       	=> [300, 20]                      ,
+																		-pos        	=> [345,127]                      ,
+																		-text       	=> $STR{'PicPages'}								,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-disabled			=> 1															,
+																		-tabstop    	=> 1                              ,
+																		-checked    	=> 0                              , );
+	$winContrib->AddButton(           -name         => 'btnContribAlbumsRefresh'			,
+																		-size         => [ 22, 22]                      ,
+																		-pos          => [768,124]                      ,
+																		-bitmap       => $refresh16                     ,
+																		-tip          => $STR{'ReloadPage'}          		,
+																		-disabled			=> 1															,
+																		-tabstop      => 1                              , );
+	$winContrib->AddGrid (            -name         => 'GridContribAlbums'						,
+																		-pos          => [140,155]                      ,
+																		-size         => [650,145]                      ,
+																		-fixedrows    => 1                              ,
+																		-fixedcolumns => 0                              ,
+																		-editable     => 0                              ,
+																		-disabled			=> 1															,
+																		-tabstop			=> 1															, );
+	$winContrib->GridContribAlbums->SetListMode(1);
+	$winContrib->GridContribAlbums->SetHeaderSort();
 	$winContrib->AddButton(           -name       	=> 'btnContribDumpNow'            ,
 																		-size       	=> [150, 30]                      ,
-																		-pos        	=> [245,130]                      ,
+																		-pos        	=> [245,310]                      ,
 																		-text       	=> $STR{'DumpNow'}                ,
 																		-font       	=> $font10                        ,
 																		-disabled   	=> 1                              ,
@@ -2816,11 +2897,23 @@ sub createWinContrib
 																		-default    	=> 1                              , );
 	$winContrib->AddButton(           -name         => 'btnContribAddQueue'						,
 																		-size         => [150, 30]                      ,
-																		-pos          => [400,130]                      ,
+																		-pos          => [400,310]                      ,
 																		-text         => $STR{'AddToQueue'}.' >>'				,
 																		-font         => $font10                        ,
 																		-disabled     => 1                              ,
 																		-tabstop      => 1                              , );
+	# Header Dump albums grid
+	$winContrib->GridContribAlbums->SetRows(1);
+	$winContrib->GridContribAlbums->SetColumns(4); # 1: checkbox, 2: Album name, 3e: Album url, 4e: Album id (hidden)
+	$winContrib->GridContribAlbums->SetCellText(0, 0, ''        );
+	$winContrib->GridContribAlbums->SetCellType(0, 0, GVIT_CHECK);
+	$winContrib->GridContribAlbums->SetCellCheck(0, 0, 1);
+	$winContrib->GridContribAlbums->SetCellText(0, 1, $STR{'albumNames'});
+	$winContrib->GridContribAlbums->SetCellText(0, 3, $STR{'albumURLs'});
+	$winContrib->GridContribAlbums->SetColumnWidth(0, 25);
+	$winContrib->GridContribAlbums->SetColumnWidth(1, 80);
+	$winContrib->GridContribAlbums->SetColumnWidth(2, 0);
+	$winContrib->GridContribAlbums->ExpandLastColumn();
 	# Load default values
 	if (exists($CONFIG{'CONTRIB_REPORT_FORMAT'})) { $winContrib->cbContribFormat->SetCurSel($CONFIG{'CONTRIB_REPORT_FORMAT'}); }
 	else 																				 	{ $winContrib->cbContribFormat->SetCurSel(0); 															 } # Default is XLSX
@@ -2831,6 +2924,29 @@ sub createWinContrib
 	} else { $winContrib->chContribProfileIcons->Checked(1); $CONFIG{'CONTRIB_PROFILE_ICONS'} = 1; } # Default is checked
 
 }  #--- End createWinContrib
+
+#--------------------------#
+sub winContrib_Resize
+#--------------------------#
+{
+	$winContrib->tfContribName->Width($winContrib->ScaleWidth()-283);
+	$winContrib->cbContribFormat->Left($winContrib->ScaleWidth()-60);
+	$winContrib->tfDirSaveContrib->Width($winContrib->ScaleWidth()-272);
+	$winContrib->btnDirSaveContrib->Left($winContrib->ScaleWidth()-50);
+	$winContrib->btnBrowseDirSaveContrib->Left($winContrib->ScaleWidth()-27);
+	$winContrib->lblInProgress->Left($winContrib->ScaleWidth()-213);
+	$winContrib->btnContribRefresh->Left($winContrib->ScaleWidth()-27);
+	$winContrib->btnContribAlbumsRefresh->Left($winContrib->ScaleWidth()-27);
+	$winContrib->GridContribAlbums->Width($winContrib->ScaleWidth()-144);
+	$winContrib->GridContribAlbums->Height($winContrib->ScaleHeight()-195);
+	$winContrib->GridContribAlbums->AutoSize();
+	$winContrib->GridContribAlbums->ExpandLastColumn();
+	$winContrib->btnContribDumpNow->Left(($winContrib->ScaleWidth()/2)-155);
+	$winContrib->btnContribDumpNow->Top($winContrib->ScaleHeight()-35);
+	$winContrib->btnContribAddQueue->Left(($winContrib->ScaleWidth()/2)+5);
+	$winContrib->btnContribAddQueue->Top($winContrib->ScaleHeight()-35);	
+
+}  #--- End winContrib_Resize
 
 #--------------------------#
 sub cbContribFormat_Change
@@ -2929,7 +3045,64 @@ sub chContribComments_Click 	{ &isDumpContribReady(\$winContrib); }
 sub chContribLikes_Click    	{ &isDumpContribReady(\$winContrib); }
 sub chContribVPosts_Click			{ &isDumpContribReady(\$winContrib); }
 sub chContribEventPosts_Click	{ &isDumpContribReady(\$winContrib); }
+sub chContribPageCurr_Click		{ &isDumpContribReady(\$winContrib); }
 #--------------------------#
+
+#--------------------------#
+sub chContribAlbums_Click
+#--------------------------#
+{
+  if ($winContrib->chContribAlbums->Checked()) {
+		$winContrib->GridContribAlbums->Enable();
+		$winContrib->btnContribAlbumsRefresh->Enable();
+		&btnContribAlbumsRefresh_Click();
+		$winContrib->chContribAutoScroll->Checked(1);
+	} else {
+		$winContrib->GridContribAlbums->Disable();
+		$winContrib->btnContribAlbumsRefresh->Disable();
+	}
+	&isDumpContribReady(\$winContrib);
+
+}  #--- End chContribAlbums_Click
+
+#--------------------------#
+sub btnContribAlbumsRefresh_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else {
+    $winContrib->GridContribAlbums->DeleteNonFixedRows();
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winContrib, 10, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+  }
+  
+}  #--- End btnContribAlbumsRefresh_Click
+
+#--------------------------#
+sub GridContribAlbums_Click
+#--------------------------#
+{
+  # Local variables
+  my ($row, $column) = @_;
+  # Select
+  if (!$column) {
+    my $selStatus = $winContrib->GridContribAlbums->GetCellCheck($row, $column);
+    if (!$row) {
+      if (!$selStatus) { # Check all
+				for (my $i = 0; $i < $winContrib->GridContribAlbums->GetRows(); $i++) { $winContrib->GridContribAlbums->SetCellCheck($i, 0, 1); }
+			} else { # Uncheck all
+				for (my $i = 0; $i < $winContrib->GridContribAlbums->GetRows(); $i++) { $winContrib->GridContribAlbums->SetCellCheck($i, 0, 0); }
+			}
+    } else {
+      if (!$selStatus) { $winContrib->GridContribAlbums->SetCellCheck($row, $column, 1); } # Check
+      else             { $winContrib->GridContribAlbums->SetCellCheck($row, $column, 0); } # Uncheck
+    }
+  }
+	&isDumpContribReady(\$winContrib);
+  return(1);
+
+}  #--- End GridContribAlbums_Click
 
 #--------------------------#
 sub btnContribDumpNow_Click
@@ -3425,7 +3598,7 @@ sub createWinChat
 																		-font       	=> $font10                ,
 																		-background 	=> [255, 255, 255]        , );
 	$winChat->AddRadioButton(         -name       	=> 'rbChatCurrent'       	,
-																		-size       	=> [120, 22]             	,
+																		-size       	=> [150, 22]             	,
 																		-pos        	=> [220,170]              ,
 																		-background 	=> [255, 255, 255]        ,
 																		-text       	=> $STR{'CurrChat'}				,
@@ -3435,7 +3608,7 @@ sub createWinChat
 																		-group      	=> 1                      , );
 	$winChat->AddRadioButton(         -name       	=> 'rbChatList'     			,
 																		-size       	=> [120, 22]              ,
-																		-pos        	=> [345,170]              ,
+																		-pos        	=> [375,170]              ,
 																		-background 	=> [255, 255, 255]        ,
 																		-text       	=> $STR{'SelectChat'}.':'	,
 																		-font       	=> $font10                ,
@@ -3715,6 +3888,208 @@ sub winChat_Terminate
   return(0);
 
 }  #--- Fin winChat_Terminate
+
+
+#--------------------------#
+sub createWinVocalMessages
+#--------------------------#
+{
+	# Dump Vocal Messages window (from Mobile Facebook)
+	$winVocalMessages = Win32::GUI::Window->new(-name        => 'winVocalMessages'	,
+																							-text        => "$STR{'Dump'} $STR{'vocalMsg'}",
+																							-pos         => [$winPosX, $winPosY],
+																							-size        => [800,175]           ,
+																							-background  => [255, 255, 255]     ,
+																							-hasmaximize => 0                   ,
+																							-hasminimize => 1                   ,
+																							-helpbutton  => 0                   ,
+																							-resizable   => 0                   ,
+																							-dialogui    => 1                   , );
+	$winVocalMessages->SetIcon($winICO);
+	$winVocalMessages->AddLabel(          -name       	=> 'lblLogo'              ,
+																				-size       	=> [128,128]              ,
+																				-pos        	=> [  0,  5]              ,
+																				-bitmap     	=> $chatBmp            		,
+																				-background 	=> [255, 255, 255]        , );
+	$winVocalMessages->AddLabel(          -name       	=> 'lblVocalMessagesName'			,
+																				-size       	=> [ 70, 22]              ,
+																				-pos        	=> [140, 18]              ,
+																				-text       	=> $STR{'Filename'}.':'   ,
+																				-font       	=> $font10                ,
+																				-background 	=> [255, 255, 255]        , );
+	$winVocalMessages->AddTextfield(      -name       	=> 'tfVocalMessagesName'	,
+																				-size       	=> [512, 22]              ,
+																				-pos        	=> [220, 15]              ,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->AddTextfield(      -name         => 'tfVocalMessagesCurrURL',
+																				-size         => [440, 22]							,
+																				-pos          => [220, 15]							,
+																				-visible      => 0											, );
+	$winVocalMessages->AddCombobox(				-name       	=> 'cbVocalMessagesFormat',
+																				-size       	=> [ 55, 22]              ,
+																				-pos        	=> [735, 15]              ,
+																				-dropdownlist => 1                      ,
+																				-vscroll    	=> 1                      ,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->cbVocalMessagesFormat->Add('XLSX', 'HTML', 'TXT');
+	$winVocalMessages->AddLabel(          -name       	=> 'lblDirSaveVocalMessages',
+																				-size       	=> [ 70, 22]              ,
+																				-pos        	=> [140, 48]              ,
+																				-text       	=> $STR{'Directory'}.':'  ,
+																				-font       	=> $font10                ,
+																				-background 	=> [255, 255, 255]        , );
+	$winVocalMessages->AddTextfield(      -name       	=> 'tfDirSaveVocalMessages',
+																				-size       	=> [522, 22]              ,
+																				-pos        	=> [220, 45]              ,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->AddButton(         -name       	=> 'btnDirSaveVocalMessages',
+																				-size       	=> [ 22, 22]              ,
+																				-pos        	=> [744, 45]              ,
+																				-bitmap     	=> $browseBmp             ,
+																				-tip          => $STR{'SelectDir'}			,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->AddButton(         -name       	=> 'btnBrowseDirSaveVocalMessages',
+																				-size       	=> [ 22, 22]              ,
+																				-pos        	=> [768, 45]              ,
+																				-bitmap     	=> $explorerBmp           ,
+																				-tip        	=> $STR{'browseFolder'}   ,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->AddLabel(					-name       	=> 'lblInProgress'        ,
+																				-size       	=> [200, 22]              ,
+																				-pos        	=> [556, 77]              ,
+																				-font       	=> $font10                ,
+																				-foreground 	=> [0, 153, 0]            ,
+																				-background 	=> [255, 255, 255]        ,
+																				-visible    	=> 1                      , );
+	$winVocalMessages->AddButton(         -name       	=> 'btnVocalMessagesRefresh',
+																				-size       	=> [ 22, 22]              ,
+																				-pos        	=> [768, 75]              ,
+																				-bitmap     	=> $refresh16             ,
+																				-tip        	=> $STR{'ReloadPage'}  		,
+																				-tabstop    	=> 1                      , );
+	$winVocalMessages->AddButton(					-name       	=> 'btnVocalMessagesDumpNow',
+																				-size       	=> [150, 30]              ,
+																				-pos        	=> [245,105]              ,
+																				-text       	=> $STR{'DumpNow'}        ,
+																				-font       	=> $font10                ,
+																				-disabled   	=> 1                      ,
+																				-ok         	=> 1                      ,
+																				-default    	=> 1                      ,
+																				-tabstop			=> 1											, );
+	$winVocalMessages->AddButton(					-name         => 'btnVocalMessagesAddQueue'	,
+																				-size         => [150, 30]              ,
+																				-pos          => [400,105]              ,
+																				-text         => $STR{'AddToQueue'}.' >>',
+																				-font         => $font10                ,
+																				-disabled     => 1                      ,
+																				-tabstop      => 1                      , );
+	# Load default values
+	if (exists($CONFIG{'VOCALMESSAGES_REPORT_FORMAT'})) {
+		$winVocalMessages->cbVocalMessagesFormat->SetCurSel($CONFIG{'VOCALMESSAGES_REPORT_FORMAT'});
+	}	else { $winVocalMessages->cbVocalMessagesFormat->SetCurSel(0); } # Default is XLSX
+	$winVocalMessages->tfDirSaveVocalMessages->Text($CONFIG{'DIR_SAVE_VOCALMESSAGES'})
+	if exists($CONFIG{'DIR_SAVE_VOCALMESSAGES'}) and -d $CONFIG{'DIR_SAVE_VOCALMESSAGES'};
+
+}  #--- End createWinVocalMessages
+
+#--------------------------#
+sub cbVocalMessagesFormat_Change
+#--------------------------#
+{
+  my $selFormat = $winVocalMessages->cbVocalMessagesFormat->GetCurSel();
+	$CONFIG{'VOCALMESSAGES_REPORT_FORMAT'} = $selFormat;
+	&saveConfig(\%CONFIG, $CONFIG_FILE);
+	return(1);
+
+}  #--- End cbVocalMessagesFormat_Change
+
+#--------------------------#
+sub btnVocalMessagesRefresh_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+    $winVocalMessages->tfVocalMessagesName->Text('');
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winVocalMessages, 3, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+  }
+  
+}  #--- End btnVocalMessagesRefresh_Click
+
+#--------------------------#
+sub tfVocalMessagesName_Change { &isDumpVocalMessagesReady(\$winVocalMessages); }
+#--------------------------#
+
+#--------------------------#
+sub tfDirSaveVocalMessages_Change
+#--------------------------#
+{
+  # Local variables
+  my $saveDir = $winVocalMessages->tfDirSaveVocalMessages->Text();
+  # Remember the save dir
+  if ($saveDir and -d $saveDir and $winConfig->chRememberSaveDir->Checked()) {
+    $CONFIG{'DIR_SAVE_VOCALMESSAGES'} = $saveDir;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
+  }
+  &isDumpVocalMessagesReady(\$winVocalMessages);
+
+}  #--- End tfDirSaveVocalMessages_Change
+
+#--------------------------#
+sub btnDirSaveVocalMessages_Click
+#--------------------------#
+{
+  # Local variables
+  my $lastDir = $winVocalMessages->tfDirSaveVocalMessages->Text();
+  my $dir;
+  # Show dialog window
+  if ($lastDir) {
+    my(@parts) = split(/\\/, $lastDir);
+    if (pop(@parts) =~ /\./) { while ($lastDir =~ /[^\\]$/) { chop($lastDir); } }
+    $dir = Win32::GUI::BrowseForFolder(-owner => $winVocalMessages, -title => $STR{'SelectDir'}, -folderonly => 1, -newui => 1, -directory => $lastDir);
+  } else {
+    $dir = Win32::GUI::BrowseForFolder(-owner => $winVocalMessages, -title => $STR{'SelectDir'}, -folderonly => 1, -newui => 1);
+  }
+  # Selected folder
+  if ($dir and -d $dir) {
+    chop($dir) if $dir =~ /\\$/;
+    $winVocalMessages->tfDirSaveVocalMessages->Text($dir);
+  }
+	return(1);
+  
+}  #--- End btnDirSaveVocalMessages_Click
+
+#--------------------------#
+sub btnBrowseDirSaveVocalMessages_Click { &exploreDir($winVocalMessages->tfDirSaveVocalMessages->Text()); }
+#--------------------------#
+
+#--------------------------#
+sub btnVocalMessagesDumpNow_Click
+#--------------------------#
+{
+	&dumpVocalMessages(1, \$winVocalMessages, \$winQueue, \$winConfig, \%CONFIG, $CONFIG_FILE, $PROGDIR, $USERDIR, \$win, \%STR);
+	
+}  #--- End btnVocalMessagesDumpNow_Click
+
+#--------------------------#
+sub btnVocalMessagesAddQueue_Click
+#--------------------------#
+{
+	&dumpVocalMessages(0, \$winVocalMessages, \$winQueue, \$winConfig, \%CONFIG, $CONFIG_FILE, $PROGDIR, $USERDIR, \$win, \%STR);
+	
+}  #--- End btnVocalMessagesAddQueue_Click
+
+#--------------------------#
+sub winVocalMessages_Terminate
+#--------------------------#
+{
+	&rememberPosWin(\$winVocalMessages, 'WINVOCALMESSAGES', \$winConfig, \%CONFIG, $CONFIG_FILE)
+	if $winConfig->chRememberPos->Checked();
+	$winVocalMessages->Hide();
+  return(0);
+
+}  #--- Fin winVocalMessages_Terminate
 
 #--------------------------#
 sub createWinContacts

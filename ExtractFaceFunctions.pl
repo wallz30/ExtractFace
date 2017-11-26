@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-11-05
+# Modified                : 2017-11-26
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -88,7 +88,7 @@ sub getCurrPidCode
   # Local variables
   my $refMech = shift;
   my $pidCode = undef;
-  # Second return value (pageType): 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = In Messenger
+  # Second return value (pageType): 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = In Messenger, 5 = Event page, 6 = Mutual Friends
 	# Normal profile
 	if ($pidCode = $$refMech->selector('div._4a8n a', any => 1)) {
 		if ($pidCode->{outerHTML} =~ /user.php\?id=(\d+)/) { return($1, 1); }
@@ -130,7 +130,7 @@ sub loadDumpPageThr
 {
   # Local variables
   my ($refTHR, $refARROW, $refHOURGLASS, $refWinDump, $typeDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
-  # $typeDump: 1=Album, 2=Friends, 3=MutualFriends, 4=Event, 5=Contrib, 6=GroupMembers, 7=Chat, 8=Contacts
+  # $typeDump: 1=Album, 2=Friends, 3=MutualFriends, 4=Event, 5=Contrib, 6=GroupMembers, 7=Chat, 8=VocalMessages, 9=Contacts, 10=ContribAlbum
   # Deal with crash
   $SIG{__DIE__} = sub {
     my $msgErr = $_[0];
@@ -157,25 +157,29 @@ sub loadDumpPageThr
   # Valid current page
   if ($mech->uri() =~ /facebook.com/) {
     $$refWinDump->ChangeCursor($$refHOURGLASS);
-    if    ($typeDump == 1) { &loadDumpAlbum(        \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 2) { &loadDumpFriends(      \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 3) { &loadDumpMutualFriends(\$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 4) { &loadDumpEventMembers( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 5) { &loadDumpContrib(      \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 6) { &loadDumpGroupMembers( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 7) { &loadDumpChat(         \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
-    elsif ($typeDump == 8) { &loadDumpContacts(     \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    if    ($typeDump == 1 ) { &loadDumpAlbum(        \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 2 ) { &loadDumpFriends(      \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 3 ) { &loadDumpMutualFriends(\$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 4 ) { &loadDumpEventMembers( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 5 ) { &loadDumpContrib(      \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 6 ) { &loadDumpGroupMembers( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 7 ) { &loadDumpChat(         \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 8 ) { &loadDumpVocalMessages(\$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 9 ) { &loadDumpContacts(     \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 10) { &loadDumpContribAlbum( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
     $$refWinDump->lblInProgress->Text('');
     $$refWinDump->ChangeCursor($$refARROW);
   } else { Win32::GUI::MessageBox($$refWinDump, $$refSTR{'warn4'}, $$refSTR{'Error'}, 0x40010); }
-  if    ($typeDump == 1) { &isDumpAlbumsReady(        $refWinDump); }
-  elsif ($typeDump == 2) { &isDumpFriendsReady(       $refWinDump); }
-  elsif ($typeDump == 3) { &isDumpMutualFriendsReady( $refWinDump); }
-  elsif ($typeDump == 4) { &isDumpEventMembersReady(  $refWinDump); }
-  elsif ($typeDump == 5) { &isDumpContribReady(       $refWinDump); }
-  elsif ($typeDump == 6) { &isDumpGroupMembersReady(  $refWinDump); }
-  elsif ($typeDump == 7) { &isDumpChatReady(          $refWinDump); }
-  elsif ($typeDump == 8) { &isDumpContactsReady(      $refWinDump); }
+  if    ($typeDump == 1 ) { &isDumpAlbumsReady(        $refWinDump); }
+  elsif ($typeDump == 2 ) { &isDumpFriendsReady(       $refWinDump); }
+  elsif ($typeDump == 3 ) { &isDumpMutualFriendsReady( $refWinDump); }
+  elsif ($typeDump == 4 ) { &isDumpEventMembersReady(  $refWinDump); }
+  elsif ($typeDump == 5 ) { &isDumpContribReady(       $refWinDump); }
+  elsif ($typeDump == 6 ) { &isDumpGroupMembersReady(  $refWinDump); }
+  elsif ($typeDump == 7 ) { &isDumpChatReady(          $refWinDump); }
+  elsif ($typeDump == 8 ) { &isDumpVocalMessagesReady( $refWinDump); }
+  elsif ($typeDump == 9 ) { &isDumpContactsReady(      $refWinDump); }
+  elsif ($typeDump == 10) { &isDumpContribReady(       $refWinDump); }
   
 }  #--- End loadDumpPageThr
   
@@ -186,13 +190,13 @@ sub loadDumpAlbum
   # Local variables
   my ($refMech, $refWinAlbums, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
   # Valid current page
-  my ($validPage, $currURL) = &validAlbumPage($refMech, $refWinAlbums, $refCONFIG, $refSTR);
+  my ($validPage, $currURL) = &validAlbumPage($refMech, 1, $refWinAlbums, $refCONFIG, $refSTR);
   if ($validPage) {
     # Get album names and urls
     my %albums;
     my $pageType = $$refWinAlbums->tfPageType->Text();
     if    ($pageType == 1 or $pageType == 2) { # People or Group
-      &getListAlbums($refMech, $refWinAlbums, $pageType, $USERDIR, $refCONFIG);
+      &getListAlbums($refMech, \$$refWinAlbums->GridAlbums, $pageType, $USERDIR, $refCONFIG);
       if ($pageType == 2) {
         my $nextAlbumPage = $$refMech->selector('a.next.uiButton.uiButtonNoText', any => 1);
         while ($nextAlbumPage) {
@@ -200,7 +204,7 @@ sub loadDumpAlbum
           else {
             $nextAlbumPage->click();
             sleep($$refCONFIG{'TIME_TO_WAIT'});
-            &getListAlbums($refMech, $refWinAlbums, $pageType, $USERDIR, $refCONFIG);
+            &getListAlbums($refMech, \$$refWinAlbums->GridAlbums, $pageType, $USERDIR, $refCONFIG);
             $nextAlbumPage = $$refMech->selector('a.next.uiButton.uiButtonNoText', any => 1);
           }
         }
@@ -228,7 +232,7 @@ sub loadDumpAlbum
         }
       }
     } elsif ($pageType == 3) { # Page (Business)
-      &getListAlbums($refMech, $refWinAlbums, $pageType, $USERDIR, $refCONFIG);
+      &getListAlbums($refMech, \$$refWinAlbums->GridAlbums, $pageType, $USERDIR, $refCONFIG);
     }
     $$refWinAlbums->tfAlbumCurrURL->Text($currURL);
     if ($$refWinAlbums->GridAlbums->GetRows() > 1) {
@@ -354,13 +358,14 @@ sub loadDumpContrib
   my $title;
   my $currURL = $$refMech->uri();
   my ($pidCode, $pageType) = &getCurrPidCode($refMech);
-  if    ($pidCode) { $title = $pidCode; }
+  if    ($pidCode) { $title = $pidCode; $$refWinContrib->tfContribID->Text($pidCode); }
   elsif ($currURL =~ /profile.php\?id=([^\/\&\#]+)/                  ) { $title = $1; }
   elsif ($currURL =~ /fbid=([^\/\&\#]+)/                             ) { $title = $1; }
   elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/) { $title = $1; }
   $$refWinContrib->tfContribName->Text("$title - $$refSTR{'contributors'}");
   $$refWinContrib->tfStartURL->Text($currURL);
   if (my ($pidCode, $pageType) = &getCurrPidCode($refMech)) { $$refWinContrib->tfContribID->Text($pidCode); }
+  # pageType: 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = In Messenger, 5 = Event page, 6 = Mutual Friends
   if ($currURL =~ /posts_to_page/) { # Visitor posts popup is open
     $$refWinContrib->chContribVPosts->Enable();
     $$refWinContrib->chContribEventPosts->Disable();
@@ -368,11 +373,41 @@ sub loadDumpContrib
     $$refWinContrib->chContribEventPosts->Enable();
     $$refWinContrib->chContribVPosts->Disable();
   } else { # Other pages
+    if ($pageType == 1) { $$refWinContrib->chContribAlbums->Enable();  } # People profile
+    else                { $$refWinContrib->chContribAlbums->Disable(); }
     $$refWinContrib->chContribVPosts->Disable();
     $$refWinContrib->chContribEventPosts->Disable();
   }
 
 }  #--- End loadDumpContrib
+
+#--------------------------#
+sub loadDumpContribAlbum
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refWinContrib, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  # Valid current page
+  my $mechAlbum = WWW::Mechanize::Firefox->new(create => 1, autodie => 0);
+  $mechAlbum->get($$refMech->uri(), synchronize => 0);
+  sleep($$refCONFIG{'TIME_TO_WAIT'});
+  my ($validPage, $currURL) = &validAlbumPage(\$mechAlbum, 2, $refWinContrib, $refCONFIG, $refSTR);
+  if ($validPage) {
+    # Get album names and urls
+    my %albums;
+    &getListAlbums(\$mechAlbum, \$$refWinContrib->GridContribAlbums, 1, $USERDIR, $refCONFIG);
+    if ($$refWinContrib->GridContribAlbums->GetRows() > 1) {
+      # Feed the Album Grid
+      $$refWinContrib->GridContribAlbums->SetCellCheck(0, 0, 1);
+      $$refWinContrib->GridContribAlbums->Refresh();
+      $$refWinContrib->GridContribAlbums->AutoSize();
+      $$refWinContrib->GridContribAlbums->ExpandLastColumn();
+      $$refWinContrib->GridContribAlbums->BringWindowToTop();
+    } else { Win32::GUI::MessageBox($$refWinContrib, $$refSTR{'loadAlbumFail'}, $$refSTR{'Error'}, 0x40010); }
+    undef $mechAlbum;
+  } else { Win32::GUI::MessageBox($$refWinContrib, $$refSTR{'warn3'}, $$refSTR{'Error'}, 0x40010); }
+
+}  #--- End loadDumpContribAlbum
 
 #--------------------------#
 sub loadDumpEventMembers
@@ -393,7 +428,7 @@ sub loadDumpEventMembers
     my $eventDetailsURL = "https://www.facebook.com/events/ajax/guest_list/?acontext[ref]=51&acontext[source]=1&acontext[action_history]=[{%22surface%22%3A%22permalink%22%2C%22mechanism%22%3A%22surface%22%2C%22extra_data%22%3A[]}]&event_id=$idEvent&initial_tab=going&__pc=EXP1%3ADEFAULT&__asyncDialog=6&__a=1";
     mkdir("$tempDir") if !-d "$tempDir";
     my $localDataFile = "$tempDir\\data.txt";
-    my $mechData = WWW::Mechanize::Firefox->new(create => 1, autodie => 0, );
+    my $mechData = WWW::Mechanize::Firefox->new(create => 1, autodie => 0);
     $mechData->get($eventDetailsURL, synchronize => 0);
     sleep($$refCONFIG{'TIME_TO_WAIT'});
     my $status = $mechData->save_content($localDataFile, $tempDir);
@@ -593,6 +628,25 @@ sub loadDumpChat
 }  #--- End loadDumpChat
 
 #--------------------------#
+sub loadDumpVocalMessages
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refWinVocalMessages, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $currURL = $$refMech->uri();
+  if ($currURL =~ /\%[0-9a-fA-F]{2}(\d+)\&/) {
+    my $partnerID = $1;
+    $$refWinVocalMessages->tfVocalMessagesName->Text("$partnerID - $$refSTR{'vocalMsg'}");
+    $$refWinVocalMessages->tfVocalMessagesCurrURL->Text($$refMech->uri);
+  } else {
+    $$refWinVocalMessages->btnVocalMessagesDumpNow->Disable();
+    $$refWinVocalMessages->btnVocalMessagesAddQueue->Disable();
+    Win32::GUI::MessageBox($$refWinVocalMessages, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010);
+  }
+
+}  #--- End loadDumpVocalMessages
+
+#--------------------------#
 sub isDumpAlbumsReady
 #--------------------------#
 {
@@ -687,8 +741,8 @@ sub isDumpMutualFriendsReady
 {
   # Local variables
   my $refWinMutualFriends = shift;
-  my $mutualFriendsName = $$refWinMutualFriends->tfMutualFriendsName->Text();
-  my $saveDir      = $$refWinMutualFriends->tfDirSaveMutualFriends->Text();
+  my $mutualFriendsName   = $$refWinMutualFriends->tfMutualFriendsName->Text();
+  my $saveDir             = $$refWinMutualFriends->tfDirSaveMutualFriends->Text();
   # Valid directory and valid name for save ?
   if (!$saveDir or !(-d $saveDir) or !$mutualFriendsName) {
     $$refWinMutualFriends->btnMutualFriendsDumpNow->Disable();
@@ -720,6 +774,24 @@ sub isDumpContribReady
     $$refWinContrib->btnContribDumpNow->Disable();
     $$refWinContrib->btnContribAddQueue->Disable();
     return(0);
+  }
+  # At least one page item checked (current page or Picture pages)
+  if (!$$refWinContrib->chContribPageCurr->Checked()) {
+    my $nbrAlbumCheck = 0;
+    if ($$refWinContrib->chContribAlbums->Checked()) {
+      for (my $i = 1; $i < $$refWinContrib->GridContribAlbums->GetRows(); $i++) {
+        if ($$refWinContrib->GridContribAlbums->GetCellCheck($i, 0)) {
+          $nbrAlbumCheck++;
+          last;
+        }
+      }
+    }
+    # If only Picture pages is checked, at least one album must be checked
+    if (!$$refWinContrib->chContribAlbums->Checked() or !$nbrAlbumCheck) {
+      $$refWinContrib->btnContribDumpNow->Disable();
+      $$refWinContrib->btnContribAddQueue->Disable();
+      return(0);
+    }
   }
   $$refWinContrib->btnContribDumpNow->Enable();
   $$refWinContrib->btnContribAddQueue->Enable();
@@ -790,8 +862,8 @@ sub isDumpContactsReady
 {
   # Local variables
   my $refWinContacts = shift;
-  my $contactsName = $$refWinContacts->tfContactsName->Text();
-  my $saveDir      = $$refWinContacts->tfDirSaveContacts->Text();
+  my $contactsName   = $$refWinContacts->tfContactsName->Text();
+  my $saveDir        = $$refWinContacts->tfDirSaveContacts->Text();
   # Valid directory and valid name for save ?
   if (!$saveDir or !(-d $saveDir) or !$contactsName) {
     $$refWinContacts->btnContactsDumpNow->Disable();
@@ -821,6 +893,25 @@ sub isDumpChatReady
   $$refWinChat->btnChatAddQueue->Enable();
 
 }  #--- End isDumpChatReady
+
+#--------------------------#
+sub isDumpVocalMessagesReady
+#--------------------------#
+{
+  # Local variables
+  my $refWinVocalMessages = shift;
+  my $vocalMessagesName   = $$refWinVocalMessages->tfVocalMessagesName->Text();
+  my $saveDir             = $$refWinVocalMessages->tfDirSaveVocalMessages->Text();
+  # Valid directory and valid name for save ?
+  if (!$saveDir or !(-d $saveDir) or !$vocalMessagesName) {
+    $$refWinVocalMessages->btnVocalMessagesDumpNow->Disable();
+    $$refWinVocalMessages->btnVocalMessagesAddQueue->Disable();
+    return(0);
+  }
+  $$refWinVocalMessages->btnVocalMessagesDumpNow->Enable();
+  $$refWinVocalMessages->btnVocalMessagesAddQueue->Enable();
+
+}  #--- End isDumpVocalMessagesReady
 
 #--------------------------#
 sub dumpAlbums
@@ -1049,18 +1140,31 @@ sub dumpContrib
 	$dumpParams{closeUsedTabs}  = 1 if $$refWinConfig->chCloseUsedTabs->Checked();
 	$dumpParams{delTempFiles}   = 1 if $$refWinConfig->chDelTempFiles->Checked();
   $dumpParams{openReport}		  = 1 if $$refWinConfig->chOptOpenReport->Checked() and ($now or !$$refWinConfig->chOptDontOpenReport->Checked());
+  $dumpParams{startingURL}	  = $$refWinContrib->tfStartURL->Text()  if $$refWinContrib->chContribPageCurr->Checked();
   $dumpParams{startingID}     = $$refWinContrib->tfContribID->Text() if $$refWinContrib->tfContribID->Text();
-  $dumpParams{startingURL}	  = $$refWinContrib->tfStartURL->Text();
-  $dumpParams{reportFormat}	  = $$refWinContrib->cbContribFormat->GetString($$refWinContrib->cbContribFormat->GetCurSel());
-	$dumpParams{incIcons}			  = 1 if $$refWinContrib->chContribProfileIcons->Checked();
-	$dumpParams{comments}			  = 1 if $$refWinContrib->chContribComments->Checked();
-	$dumpParams{likes}				  = 1 if $$refWinContrib->chContribLikes->Checked();
-	$dumpParams{vPosts}				  = 1 if $$refWinContrib->chContribVPosts->Checked();
-	$dumpParams{eventPosts}     = 1 if $$refWinContrib->chContribEventPosts->Checked();
-	$dumpParams{autoScroll}     = 1 if $$refWinContrib->chContribAutoScroll->Checked();
+	# Gather selected album names and urls
+  my %albums;
+  if ($$refWinContrib->chContribAlbums->Checked()) {
+    for (my $i = 1; $i < $$refWinContrib->GridContribAlbums->GetRows(); $i++) {
+      if ($$refWinContrib->GridContribAlbums->GetCellCheck($i, 0)) {
+        my $albumId = $$refWinContrib->GridContribAlbums->GetCellText($i, 2);
+        $albums{$albumId}{name} = $$refWinContrib->GridContribAlbums->GetCellText($i, 1);
+        $albums{$albumId}{url}  = $$refWinContrib->GridContribAlbums->GetCellText($i, 3);
+      }
+    }
+    $dumpParams{pageType}   = 1; # Page type: 1=People
+  }
+  $dumpParams{reportFormat} = $$refWinContrib->cbContribFormat->GetString($$refWinContrib->cbContribFormat->GetCurSel());
+	$dumpParams{incIcons}			= 1 if $$refWinContrib->chContribProfileIcons->Checked();
+	$dumpParams{comments}			= 1 if $$refWinContrib->chContribComments->Checked();
+	$dumpParams{likes}				= 1 if $$refWinContrib->chContribLikes->Checked();
+	$dumpParams{vPosts}				= 1 if $$refWinContrib->chContribVPosts->Checked();
+	$dumpParams{eventPosts}   = 1 if $$refWinContrib->chContribEventPosts->Checked();
+	$dumpParams{autoScroll}   = 1 if $$refWinContrib->chContribAutoScroll->Checked();
 	# Create database
   mkdir("$USERDIR\\Queue") if !-d "$USERDIR\\Queue";
-	if (&createDumpDB("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%dumpParams)) {
+	if (&createDumpDB(  "$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%dumpParams ) and
+      &createAlbumsDB("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%albums     )) {
     if ($now) { # Dump Now
       my $command = 'ExtractFace-process ' . "$dumpParams{processName} $dumpParams{procID} \"$PROGDIR\" \"$USERDIR\"";
       Win32::Process::Create(my $processObj, $PROGDIR .'\ExtractFace-process.exe', $command, 0, NORMAL_PRIORITY_CLASS, $PROGDIR);
@@ -1294,6 +1398,7 @@ sub dumpChat
 	$dumpParams{processName}	  = 'DumpChat';
 	$dumpParams{charSet}    	  = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
 	$dumpParams{saveDir}  	    = encode($dumpParams{charSet}, $$refWinChat->tfDirSaveChat->Text());
+  $dumpParams{local_timezone} = $$refCONFIG{'LOCAL_TIMEZONE'};
 	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
 	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
 	$dumpParams{timeToWait}     = $$refWinConfig->tfTimeToWait->Text();
@@ -1339,7 +1444,7 @@ sub dumpChat
       $$refWin->Tray->Change(-tip => "$$refSTR{'Dump'} $$refSTR{'Chat'} $$refSTR{'finished'}");
       if (!$$refWin->IsVisible()) {
         $$refWin->Tray->Change(-balloon_icon => 'info', -balloon_title => 'ExtractFace',
-                               -balloon_tip => "$$refSTR{'Dump'} $$refSTR{'Chat'} $$refSTR{'finished'}");
+                               -balloon_tip  => "$$refSTR{'Dump'} $$refSTR{'Chat'} $$refSTR{'finished'}");
         $$refWin->Tray->ShowBalloon(1);
       }
     }
@@ -1412,11 +1517,71 @@ sub dumpChat
 }  #--- End dumpChat
 
 #--------------------------#
+sub dumpVocalMessages
+#--------------------------#
+{
+  # Local variables
+  my ($now, $refWinVocalMessages, $refWinQueue, $refWinConfig, $refCONFIG, $CONFIG_FILE, $PROGDIR,
+      $USERDIR, $refWin, $refSTR) = @_;
+	&rememberPosWin($refWinVocalMessages, 'WINVOCALMESSAGES', $refWinConfig, $refCONFIG, $CONFIG_FILE)
+  if $$refWinConfig->chRememberPos->Checked();
+	# Get Dump parameters
+	my %dumpParams;
+	$dumpParams{procID}				  = time;
+	$dumpParams{processName}	  = 'DumpVocalMessages';
+	$dumpParams{charSet}    	  = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
+	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinVocalMessages->tfVocalMessagesName->Text());
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
+	$dumpParams{saveDir}  	    = encode($dumpParams{charSet}, $$refWinVocalMessages->tfDirSaveVocalMessages->Text());
+	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
+	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
+	$dumpParams{timeToWait}     = $$refWinConfig->tfTimeToWait->Text();
+	$dumpParams{silentProgress} = 1 if $$refWinConfig->chSilentProgress->Checked() and !$now;
+	$dumpParams{closeUsedTabs}  = 1 if $$refWinConfig->chCloseUsedTabs->Checked();
+	$dumpParams{delTempFiles}   = 1 if $$refWinConfig->chDelTempFiles->Checked();
+  $dumpParams{openReport}		  = 1 if $$refWinConfig->chOptOpenReport->Checked() and ($now or !$$refWinConfig->chOptDontOpenReport->Checked());
+	$dumpParams{startingURL}	  = $$refWinVocalMessages->tfVocalMessagesCurrURL->Text();
+	$dumpParams{reportFormat}   = $$refWinVocalMessages->cbVocalMessagesFormat->GetString($$refWinVocalMessages->cbVocalMessagesFormat->GetCurSel());
+  mkdir("$USERDIR\\Queue")    if !-d "$USERDIR\\Queue";
+	if (&createDumpDB("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%dumpParams)) {
+    if ($now) { # Dump Now
+      my $command = 'ExtractFace-process ' . "$dumpParams{processName} $dumpParams{procID} \"$PROGDIR\" \"$USERDIR\"";
+      Win32::Process::Create(my $processObj, $PROGDIR .'\ExtractFace-process.exe', $command, 0, NORMAL_PRIORITY_CLASS, $PROGDIR);
+      &winVocalMessages_Terminate();
+      $processObj->Wait(INFINITE);
+      # Final message
+      $$refWin->Tray->Change(-tip => "$$refSTR{'Dump'} $$refSTR{'VocalMessages'} $$refSTR{'finished'}...");
+      if (!$$refWin->IsVisible()) {
+        $$refWin->Tray->Change(-balloon_icon => 'info', -balloon_title => 'ExtractFace',
+                               -balloon_tip => "$$refSTR{'Dump'} $$refSTR{'VocalMessages'} $$refSTR{'finished'}...");
+        $$refWin->Tray->ShowBalloon(1);
+      }
+    } else { # Add to queue
+      &createWinQueue() if !$$refWinQueue;
+      if (&existsInQueue($refWinQueue, $dumpParams{filename})) {
+        my $answer = Win32::GUI::MessageBox($$refWin, "$$refSTR{'queueExists'} ?", $$refSTR{'Queue'}, 0x40024);
+        if ($answer == 7) { # Answer is no, abort, but keep window open
+          unlink("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db");
+          return(1);
+        }
+      }
+      &winVocalMessages_Terminate();
+      if (&addToQueue($refWinQueue, "$dumpParams{processName}-$dumpParams{procID}",
+                      $dumpParams{filename}, $dumpParams{startingURL})) {
+        Win32::GUI::MessageBox($$refWin, $$refSTR{'addedQueue'}.'!', $$refSTR{'Queue'}, 0x40040);
+      } else { Win32::GUI::MessageBox($$refWin, $$refSTR{'errAddQueue'}, $$refSTR{'Error'}, 0x40010); }
+    }
+	}
+
+}  #--- End dumpVocalMessages
+
+#--------------------------#
 sub validAlbumPage
 #--------------------------#
 {
   # Local variables
-  my ($refMech, $refWinAlbums, $refCONFIG, $refSTR) = @_;
+  my ($refMech, $caller, $refWin, $refCONFIG, $refSTR) = @_;
+  # $caller: 1 = Albums window, 2 = Contrib window
   my ($pageType, $goodAlbumUrl, $currTitle);
   my $currURL = $$refMech->uri();
   my $valid   = 0;
@@ -1428,16 +1593,18 @@ sub validAlbumPage
     ($pageType, $goodAlbumUrl) = &guessPageType($refMech, $currURL); # Page type: 0=unknown, 1=People, 2=Groups, 3=Pages (Business)
     # Load the good Album page
     ($currURL, $currTitle) = &loadPage($refMech, $goodAlbumUrl, $$refCONFIG{'TIME_TO_WAIT'}) if $pageType and $goodAlbumUrl;
-    $$refWinAlbums->tfPageType->Text($pageType) if $pageType;
+    $$refWin->tfPageType->Text($pageType) if $pageType and $caller == 1;
     # Re evaluate current page
     if (($currURL !~ /photos_albums/        and $currURL !~ /photos_albums\?/         and $currURL !~ /collection_token=\w+%\w+%3A6/) and
 				 $currURL !~ /photos\/\?tab=albums/ and $currURL !~ /photos\/\?filter=albums/ or  $currTitle =~ /Page Not Found/) {  # Still not in the right page
-      $$refWinAlbums->btnAlbumsDumpNow->Disable();
-      $$refWinAlbums->btnAlbumsAddQueue->Disable();
-      Win32::GUI::MessageBox($$refWinAlbums, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010);
+      if ($caller == 1) {
+        $$refWin->btnAlbumsDumpNow->Disable();
+        $$refWin->btnAlbumsAddQueue->Disable();
+      }
+      Win32::GUI::MessageBox($$refWin, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010);
       threads->exit();
     } else { # Now in the right page, scroll down to load the whole page
-      $$refWinAlbums->lblInProgress->Text($$refSTR{'loadAlbum'}.'...');
+      $$refWin->lblInProgress->Text($$refSTR{'loadAlbum'}.'...');
       if ($pageType == 1) { &scrollAlbumPage($refMech, $$refCONFIG{'TIME_TO_WAIT'}); }
       else {
         my $end = &scrollPage($refMech, $$refCONFIG{'TIME_TO_WAIT'});
@@ -1450,14 +1617,14 @@ sub validAlbumPage
   } else {
     # Determine type of page
     ($pageType, $goodAlbumUrl) = &guessPageType($refMech, $currURL); # Page type: 0=unknown, 1=People, 2=Groups, 3=Pages (Business)
-    $$refWinAlbums->tfPageType->Text($pageType) if $pageType;
+    $$refWin->tfPageType->Text($pageType) if $pageType and $caller == 1;
     # Get current page title
     if ($currURL and $currURL =~ /https:\/\/(?:www|web).facebook.com\//) {
       if    ($currURL =~ /https:\/\/(?:www|web).facebook.com\/profile.php\?id=([^\/\&]+)/) { $currTitle = $1; }
 			elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/([^\/\?]+)/        ) { $currTitle = $1; }
       elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/                ) { $currTitle = $1; }
     }
-    $$refWinAlbums->lblInProgress->Text($$refSTR{'loadAlbum'}.'...');
+    $$refWin->lblInProgress->Text($$refSTR{'loadAlbum'}.'...');
     if ($$refCONFIG{'AUTO_LOAD_SCROLL'}) { # Scroll the page
       if ($pageType == 1) { &scrollAlbumPage($refMech, $$refCONFIG{'TIME_TO_WAIT'}); }
       else {
@@ -1472,7 +1639,7 @@ sub validAlbumPage
   if ($valid and $currTitle) {
     chop($currTitle) if $currTitle =~ /#$/;
     $currTitle .= " - Albums";
-    $$refWinAlbums->tfAlbumTitle->Text($currTitle);
+    $$refWin->tfAlbumTitle->Text($currTitle) if $caller == 1;
   }
   return($valid, $currURL);
 
@@ -1483,7 +1650,7 @@ sub getListAlbums
 #--------------------------#
 {
   # Local variables
-  my ($refMech, $refWinAlbums, $pageType, $USERDIR, $refCONFIG) = @_;
+  my ($refMech, $refWinGrid, $pageType, $USERDIR, $refCONFIG) = @_;
   my $tempDir = "$USERDIR\\temp";
   mkdir("$tempDir") if !-d "$tempDir";
   my $htmlPage = "$tempDir\\temp.html";
@@ -1495,7 +1662,7 @@ sub getListAlbums
     $file_as_string =~ s/[\r\n]//g;
     close($fhTemp);
     my @albumsCode;
-    if    ($pageType == 1 or $pageType == 3) { @albumsCode = split(/photoTextTitle/, $file_as_string); } # People or Group
+    if    ($pageType == 1 or $pageType == 2) { @albumsCode = split(/photoTextTitle/, $file_as_string); } # People or Group
     elsif ($pageType == 3                  ) { @albumsCode = split(/_3rte/         , $file_as_string); } # Business
     shift(@albumsCode);
     my %tmpAlbums;
@@ -1523,14 +1690,14 @@ sub getListAlbums
     }
     # Feed the grid
     foreach my $id (keys %tmpAlbums) {
-      if (my $i = $$refWinAlbums->GridAlbums->InsertRow($tmpAlbums{$id}{name}, -1)) {
-        $$refWinAlbums->GridAlbums->SetCellText($i, 0, ''        );
-        $$refWinAlbums->GridAlbums->SetCellType($i, 0, GVIT_CHECK);
-        $$refWinAlbums->GridAlbums->SetCellCheck($i, 0, 1);
-        $$refWinAlbums->GridAlbums->SetCellText($i, 1, $tmpAlbums{$id}{name});
-        $$refWinAlbums->GridAlbums->SetCellText($i, 2, $id                  );
-        $$refWinAlbums->GridAlbums->SetCellText($i, 3, $tmpAlbums{$id}{url} );
-        $$refWinAlbums->GridAlbums->Refresh();
+      if (my $i = $$refWinGrid->InsertRow($tmpAlbums{$id}{name}, -1)) {
+        $$refWinGrid->SetCellText($i, 0, ''        );
+        $$refWinGrid->SetCellType($i, 0, GVIT_CHECK);
+        $$refWinGrid->SetCellCheck($i, 0, 1);
+        $$refWinGrid->SetCellText($i, 1, $tmpAlbums{$id}{name});
+        $$refWinGrid->SetCellText($i, 2, $id                  );
+        $$refWinGrid->SetCellText($i, 3, $tmpAlbums{$id}{url} );
+        $$refWinGrid->Refresh();
       }
     }
   }
@@ -1594,11 +1761,11 @@ sub handlePageThr
   my ($refTHR, $typeHandle, $nbrRetries, $count, $refARROW, $refHOURGLASS, $DEBUG_FILE, $refCONFIG, $refWinConfig,
       $refWinPb2, $refWin, $refSTR) = @_;
   # $typeHandle: 1=Scroll, 2=Expand, 3=Scroll and Expand, 4=Scroll contacts, 5=Scroll chat, 6=Load Newer Msg, 7=Load Older Msg, 8=Remove header (blue bar, menu),
-  #              9=Remove left column, 10=Remove rigth column, 11=Remove bottom, 12=Remove all
+  #              9=Remove left column, 10=Remove rigth column, 11=Remove bottom, 12=Remove all, 13=Open Current Chat in Mobile Facebook
   my @processName = (undef, $$refSTR{'Scrolling'}, $$refSTR{'Expanding'}, $$refSTR{'ScrollExpand'}, "$$refSTR{'Scrolling'} $$refSTR{'Contacts'}",
                      "$$refSTR{'Scrolling'} $$refSTR{'Chat'}", $$refSTR{'loadNewerMsg'}, $$refSTR{'loadOlderMsg'}, "$$refSTR{'Remove'} $$refSTR{'Top'}",
                      "$$refSTR{'Remove'} $$refSTR{'leftCol'}", "$$refSTR{'Remove'} $$refSTR{'rightCol'}", "$$refSTR{'Remove'} $$refSTR{'Bottom'}",
-                     "$$refSTR{'Remove'} $$refSTR{'All'}");
+                     "$$refSTR{'Remove'} $$refSTR{'All'}", "$$refSTR{'Opening'} $$refSTR{'CurrChat'} - $$refSTR{'MobileFacebook'}");
   # Cancel button
   $SIG{'KILL'} = sub {
     # Turn off progress bar
@@ -1806,6 +1973,27 @@ sub handlePageThr
             $mech->eval_in_page('var div = document.getElementById("pagelet_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
             $mech->eval_in_page('var div = document.getElementById("pagelet_dock"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
             $mech->eval_in_page('var div = document.getElementById("pageFooter"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+          }
+        # Open current chat in Mobile Facebook
+        } elsif ($typeHandle == 13) {
+          if (my $partnerNameCode = $mech->selector('div._3eur span', any => 1)) {
+            my $partnerName = $partnerNameCode->{innerHTML};
+            # Open Mobile Facebook in a new tab
+            my $mechMFB = WWW::Mechanize::Firefox->new(activate => 1, create => 1, autodie => 0);
+            $mechMFB->autoclose_tab(0);
+            # Open Mobile Facebook
+            $mechMFB->get('https://m.facebook.com/messages', synchronize => 0);
+            sleep($$refCONFIG{'TIME_TO_WAIT'}*3);
+            # Search the conversation
+            $mechMFB->submit_form(with_fields => { 'q' => $partnerName });
+            sleep($$refCONFIG{'TIME_TO_WAIT'});
+            if (my @links = $mechMFB->selector('h3 a')) {
+              my $chatURL;
+              foreach (@links) { $chatURL = $_->{href} if $_->{outerHTML} =~ /$partnerName/; }
+              if ($chatURL) {
+                $mechMFB->get($chatURL, synchronize => 0);
+              } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'url'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Url not found
+            } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'CurrChat'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Not found
           }
         }
       }
@@ -2313,6 +2501,12 @@ sub loadConfig
   else                                          { $$refWinConfig->cbCharset->SetCurSel(0);    $$refConfig{'CHARSET'} = 'cp1252';        } # Default is cp1252
   if (exists($$refConfig{'DEBUG_LOGGING'}))     { $$refWinConfig->chDebugLogging->Checked($$refConfig{'DEBUG_LOGGING'});                }
   else                                          { $$refWinConfig->chDebugLogging->Checked(0); $$refConfig{'DEBUG_LOGGING'} = 0;         } # Default is not checked
+  if (!exists($$refConfig{'LOCAL_TIMEZONE'}))   {
+    my $localTZ;
+    eval    { $localTZ = DateTime::TimeZone->new(name => 'local'); }; # Try to find the local timezone
+    if ($@) { $$refConfig{'LOCAL_TIMEZONE'} = 'America/New_York';  }  # Default is America/New York
+    else    { $$refConfig{'LOCAL_TIMEZONE'} = $localTZ->{name};    }
+  }
   # Scroll and expand options
   if (exists($$refConfig{'MAX_LOADING_MSG'}))   { $$refWinConfig->upMaxScrollChat->SetPos($$refConfig{'MAX_LOADING_MSG'});              }
   else                                          { $$refWinConfig->upMaxScrollChat->SetPos(0); $$refConfig{'MAX_LOADING_MSG'} = 0;       } # Default value is 0 (No maximum)

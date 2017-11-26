@@ -7,7 +7,7 @@
 # SourceForge         : https://sourceforge.net/p/extractface
 # GitHub              : https://github.com/arioux/ExtractFace
 # Creation            : 2015-08-01
-# Modified            : 2017-11-05
+# Modified            : 2017-11-26
 # Author              : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -66,6 +66,7 @@ sub loadDefaultStr
   $$refSTR{'Directory'}   = 'Directory';
   $$refSTR{'SelectDir'}   = 'Select a directory';
   $$refSTR{'Select'}      = 'Select';
+  $$refSTR{'Open'}        = 'Open';
   $$refSTR{'Dump'}        = 'Dump';
   $$refSTR{'DumpNow'}     = 'Dump now';
   $$refSTR{'AddToQueue'}  = 'Add to queue';
@@ -100,6 +101,7 @@ sub loadDefaultStr
   $$refSTR{'outputFile'}  = 'output file';
   $$refSTR{'sheet'}       = 'sheet';
   $$refSTR{'page'}        = 'page';
+  $$refSTR{'Pages'}       = 'Pages';
   $$refSTR{'textFile'}    = 'text file';
   $$refSTR{'inProgress'}  = 'in progress';
   $$refSTR{'List'}        = 'List';
@@ -110,6 +112,7 @@ sub loadDefaultStr
   $$refSTR{'url'}         = 'URL';
   $$refSTR{'Name'}        = 'Name';
   $$refSTR{'Details'}     = 'Details';
+  $$refSTR{'Path'}        = 'Path';
   $$refSTR{'imgPath'}     = 'Image Path';
   $$refSTR{'imgPath2'}    = 'Image Path or URL';
   $$refSTR{'originURL'}   = 'Origin URL';
@@ -140,6 +143,7 @@ sub loadDefaultStr
   $$refSTR{'ReloadPage'}      = 'Reload the page';
   $$refSTR{'noProfileDumped'} = 'No profile were dumped';
   $$refSTR{'AutoScroll'}      = "Auto scroll";
+  $$refSTR{'NotFound'}        = 'Not found';
   # Dump Windows
   $$refSTR{'currProfileID'} = 'Current Profile ID';
   $$refSTR{'errProfileID'}  = 'Profile ID not found.';
@@ -200,6 +204,9 @@ sub loadDefaultStr
   $$refSTR{'vocalMsgLast'}  = 'Vocal message, last';
   $$refSTR{'Listen'}        = 'Listen';
   $$refSTR{'Contacts'}      = 'Contacts';
+  $$refSTR{'CurrPage'}      = 'Current page';
+  $$refSTR{'PicPages'}      = 'Picture pages (People profile only)';
+  $$refSTR{'browseAllPagesURLs'} = 'Browsing all pages';
   # Queue
   $$refSTR{'ShowQueue'}       = 'Show queue';
   $$refSTR{'Queue'}           = 'Queue';
