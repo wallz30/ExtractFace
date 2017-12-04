@@ -7,7 +7,7 @@
 # SourceForge         : https://sourceforge.net/p/extractface
 # GitHub              : https://github.com/arioux/ExtractFace
 # Creation            : 2015-08-01
-# Modified            : 2017-11-26
+# Modified            : 2017-12-04
 # Author              : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -207,6 +207,7 @@ sub loadDefaultStr
   $$refSTR{'CurrPage'}      = 'Current page';
   $$refSTR{'PicPages'}      = 'Picture pages (People profile only)';
   $$refSTR{'browseAllPagesURLs'} = 'Browsing all pages';
+  $$refSTR{'noCommentsDumped'}   = 'No comment were dumped';
   # Queue
   $$refSTR{'ShowQueue'}       = 'Show queue';
   $$refSTR{'Queue'}           = 'Queue';

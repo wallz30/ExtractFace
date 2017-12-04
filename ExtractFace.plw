@@ -8,8 +8,8 @@
 # SourceForge		: https://sourceforge.net/p/extractface
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation			: 2015-08-01
-# Modified			: 2017-11-26
-my $VERSION			= "6.2";
+# Modified			: 2017-12-04
+my $VERSION			= "6.3";
 # Author				: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -214,12 +214,15 @@ my $trayMenu = Win32::GUI::Menu->new(
   ">>$STR{'Bottom'}"												=> { -name => 'MenuRemBottom'			},
 	" >> -" => 0,
   ">>$STR{'All'}"														=> { -name => 'MenuRemAll'				},
+	" >> -" => 0,
+	">>$STR{'Comments'}"											=> { -name => 'MenuRemComments'		},
   " > -" => 0,
   ">$STR{'currProfileID'}..."								=> { -name => 'MenuPID'						},
   ">$STR{'Dump'} $STR{'Albums'}..."					=> { -name => 'MenuAlbums'				},
   ">$STR{'Dump'} $STR{'friends'}..."				=> { -name => 'MenuFriends'				},
   ">$STR{'Dump'} $STR{'MutualFriends'}..."  => { -name => 'MenuMutualFriends' },
   ">$STR{'Dump'} $STR{'contributors'}..."		=> { -name => 'MenuContributors'	},
+  ">$STR{'Dump'} $STR{'Comments'}..."				=> { -name => 'MenuComments'			},
   ">$STR{'Dump'} $STR{'EventMembers'}..."		=> { -name => 'MenuEvents'				},
 	">$STR{'Dump'} $STR{'groupMembers'}..."		=> { -name => 'MenuGroupMembers'	},
 	">$STR{'Messenger'}"											=> { -name => 'MenuMessenger'			, -item => 1 },
@@ -805,6 +808,7 @@ my $winFriends;
 my $winMutualFriends;
 my $winEvent;
 my $winContrib;
+my $winComments;
 my $winGroupMembers;
 my $winChat;
 my $winVocalMessages;
@@ -1011,11 +1015,9 @@ sub MenuRemTop_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else { # Start the thread
-    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
-      my $nbrRetries = 0;
-      $THR = threads->create(\&handlePageThr, \$THR, 8, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
-														 \$winPb2, \$win, \%STR);
-    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 8, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
   }
 	
 }  #--- End MenuRemTop_Click
@@ -1027,11 +1029,9 @@ sub MenuRemLeftCol_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else { # Start the thread
-    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
-      my $nbrRetries = 0;
-      $THR = threads->create(\&handlePageThr, \$THR, 9, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
-														 \$winPb2, \$win, \%STR);
-    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 9, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
   }
 	
 }  #--- End MenuRemLeftCol_Click
@@ -1043,11 +1043,9 @@ sub MenuRemRightCol_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else { # Start the thread
-    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
-      my $nbrRetries = 0;
-      $THR = threads->create(\&handlePageThr, \$THR, 10, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
-														 \$winPb2, \$win, \%STR);
-    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 10, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
   }
 	
 }  #--- End MenuRemRightCol_Click
@@ -1059,11 +1057,9 @@ sub MenuRemBottom_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else { # Start the thread
-    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
-      my $nbrRetries = 0;
-      $THR = threads->create(\&handlePageThr, \$THR, 11, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
-														 \$winPb2, \$win, \%STR);
-    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 11, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
   }
 	
 }  #--- End MenuRemBottom_Click
@@ -1075,14 +1071,26 @@ sub MenuRemAll_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else { # Start the thread
-    if ($winConfig->chOptSeemore->Checked() or $winConfig->chOptPosts->Checked() or $winConfig->chOptTranslate->Checked()) {
-      my $nbrRetries = 0;
-      $THR = threads->create(\&handlePageThr, \$THR, 12, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
-														 \$winPb2, \$win, \%STR);
-    } else { Win32::GUI::MessageBox($win, $STR{'warn2'}, $STR{'Warning'}, 0x40010); }
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 12, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
   }
 	
 }  #--- End MenuRemAll_Click
+
+#--------------------------#
+sub MenuRemComments_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else { # Start the thread
+		my $nbrRetries = 0;
+		$THR = threads->create(\&handlePageThr, \$THR, 14, 0, 0, \$ARROW, \$HOURGLASS, $DEBUG_FILE, \%CONFIG, \$winConfig,
+													 \$winPb2, \$win, \%STR);
+  }
+	
+}  #--- End MenuRemComments_Click
 
 #--------------------------#
 sub MenuPID_Click
@@ -1191,6 +1199,25 @@ sub MenuContributors_Click
   }
 
 }  #--- End MenuContributors_Click
+
+#--------------------------#
+sub MenuComments_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else {
+		&createWinComments if !$winComments;
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winComments, 11, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+    if ($winConfig->chRememberPos->Checked() and $CONFIG{'WINCOMMENTS_LEFT'} and $CONFIG{'WINCOMMENTS_TOP'}) {
+      $winComments->Left($CONFIG{'WINCOMMENTS_LEFT'});
+      $winComments->Top($CONFIG{'WINCOMMENTS_TOP'});
+    } else { $winComments->Center(); }
+    $winComments->Show();
+  }
+
+}  #--- End MenuComments_Click
 
 #--------------------------#
 sub MenuEvents_Click
@@ -3072,6 +3099,7 @@ sub btnContribAlbumsRefresh_Click
   # Avoid new thread
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else {
+		$winContrib->lblInProgress->Text($STR{'loadAlbum'}.'...');
     $winContrib->GridContribAlbums->DeleteNonFixedRows();
     $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winContrib, 10, $USERDIR, $DEBUG_FILE,
 													 \%CONFIG, \$win, \%STR);
@@ -3129,6 +3157,391 @@ sub winContrib_Terminate
   return(0);
 
 }  #--- End winContrib_Terminate
+
+#--------------------------#
+sub createWinComments
+#--------------------------#
+{
+	# Dump Comments window
+	$winComments = Win32::GUI::Window->new(	-name        => 'winComments'       ,
+																					-text        => "$STR{'Dump'} $STR{'Comments'}",
+																					-pos         => [$winPosX, $winPosY],
+																					-size        => [800,350]           ,
+																					-minsize		 => [800,350]           ,
+																					-background  => [255, 255, 255]     ,
+																					-hasmaximize => 1                   ,
+																					-hasminimize => 1                   ,
+																					-helpbutton  => 0                   ,
+																					-resizable   => 1                   ,
+																					-dialogui    => 1                   , );
+	$winComments->SetIcon($winICO);
+	$winComments->AddLabel(           -name       	=> 'lblLogo'                      ,
+																		-size       	=> [128,128]                      ,
+																		-pos        	=> [  0,  5]                      ,
+																		-bitmap     	=> $contribBmp                    ,
+																		-background 	=> [255, 255, 255]                , );
+	$winComments->AddLabel(           -name       	=> 'lblCommentsName'              ,
+																		-size       	=> [ 70, 22]                      ,
+																		-pos        	=> [140, 18]                      ,
+																		-text       	=> $STR{'Filename'}.':'           ,
+																		-font       	=> $font10                        ,
+																		-background 	=> [255, 255, 255]                , );
+	$winComments->AddTextfield(       -name       	=> 'tfCommentsName'               ,
+																		-size       	=> [512, 22]                      ,
+																		-pos        	=> [220, 15]                      ,
+																		-tabstop    	=> 1                              , );
+	$winComments->AddCombobox(        -name       	=> 'cbCommentsFormat'             ,
+																		-size       	=> [ 55, 22]                      ,
+																		-pos        	=> [735, 15]                      ,
+																		-dropdownlist => 1                            	,
+																		-vscroll    	=> 1                              ,
+																		-tabstop    	=> 1                              , );
+	$winComments->cbCommentsFormat->Add('XLSX', 'HTML', 'TXT');
+	$winComments->AddLabel(           -name       	=> 'lblDirSaveComments'           ,
+																		-size       	=> [ 70, 22]                      ,
+																		-pos        	=> [140, 48]                      ,
+																		-text       	=> $STR{'Directory'}.':'          ,
+																		-font       	=> $font10                        ,
+																		-background 	=> [255, 255, 255]                , );
+	$winComments->AddTextfield(       -name       	=> 'tfDirSaveComments'            ,
+																		-size       	=> [522, 22]                      ,
+																		-pos        	=> [220, 45]                      ,
+																		-tabstop    	=> 1                              , );
+	$winComments->AddButton(          -name       	=> 'btnDirSaveComments'           ,
+																		-size       	=> [ 22, 22]                      ,
+																		-pos        	=> [744, 45]                      ,
+																		-bitmap     	=> $browseBmp                     ,
+																		-tip          => $STR{'SelectDir'}							,
+																		-tabstop    	=> 1                              , );
+	$winComments->AddButton(          -name       	=> 'btnBrowseDirSaveComments'     ,
+																		-size       	=> [ 22, 22]                      ,
+																		-pos        	=> [768, 45]                      ,
+																		-bitmap     	=> $explorerBmp                   ,
+																		-tip        	=> $STR{'browseFolder'}           ,
+																		-tabstop    	=> 1                              , );
+	$winComments->AddLabel(           -name         => 'lblCommentsOpt'               ,
+																		-size         => [ 75, 22]                      ,
+																		-pos          => [140, 75]                      ,
+																		-text         => $STR{'Options'}.':'         		,
+																		-font         => $font10                        ,
+																		-background   => [255, 255, 255]                , );
+	$winComments->AddCheckbox(        -name       	=> 'chCommentsImages'       			,
+																		-size       	=> [170, 22]                      ,
+																		-pos        	=> [220, 74]                      ,
+																		-text       	=> "$STR{'Include'} $STR{'Images'}",
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-checked    	=> 0                              , );
+	$winComments->AddCheckbox(        -name       	=> 'chCommentsAutoScroll'    			,
+																		-size       	=> [200, 22]                      ,
+																		-pos        	=> [395, 74]                      ,
+																		-text       	=> $STR{'ScrollExpand'}       		,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-checked    	=> 0                              , );
+	$winComments->AddLabel(						-name       	=> 'lblInProgress'        				,
+																		-size       	=> [180, 22]              				,
+																		-pos        	=> [676, 76]              				,
+																		-font       	=> $font10                				,
+																		-foreground 	=> [0, 153, 0]            				,
+																		-background 	=> [255, 255, 255]        				,
+																		-align				=> 'right'												,
+																		-visible    	=> 1                      				, );
+	$winComments->AddButton(          -name         => 'btnCommentsRefresh'           ,
+																		-size         => [ 22, 22]                      ,
+																		-pos          => [768, 71]                      ,
+																		-bitmap       => $refresh16                     ,
+																		-tip          => $STR{'ReloadPage'}          		,
+																		-tabstop      => 1                              , );
+	$winComments->AddLabel(           -name         => 'lblCommentsPages'							,
+																		-size         => [ 75, 22]                      ,
+																		-pos          => [140,102]                      ,
+																		-text         => $STR{'Pages'}.':'    					,
+																		-font         => $font10                        ,
+																		-background   => [255, 255, 255]                , );
+	$winComments->AddCheckbox(        -name       	=> 'chCommentsPageCurr'           ,
+																		-size       	=> [120, 20]                      ,
+																		-pos        	=> [220,100]                      ,
+																		-text       	=> $STR{'CurrPage'}      					,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-tabstop    	=> 1                              ,
+																		-checked    	=> 1                              , );
+	$winComments->AddTextfield(       -name       	=> 'tfStartURL'										,
+																		-size       	=> [527, 22]                      ,
+																		-pos        	=> [220,100]                      ,
+																		-font         => $font10                        ,
+																		-visible    	=> 0                              , );
+	$winComments->AddTextfield(       -name       	=> 'tfCommentsID'                	,
+																		-size       	=> [332, 22]                      ,
+																		-pos        	=> [220,100]                      ,
+																		-visible    	=> 0                              , );
+	$winComments->AddCheckbox(        -name       	=> 'chCommentsAlbums'          		,
+																		-size       	=> [300, 20]                      ,
+																		-pos        	=> [345,100]                      ,
+																		-text       	=> $STR{'PicPages'}								,
+																		-background 	=> [255, 255, 255]                ,
+																		-font       	=> $font10                        ,
+																		-disabled			=> 1															,
+																		-tabstop    	=> 1                              ,
+																		-checked    	=> 0                              , );
+	$winComments->AddButton(          -name         => 'btnCommentsAlbumsRefresh'			,
+																		-size         => [ 22, 22]                      ,
+																		-pos          => [768, 97]                      ,
+																		-bitmap       => $refresh16                     ,
+																		-tip          => $STR{'ReloadPage'}          		,
+																		-disabled			=> 1															,
+																		-tabstop      => 1                              , );
+	$winComments->AddGrid (           -name         => 'GridCommentsAlbums'						,
+																		-pos          => [140,128]                      ,
+																		-size         => [650,145]                      ,
+																		-fixedrows    => 1                              ,
+																		-fixedcolumns => 0                              ,
+																		-editable     => 0                              ,
+																		-disabled			=> 1															,
+																		-tabstop			=> 1															, );
+	$winComments->GridCommentsAlbums->SetListMode(1);
+	$winComments->GridCommentsAlbums->SetHeaderSort();
+	$winComments->AddButton(          -name       	=> 'btnCommentsDumpNow'           ,
+																		-size       	=> [150, 30]                      ,
+																		-pos        	=> [245,280]                      ,
+																		-text       	=> $STR{'DumpNow'}                ,
+																		-font       	=> $font10                        ,
+																		-disabled   	=> 1                              ,
+																		-tabstop    	=> 1                              ,
+																		-ok         	=> 1                              ,
+																		-default    	=> 1                              , );
+	$winComments->AddButton(          -name         => 'btnCommentsAddQueue'					,
+																		-size         => [150, 30]                      ,
+																		-pos          => [400,280]                      ,
+																		-text         => $STR{'AddToQueue'}.' >>'				,
+																		-font         => $font10                        ,
+																		-disabled     => 1                              ,
+																		-tabstop      => 1                              , );
+	# Header Dump albums grid
+	$winComments->GridCommentsAlbums->SetRows(1);
+	$winComments->GridCommentsAlbums->SetColumns(4); # 1: checkbox, 2: Album name, 3e: Album url, 4e: Album id (hidden)
+	$winComments->GridCommentsAlbums->SetCellText(0, 0, ''        );
+	$winComments->GridCommentsAlbums->SetCellType(0, 0, GVIT_CHECK);
+	$winComments->GridCommentsAlbums->SetCellCheck(0, 0, 1);
+	$winComments->GridCommentsAlbums->SetCellText(0, 1, $STR{'albumNames'});
+	$winComments->GridCommentsAlbums->SetCellText(0, 3, $STR{'albumURLs'});
+	$winComments->GridCommentsAlbums->SetColumnWidth(0, 25);
+	$winComments->GridCommentsAlbums->SetColumnWidth(1, 80);
+	$winComments->GridCommentsAlbums->SetColumnWidth(2, 0);
+	$winComments->GridCommentsAlbums->ExpandLastColumn();
+	# Load default values
+	if (exists($CONFIG{'COMMENTS_REPORT_FORMAT'})) { $winComments->cbCommentsFormat->SetCurSel($CONFIG{'COMMENTS_REPORT_FORMAT'}); }
+	else 																				 	 { $winComments->cbCommentsFormat->SetCurSel(1); 															 	 } # Default is HTML
+	$winComments->tfDirSaveComments->Text($CONFIG{'DIR_SAVE_COMMENTS'})
+	if exists($CONFIG{'DIR_SAVE_COMMENTS'}) and -d $CONFIG{'DIR_SAVE_COMMENTS'};
+  if (exists($CONFIG{'COMMENTS_IMAGES'})) {
+		$winComments->chCommentsImages->Checked($CONFIG{'COMMENTS_IMAGES'});
+	} else { $winComments->chCommentsImages->Checked(1); $CONFIG{'COMMENTS_IMAGES'} = 1; } # Default is checked
+
+}  #--- End createWinComments
+
+#--------------------------#
+sub winComments_Resize
+#--------------------------#
+{
+	$winComments->tfCommentsName->Width($winComments->ScaleWidth()-283);
+	$winComments->cbCommentsFormat->Left($winComments->ScaleWidth()-60);
+	$winComments->tfDirSaveComments->Width($winComments->ScaleWidth()-272);
+	$winComments->btnDirSaveComments->Left($winComments->ScaleWidth()-50);
+	$winComments->btnBrowseDirSaveComments->Left($winComments->ScaleWidth()-27);
+	$winComments->lblInProgress->Left($winComments->ScaleWidth()-213);
+	$winComments->btnCommentsRefresh->Left($winComments->ScaleWidth()-27);
+	$winComments->btnCommentsAlbumsRefresh->Left($winComments->ScaleWidth()-27);
+	$winComments->GridCommentsAlbums->Width($winComments->ScaleWidth()-144);
+	$winComments->GridCommentsAlbums->Height($winComments->ScaleHeight()-170);
+	$winComments->GridCommentsAlbums->AutoSize();
+	$winComments->GridCommentsAlbums->ExpandLastColumn();
+	$winComments->btnCommentsDumpNow->Left(($winComments->ScaleWidth()/2)-155);
+	$winComments->btnCommentsDumpNow->Top($winComments->ScaleHeight()-36);
+	$winComments->btnCommentsAddQueue->Left(($winComments->ScaleWidth()/2)+5);
+	$winComments->btnCommentsAddQueue->Top($winComments->ScaleHeight()-36);	
+
+}  #--- End winComments_Resize
+
+#--------------------------#
+sub cbCommentsFormat_Change
+#--------------------------#
+{
+  my $selFormat = $winComments->cbCommentsFormat->GetCurSel();
+	$CONFIG{'COMMENTS_REPORT_FORMAT'} = $selFormat;
+	&saveConfig(\%CONFIG, $CONFIG_FILE);
+	return(1);
+
+}  #--- End cbCommentsFormat_Change
+
+#--------------------------#
+sub btnCommentsRefresh_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else {
+    # Reset window
+    $winComments->tfCommentsName->Text('');
+    $winComments->tfCommentsID->Text('');
+    $winComments->tfStartURL->Text('');
+    # Start the thread
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winComments, 11, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+  }
+  
+}  #--- End btnCommentsRefresh_Click
+
+#--------------------------#
+sub tfCommentsName_Change { &isDumpCommentsReady(\$winComments); }
+#--------------------------#
+
+#--------------------------#
+sub tfDirSaveComments_Change
+#--------------------------#
+{
+  # Local variables
+  my $saveDir = $winComments->tfDirSaveComments->Text();
+  # Remember the save dir
+  if ($saveDir and -d $saveDir and $winConfig->chRememberSaveDir->Checked()) {
+    $CONFIG{'DIR_SAVE_COMMENTS'} = $saveDir;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
+  }
+  &isDumpCommentsReady(\$winComments);
+
+}  #--- End tfDirSaveComments_Change
+
+#--------------------------#
+sub btnDirSaveComments_Click
+#--------------------------#
+{
+  # Local variables
+  my $lastDir = $winComments->tfDirSaveComments->Text();
+  my $dir;
+  # Show dialog window
+  if ($lastDir) {
+    my(@parts) = split(/\\/, $lastDir);
+    if (pop(@parts) =~ /\./) { while ($lastDir =~ /[^\\]$/) { chop($lastDir); } }
+    $dir = Win32::GUI::BrowseForFolder(-owner => $winComments, -title => $STR{'SelectDir'}, -folderonly => 1, -newui => 1, -directory => $lastDir);
+  } else {
+    $dir = Win32::GUI::BrowseForFolder(-owner => $winComments, -title => $STR{'SelectDir'}, -folderonly => 1, -newui => 1);
+  }
+  # Selected folder
+  if ($dir and -d $dir) {
+    chop($dir) if $dir =~ /\\$/;
+    $winComments->tfDirSaveComments->Text($dir);
+  }
+	return(1);
+  
+}  #--- End btnDirSaveComments_Click
+
+#--------------------------#
+sub btnBrowseDirSaveComments_Click { &exploreDir($winComments->tfDirSaveComments->Text()); }
+#--------------------------#
+
+#--------------------------#
+sub chCommentsImages_Click
+#--------------------------#
+{
+  # Save the choice
+  if ($winComments->chCommentsImages->Checked()) {
+    $CONFIG{'COMMENTS_IMAGES'} = 1;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
+  # Don't save
+  } else {
+    $CONFIG{'COMMENTS_IMAGES'} = 0;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
+  }
+
+}  #--- End chCommentsImages_Click
+
+#--------------------------#
+sub chCommentsPageCurr_Click { &isDumpCommentsReady(\$winComments); }
+#--------------------------#
+
+#--------------------------#
+sub chCommentsAlbums_Click
+#--------------------------#
+{
+  if ($winComments->chCommentsAlbums->Checked()) {
+		$winComments->GridCommentsAlbums->Enable();
+		$winComments->btnCommentsAlbumsRefresh->Enable();
+		&btnCommentsAlbumsRefresh_Click();
+		$winComments->chCommentsAutoScroll->Checked(1);
+	} else {
+		$winComments->GridCommentsAlbums->Disable();
+		$winComments->btnCommentsAlbumsRefresh->Disable();
+	}
+	&isDumpCommentsReady(\$winComments);
+
+}  #--- End chCommentsAlbums_Click
+
+#--------------------------#
+sub btnCommentsAlbumsRefresh_Click
+#--------------------------#
+{
+  # Avoid new thread
+  if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
+	else {
+		$winComments->lblInProgress->Text($STR{'loadAlbum'}.'...');
+    $winComments->GridCommentsAlbums->DeleteNonFixedRows();
+    $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winComments, 12, $USERDIR, $DEBUG_FILE,
+													 \%CONFIG, \$win, \%STR);
+  }
+  
+}  #--- End btnCommentsAlbumsRefresh_Click
+
+#--------------------------#
+sub GridCommentsAlbums_Click
+#--------------------------#
+{
+  # Local variables
+  my ($row, $column) = @_;
+  # Select
+  if (!$column) {
+    my $selStatus = $winComments->GridCommentsAlbums->GetCellCheck($row, $column);
+    if (!$row) {
+      if (!$selStatus) { # Check all
+				for (my $i = 0; $i < $winComments->GridCommentsAlbums->GetRows(); $i++) { $winComments->GridCommentsAlbums->SetCellCheck($i, 0, 1); }
+			} else { # Uncheck all
+				for (my $i = 0; $i < $winComments->GridCommentsAlbums->GetRows(); $i++) { $winComments->GridCommentsAlbums->SetCellCheck($i, 0, 0); }
+			}
+    } else {
+      if (!$selStatus) { $winComments->GridCommentsAlbums->SetCellCheck($row, $column, 1); } # Check
+      else             { $winComments->GridCommentsAlbums->SetCellCheck($row, $column, 0); } # Uncheck
+    }
+  }
+	&isDumpCommentsReady(\$winComments);
+  return(1);
+
+}  #--- End GridCommentsAlbums_Click
+
+#--------------------------#
+sub btnCommentsDumpNow_Click
+#--------------------------#
+{
+	&dumpComments(1, \$winComments, \$winQueue, \$winConfig, \%CONFIG, $CONFIG_FILE, $PROGDIR, $USERDIR, \$win, \%STR);
+	
+}  #--- End btnCommentsDumpNow_Click
+
+#--------------------------#
+sub btnCommentsAddQueue_Click
+#--------------------------#
+{
+	&dumpComments(0, \$winComments, \$winQueue, \$winConfig, \%CONFIG, $CONFIG_FILE, $PROGDIR, $USERDIR, \$win, \%STR);
+	
+}  #--- End btnCommentsAddQueue_Click
+
+#--------------------------#
+sub winComments_Terminate
+#--------------------------#
+{
+	&rememberPosWin(\$winComments, 'WINCOMMENTS', \$winConfig, \%CONFIG, $CONFIG_FILE) if $winConfig->chRememberPos->Checked();
+	$winComments->Hide();
+  return(0);
+
+}  #--- End winComments_Terminate
 
 #--------------------------#
 sub createWinGroupMembers

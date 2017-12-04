@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-11-26
+# Modified                : 2017-12-04
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -130,7 +130,8 @@ sub loadDumpPageThr
 {
   # Local variables
   my ($refTHR, $refARROW, $refHOURGLASS, $refWinDump, $typeDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
-  # $typeDump: 1=Album, 2=Friends, 3=MutualFriends, 4=Event, 5=Contrib, 6=GroupMembers, 7=Chat, 8=VocalMessages, 9=Contacts, 10=ContribAlbum
+  # $typeDump: 1=Album, 2=Friends, 3=MutualFriends, 4=Event, 5=Contrib, 6=GroupMembers, 7=Chat, 8=VocalMessages, 9=Contacts, 10=ContribAlbum,
+  #            11=Comments, 12=CommentsAlbum
   # Deal with crash
   $SIG{__DIE__} = sub {
     my $msgErr = $_[0];
@@ -167,6 +168,8 @@ sub loadDumpPageThr
     elsif ($typeDump == 8 ) { &loadDumpVocalMessages(\$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
     elsif ($typeDump == 9 ) { &loadDumpContacts(     \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
     elsif ($typeDump == 10) { &loadDumpContribAlbum( \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 11) { &loadDumpComments(     \$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
+    elsif ($typeDump == 12) { &loadDumpCommentsAlbum(\$mech, $refWinDump, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR); }
     $$refWinDump->lblInProgress->Text('');
     $$refWinDump->ChangeCursor($$refARROW);
   } else { Win32::GUI::MessageBox($$refWinDump, $$refSTR{'warn4'}, $$refSTR{'Error'}, 0x40010); }
@@ -180,6 +183,8 @@ sub loadDumpPageThr
   elsif ($typeDump == 8 ) { &isDumpVocalMessagesReady( $refWinDump); }
   elsif ($typeDump == 9 ) { &isDumpContactsReady(      $refWinDump); }
   elsif ($typeDump == 10) { &isDumpContribReady(       $refWinDump); }
+  elsif ($typeDump == 11) { &isDumpCommentsReady(      $refWinDump); }
+  elsif ($typeDump == 12) { &isDumpCommentsReady(      $refWinDump); }
   
 }  #--- End loadDumpPageThr
   
@@ -410,6 +415,56 @@ sub loadDumpContribAlbum
 }  #--- End loadDumpContribAlbum
 
 #--------------------------#
+sub loadDumpComments
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refWinComments, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $title;
+  my $currURL = $$refMech->uri();
+  my ($pidCode, $pageType) = &getCurrPidCode($refMech);
+  if    ($pidCode) { $title = $pidCode; $$refWinComments->tfCommentsID->Text($pidCode); }
+  elsif ($currURL =~ /profile.php\?id=([^\/\&\#]+)/                  ) { $title = $1; }
+  elsif ($currURL =~ /fbid=([^\/\&\#]+)/                             ) { $title = $1; }
+  elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/([^\/\?]+)/) { $title = $1; }
+  $$refWinComments->tfCommentsName->Text("$title - $$refSTR{'Comments'}");
+  $$refWinComments->tfStartURL->Text($currURL);
+  if (my ($pidCode, $pageType) = &getCurrPidCode($refMech)) { $$refWinComments->tfCommentsID->Text($pidCode); }
+  # pageType: 0 = unknown, 1 = People, 2 = Groups, 3 = Pages (Business), 4 = In Messenger, 5 = Event page, 6 = Mutual Friends
+  if ($pageType == 1) { $$refWinComments->chCommentsAlbums->Enable();  } # People profile
+  else                { $$refWinComments->chCommentsAlbums->Disable(); }
+
+}  #--- End loadDumpComments
+
+#--------------------------#
+sub loadDumpCommentsAlbum
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refWinComments, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  # Valid current page
+  my $mechAlbum = WWW::Mechanize::Firefox->new(create => 1, autodie => 0);
+  $mechAlbum->get($$refMech->uri(), synchronize => 0);
+  sleep($$refCONFIG{'TIME_TO_WAIT'});
+  my ($validPage, $currURL) = &validAlbumPage(\$mechAlbum, 2, $refWinComments, $refCONFIG, $refSTR);
+  if ($validPage) {
+    # Get album names and urls
+    my %albums;
+    &getListAlbums(\$mechAlbum, \$$refWinComments->GridCommentsAlbums, 1, $USERDIR, $refCONFIG);
+    if ($$refWinComments->GridCommentsAlbums->GetRows() > 1) {
+      # Feed the Album Grid
+      $$refWinComments->GridCommentsAlbums->SetCellCheck(0, 0, 1);
+      $$refWinComments->GridCommentsAlbums->Refresh();
+      $$refWinComments->GridCommentsAlbums->AutoSize();
+      $$refWinComments->GridCommentsAlbums->ExpandLastColumn();
+      $$refWinComments->GridCommentsAlbums->BringWindowToTop();
+    } else { Win32::GUI::MessageBox($$refWinComments, $$refSTR{'loadAlbumFail'}, $$refSTR{'Error'}, 0x40010); }
+    undef $mechAlbum;
+  } else { Win32::GUI::MessageBox($$refWinComments, $$refSTR{'warn3'}, $$refSTR{'Error'}, 0x40010); }
+
+}  #--- End loadDumpCommentsAlbum
+
+#--------------------------#
 sub loadDumpEventMembers
 #--------------------------#
 {
@@ -512,8 +567,9 @@ sub loadDumpGroupMembers
   my $idGroup;
   my $newURL;
   # Valid current page
-  if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/(\w+)/) {
-    $idGroup = $1;
+  if ($currURL =~ /(https:\/\/(?:www|web).facebook.com\/groups\/(\w+))/) {
+    my $currUrlPath = $1;
+    $idGroup        = $2;
     my $load = 1;
     if (my $pageSel = $$refMech->selector('div.uiHeader.uiHeaderTopAndBottomBorder.uiHeaderSection a', any => 1)) {
       if ($currURL = $pageSel->{href}) {
@@ -524,8 +580,8 @@ sub loadDumpGroupMembers
       foreach (@menu) {
         if ($_->{outerHTML} =~ /data-key="members"/) {
           chop($currURL) if $currURL =~ /\/$/;
-          if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currURL . '/members'; }
-          else 																									{ $load = 0; $newURL  = $currURL; 	}
+          if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currUrlPath . '/members'; }
+          else 																									{ $load    = 0; $newURL = $currURL; 	  }
           $type = 2;
         }
       }
@@ -567,12 +623,11 @@ sub loadDumpGroupMembers
         $categories{$cat}{name} = encode($$refCONFIG{'CHARSET'}, $cat);
         $$refWinGroupMembers->GridGroupMembers->SetCellText($i, 1, $categories{$cat}{name});
         $$refWinGroupMembers->GridGroupMembers->SetCellText($i, 2, $categories{$cat}{url});
-        $$refWinGroupMembers->GridGroupMembers->AutoSize();
-        $$refWinGroupMembers->GridGroupMembers->ExpandLastColumn();
-        $$refWinGroupMembers->GridGroupMembers->Refresh();
-        $$refWinGroupMembers->GridGroupMembers->BringWindowToTop();
       }
     }
+    $$refWinGroupMembers->GridGroupMembers->AutoSize();
+    $$refWinGroupMembers->GridGroupMembers->ExpandLastColumn();
+    $$refWinGroupMembers->GridGroupMembers->Refresh();
   } else { Win32::GUI::MessageBox($$refWinGroupMembers, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010); }
 
 }  #--- End loadDumpGroupMembers
@@ -797,6 +852,43 @@ sub isDumpContribReady
   $$refWinContrib->btnContribAddQueue->Enable();
 
 }  #--- End isDumpContribReady
+
+#--------------------------#
+sub isDumpCommentsReady
+#--------------------------#
+{
+  # Local variables
+  my $refWinComments = shift;
+  my $commentsName   = $$refWinComments->tfCommentsName->Text();
+  my $saveDir        = $$refWinComments->tfDirSaveComments->Text();
+  # Valid directory and valid name for save ?
+  if (!$saveDir or !(-d $saveDir) or !$commentsName) {
+    $$refWinComments->btnCommentsDumpNow->Disable();
+    $$refWinComments->btnCommentsAddQueue->Disable();
+    return(0);
+  }
+  # At least one page item checked (current page or Picture pages)
+  if (!$$refWinComments->chCommentsPageCurr->Checked()) {
+    my $nbrAlbumCheck = 0;
+    if ($$refWinComments->chCommentsAlbums->Checked()) {
+      for (my $i = 1; $i < $$refWinComments->GridCommentsAlbums->GetRows(); $i++) {
+        if ($$refWinComments->GridCommentsAlbums->GetCellCheck($i, 0)) {
+          $nbrAlbumCheck++;
+          last;
+        }
+      }
+    }
+    # If only Picture pages is checked, at least one album must be checked
+    if (!$$refWinComments->chCommentsAlbums->Checked() or !$nbrAlbumCheck) {
+      $$refWinComments->btnCommentsDumpNow->Disable();
+      $$refWinComments->btnCommentsAddQueue->Disable();
+      return(0);
+    }
+  }
+  $$refWinComments->btnCommentsDumpNow->Enable();
+  $$refWinComments->btnCommentsAddQueue->Enable();
+
+}  #--- End isDumpCommentsReady
 
 #--------------------------#
 sub isDumpEventMembersReady
@@ -1197,6 +1289,80 @@ sub dumpContrib
 }  #--- End dumpContrib
 
 #--------------------------#
+sub dumpComments
+#--------------------------#
+{
+  # Local variables
+  my ($now, $refWinComments, $refWinQueue, $refWinConfig, $refCONFIG, $CONFIG_FILE, $PROGDIR, $USERDIR, $refWin, $refSTR) = @_;
+  &rememberPosWin($refWinComments, 'WINCOMMENTS', $refWinConfig, $refCONFIG, $CONFIG_FILE) if $$refWinConfig->chRememberPos->Checked();
+	# Get Dump parameters
+	my %dumpParams;
+	$dumpParams{procID}				  = time;
+	$dumpParams{processName}	  = 'DumpComments';
+	$dumpParams{charSet}        = $$refWinConfig->cbCharset->GetString($$refWinConfig->cbCharset->GetCurSel());
+	$dumpParams{filename} 	    = encode($dumpParams{charSet}, $$refWinComments->tfCommentsName->Text());
+	$dumpParams{filename} 	    =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g; # Remove invalid characters for Windows filename
+	$dumpParams{saveDir}   	    = encode($dumpParams{charSet}, $$refWinComments->tfDirSaveComments->Text());
+	chop($dumpParams{saveDir})  if $dumpParams{saveDir} =~ /\\$/;
+	$dumpParams{debugLogging}   = 1 if $$refWinConfig->chDebugLogging->Checked();
+	$dumpParams{timeToWait}     = $$refWinConfig->tfTimeToWait->Text();
+	$dumpParams{silentProgress} = 1 if $$refWinConfig->chSilentProgress->Checked() and !$now;
+	$dumpParams{closeUsedTabs}  = 1 if $$refWinConfig->chCloseUsedTabs->Checked();
+	$dumpParams{delTempFiles}   = 1 if $$refWinConfig->chDelTempFiles->Checked();
+  $dumpParams{openReport}		  = 1 if $$refWinConfig->chOptOpenReport->Checked() and ($now or !$$refWinConfig->chOptDontOpenReport->Checked());
+  $dumpParams{startingURL}	  = $$refWinComments->tfStartURL->Text()   if $$refWinComments->chCommentsPageCurr->Checked();
+  $dumpParams{startingID}     = $$refWinComments->tfCommentsID->Text() if $$refWinComments->tfCommentsID->Text();
+	# Gather selected album names and urls
+  my %albums;
+  if ($$refWinComments->chCommentsAlbums->Checked()) {
+    for (my $i = 1; $i < $$refWinComments->GridCommentsAlbums->GetRows(); $i++) {
+      if ($$refWinComments->GridCommentsAlbums->GetCellCheck($i, 0)) {
+        my $albumId = $$refWinComments->GridCommentsAlbums->GetCellText($i, 2);
+        $albums{$albumId}{name} = $$refWinComments->GridCommentsAlbums->GetCellText($i, 1);
+        $albums{$albumId}{url}  = $$refWinComments->GridCommentsAlbums->GetCellText($i, 3);
+      }
+    }
+    $dumpParams{pageType}   = 1; # Page type: 1=People
+  }
+  $dumpParams{reportFormat} = $$refWinComments->cbCommentsFormat->GetString($$refWinComments->cbCommentsFormat->GetCurSel());
+	$dumpParams{incIcons}			= 1 if $$refWinComments->chCommentsImages->Checked();
+	$dumpParams{autoScroll}   = 1 if $$refWinComments->chCommentsAutoScroll->Checked();
+	# Create database
+  mkdir("$USERDIR\\Queue") if !-d "$USERDIR\\Queue";
+	if (&createDumpDB(  "$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%dumpParams ) and
+      &createAlbumsDB("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%albums     )) {
+    if ($now) { # Dump Now
+      my $command = 'ExtractFace-process ' . "$dumpParams{processName} $dumpParams{procID} \"$PROGDIR\" \"$USERDIR\"";
+      Win32::Process::Create(my $processObj, $PROGDIR .'\ExtractFace-process.exe', $command, 0, NORMAL_PRIORITY_CLASS, $PROGDIR);
+      &winComments_Terminate();
+      $processObj->Wait(INFINITE);
+      # Final message
+      $$refWin->Tray->Change(-tip => "$$refSTR{'Dump'} $$refSTR{'Comments'} $$refSTR{'finished'}");
+      if (!$$refWin->IsVisible()) {
+        $$refWin->Tray->Change(-balloon_icon => 'info', -balloon_title => 'ExtractFace',
+                               -balloon_tip => "$$refSTR{'Dump'} $$refSTR{'Comments'} $$refSTR{'finished'}");
+        $$refWin->Tray->ShowBalloon(1);
+      }
+    } else { # Add to queue
+      &createWinQueue() if !$$refWinQueue;
+      if (&existsInQueue($refWinQueue, $dumpParams{filename})) {
+        my $answer = Win32::GUI::MessageBox($$refWin, "$$refSTR{'queueExists'} ?", $$refSTR{'Queue'}, 0x40024);
+        if ($answer == 7) { # Answer is no, abort, but keep window open
+          unlink("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db");
+          return(1);
+        }
+      }
+      &winComments_Terminate();
+      if (&addToQueue($refWinQueue, "$dumpParams{processName}-$dumpParams{procID}",
+                      $dumpParams{filename}, $dumpParams{startingURL})) {
+        Win32::GUI::MessageBox($$refWin, $$refSTR{'addedQueue'}.'!', $$refSTR{'Queue'}, 0x40040);
+      } else { Win32::GUI::MessageBox($$refWin, $$refSTR{'errAddQueue'}, $$refSTR{'Error'}, 0x40010); }
+    }
+	}
+	
+}  #--- End dumpComments
+
+#--------------------------#
 sub dumpEventMembers
 #--------------------------#
 {
@@ -1581,7 +1747,7 @@ sub validAlbumPage
 {
   # Local variables
   my ($refMech, $caller, $refWin, $refCONFIG, $refSTR) = @_;
-  # $caller: 1 = Albums window, 2 = Contrib window
+  # $caller: 1 = Albums window, 2 = Contrib window, 2 = Comments window
   my ($pageType, $goodAlbumUrl, $currTitle);
   my $currURL = $$refMech->uri();
   my $valid   = 0;
@@ -1665,6 +1831,10 @@ sub getListAlbums
     if    ($pageType == 1 or $pageType == 2) { @albumsCode = split(/photoTextTitle/, $file_as_string); } # People or Group
     elsif ($pageType == 3                  ) { @albumsCode = split(/_3rte/         , $file_as_string); } # Business
     shift(@albumsCode);
+    if    ($pageType == 1 and !(scalar(@albumsCode))) {
+      @albumsCode = split(/_51m- _2pio _2pit/, $file_as_string);
+      shift(@albumsCode);
+    }
     my %tmpAlbums;
     foreach my $albumCode (@albumsCode) {
       my $url;
@@ -1761,11 +1931,12 @@ sub handlePageThr
   my ($refTHR, $typeHandle, $nbrRetries, $count, $refARROW, $refHOURGLASS, $DEBUG_FILE, $refCONFIG, $refWinConfig,
       $refWinPb2, $refWin, $refSTR) = @_;
   # $typeHandle: 1=Scroll, 2=Expand, 3=Scroll and Expand, 4=Scroll contacts, 5=Scroll chat, 6=Load Newer Msg, 7=Load Older Msg, 8=Remove header (blue bar, menu),
-  #              9=Remove left column, 10=Remove rigth column, 11=Remove bottom, 12=Remove all, 13=Open Current Chat in Mobile Facebook
+  #              9=Remove left column, 10=Remove rigth column, 11=Remove bottom, 12=Remove all, 13=Open Current Chat in Mobile Facebook, 14=Remove Comments
   my @processName = (undef, $$refSTR{'Scrolling'}, $$refSTR{'Expanding'}, $$refSTR{'ScrollExpand'}, "$$refSTR{'Scrolling'} $$refSTR{'Contacts'}",
                      "$$refSTR{'Scrolling'} $$refSTR{'Chat'}", $$refSTR{'loadNewerMsg'}, $$refSTR{'loadOlderMsg'}, "$$refSTR{'Remove'} $$refSTR{'Top'}",
                      "$$refSTR{'Remove'} $$refSTR{'leftCol'}", "$$refSTR{'Remove'} $$refSTR{'rightCol'}", "$$refSTR{'Remove'} $$refSTR{'Bottom'}",
-                     "$$refSTR{'Remove'} $$refSTR{'All'}", "$$refSTR{'Opening'} $$refSTR{'CurrChat'} - $$refSTR{'MobileFacebook'}");
+                     "$$refSTR{'Remove'} $$refSTR{'All'}", "$$refSTR{'Opening'} $$refSTR{'CurrChat'} - $$refSTR{'MobileFacebook'}",
+                     "$$refSTR{'Remove'} $$refSTR{'Comments'}");
   # Cancel button
   $SIG{'KILL'} = sub {
     # Turn off progress bar
@@ -1851,152 +2022,157 @@ sub handlePageThr
         my $end = &scrollPage(\$mech, $$refCONFIG{'TIME_TO_WAIT'});
         $count++;
         while (!$end) { # If $end == 1, we reached the end of the page
-          # Expand
-          if ($$refCONFIG{'EXPAND_SEE_MORE'} or $$refCONFIG{'EXPAND_MORE_POSTS'} or $$refCONFIG{'SEE_TRANSLATION'}) {
-            # Expand all additional content
-            $$refWinPb2->lblPbCurr->Text("$$refSTR{'Expanding'} $$refSTR{'inProgress'}...");
-            $$refWin->Tray->Change(-tip => "$$refSTR{'Expanding'} $$refSTR{'inProgress'}...");
-            &expandContent(\$mech, $refCONFIG);
-            &expandContent(\$mech, $refCONFIG); # Do it again
-          }
-          # Scroll again
-          $$refWinPb2->lblPbCurr->Text("$$refSTR{'Scrolling'} $$refSTR{'inProgress'}...");
-          if ($maxScrollByDate and $maxDate) { # Stop by date
-            my $lastDisplayedDate = ($mech->selector('a._5pcq abbr'))[-1];
-            if ($lastDisplayedDate->{outerHTML} =~ /data-utime="([^\"]+)"/) {
-              my $date = $1;
-              last if $date <= $maxDate;
-            }
-          } elsif ($maxScroll and $count >= $maxScroll) { last; } # Stop by page
-          $end = &scrollPage(\$mech, $$refCONFIG{'TIME_TO_WAIT'});
-          $count++;
+        # Expand
+        if ($$refCONFIG{'EXPAND_SEE_MORE'} or $$refCONFIG{'EXPAND_MORE_POSTS'} or $$refCONFIG{'SEE_TRANSLATION'}) {
+          # Expand all additional content
+          $$refWinPb2->lblPbCurr->Text("$$refSTR{'Expanding'} $$refSTR{'inProgress'}...");
+          $$refWin->Tray->Change(-tip => "$$refSTR{'Expanding'} $$refSTR{'inProgress'}...");
+          &expandContent(\$mech, $refCONFIG);
+          &expandContent(\$mech, $refCONFIG); # Do it again
         }
-        # Scroll to the top
-        $mech->eval_in_page('window.scrollTo(0,0)') if $$refCONFIG{'OPT_SCROLL_TOP'};
-      } elsif ($typeHandle == 4) { # Scroll contacts
+        # Scroll again
+        $$refWinPb2->lblPbCurr->Text("$$refSTR{'Scrolling'} $$refSTR{'inProgress'}...");
+        if ($maxScrollByDate and $maxDate) { # Stop by date
+          my $lastDisplayedDate = ($mech->selector('a._5pcq abbr'))[-1];
+          if ($lastDisplayedDate->{outerHTML} =~ /data-utime="([^\"]+)"/) {
+            my $date = $1;
+            last if $date <= $maxDate;
+          }
+        } elsif ($maxScroll and $count >= $maxScroll) { last; } # Stop by page
+        $end = &scrollPage(\$mech, $$refCONFIG{'TIME_TO_WAIT'});
+        $count++;
+      }
+      # Scroll to the top
+      $mech->eval_in_page('window.scrollTo(0,0)') if $$refCONFIG{'OPT_SCROLL_TOP'};
+    } elsif ($typeHandle == 4) { # Scroll contacts
+      while (1) {
+        if (my $loadMoreContacts = ($mech->selector('div._19hf a', any => 1))[0]) {
+          $mech->eval_in_page("var scrollingDiv = (document.getElementsByClassName('_19hf'))[0]; scrollingDiv.scrollIntoView(1)");
+          sleep($$refCONFIG{'TIME_TO_WAIT'});
+        } else { last; }
+      }
+    # Scroll chat
+    } elsif ($typeHandle > 4 and $typeHandle < 8) {
+      my $maxScrollChatByDate = $$refWinConfig->rbMaxScrollChatByDate->Checked();
+      my $maxDate;
+      my $maxScrollChat;
+      if ($maxScrollChatByDate) {
+        my ($d, $m, $y) = $$refWinConfig->dtMaxScrollChatByDate->GetDate();
+        $maxDate        = timelocal(0,0,0,$d,$m-1,$y); # Store in Unixtime format
+      } else { $maxScrollChat = $$refWinConfig->tfMaxScrollChat->Text(); }
+      if ($typeHandle == 5) { # Scroll chat to the top
         while (1) {
-          if (my $loadMoreContacts = ($mech->selector('div._19hf a', any => 1))[0]) {
-            $mech->eval_in_page("var scrollingDiv = (document.getElementsByClassName('_19hf'))[0]; scrollingDiv.scrollIntoView(1)");
+          $count++;
+          # Scroll again
+          if ($maxScrollChatByDate and $maxDate) { # Stop by date
+            my $firstDisplayedDate;
+            my $firstDisplayedDateCode = ($mech->selector('time._3oh-'))[0];
+            if ($firstDisplayedDateCode->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
+              my $dateStr = $1;
+              my $strp = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %I:%M%p');
+              my $dt   = $strp->parse_datetime($dateStr);
+              $firstDisplayedDate = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
+            }
+            last if $firstDisplayedDate <= $maxDate;
+          } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
+          if (($mech->selector('div._2k8v', any => 1))[0]) {
+            $mech->eval_in_page("var scrollingDiv = (document.getElementsByClassName('_2k8v'))[0]; scrollingDiv.scrollIntoView(1)");
+          } else { last; }
+        }
+      } elsif ($typeHandle == 6) { # Load Newer Msg
+        while (1) {
+          $count++;
+          # Scroll again
+          if ($maxScrollChatByDate and $maxDate) { # Stop by date
+            my $lastDisplayedDate = ($mech->selector('h4._497p._2lpt time._3oh-'))[-1];
+            if ($lastDisplayedDate->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
+              my $strp     = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %l:%M%p');
+              my $dt       = $strp->parse_datetime($1);
+              my $dateOnly = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
+              last if $dateOnly >= $maxDate;
+            }
+          } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
+          my $loadNewerCode = ($mech->selector('button._3quh._30yy._2t_._41jf'))[1];
+          if ($loadNewerCode) {
+            $loadNewerCode->click();
+            sleep($$refCONFIG{'TIME_TO_WAIT'});
+          # If No Load Older button, Load Newer if the first button
+          } elsif ($loadNewerCode = ($mech->selector('button._3quh._30yy._2t_._41jf'))[0]) {
+            $loadNewerCode->click();
             sleep($$refCONFIG{'TIME_TO_WAIT'});
           } else { last; }
         }
-      # Scroll chat
-      } elsif ($typeHandle > 4) {
-        my $maxScrollChatByDate = $$refWinConfig->rbMaxScrollChatByDate->Checked();
-        my $maxDate;
-        my $maxScrollChat;
-        if ($maxScrollChatByDate) {
-          my ($d, $m, $y) = $$refWinConfig->dtMaxScrollChatByDate->GetDate();
-          $maxDate        = timelocal(0,0,0,$d,$m-1,$y); # Store in Unixtime format
-        } else { $maxScrollChat = $$refWinConfig->tfMaxScrollChat->Text(); }
-        if ($typeHandle == 5) { # Scroll chat to the top
-          while (1) {
-            $count++;
-            # Scroll again
-            if ($maxScrollChatByDate and $maxDate) { # Stop by date
-              my $firstDisplayedDate;
-              my $firstDisplayedDateCode = ($mech->selector('time._3oh-'))[0];
-              if ($firstDisplayedDateCode->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
-                my $dateStr = $1;
-                my $strp = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %I:%M%p');
-                my $dt   = $strp->parse_datetime($dateStr);
-                $firstDisplayedDate = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
-              }
-              last if $firstDisplayedDate <= $maxDate;
-            } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
-            if (($mech->selector('div._2k8v', any => 1))[0]) {
-              $mech->eval_in_page("var scrollingDiv = (document.getElementsByClassName('_2k8v'))[0]; scrollingDiv.scrollIntoView(1)");
-            } else { last; }
-          }
-        } elsif ($typeHandle == 6) { # Load Newer Msg
-          while (1) {
-            $count++;
-            # Scroll again
-            if ($maxScrollChatByDate and $maxDate) { # Stop by date
-              my $lastDisplayedDate = ($mech->selector('h4._497p._2lpt time._3oh-'))[-1];
-              if ($lastDisplayedDate->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
-                my $strp     = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %l:%M%p');
-                my $dt       = $strp->parse_datetime($1);
-                my $dateOnly = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
-                last if $dateOnly >= $maxDate;
-              }
-            } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
-            my $loadNewerCode = ($mech->selector('button._3quh._30yy._2t_._41jf'))[1];
-            if ($loadNewerCode) {
-              $loadNewerCode->click();
-              sleep($$refCONFIG{'TIME_TO_WAIT'});
-            # If No Load Older button, Load Newer if the first button
-            } elsif ($loadNewerCode = ($mech->selector('button._3quh._30yy._2t_._41jf'))[0]) {
-              $loadNewerCode->click();
-              sleep($$refCONFIG{'TIME_TO_WAIT'});
-            } else { last; }
-          }
-        } elsif ($typeHandle == 7) { # Load Older Msg
-          while (1) {
-            $count++;
-            # Scroll again
-            if ($maxScrollChatByDate and $maxDate) { # Stop by date
-              my $firstDisplayedDate = ($mech->selector('h4._497p._2lpt time._3oh-'))[0];
-              if ($firstDisplayedDate->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
-                my $strp     = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %l:%M%p');
-                my $dt       = $strp->parse_datetime($1);
-                my $dateOnly = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
-                last if $dateOnly <= $maxDate;
-              }
-            } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
-            my @loadOlderCode = $mech->selector('button._3quh._30yy._2t_._41jf');
-            if (scalar(@loadOlderCode) > 1) {
-              $loadOlderCode[0]->click();
-              sleep($$refCONFIG{'TIME_TO_WAIT'});
-            } else { last; }
-          }
-        # Remove
-        } elsif ($typeHandle >= 8 and $typeHandle <= 12) {
-          if ($typeHandle == 8 or $typeHandle == 12) {  # Remove Header
-            $mech->eval_in_page('var div = document.getElementById("pagelet_bluebar"); if (div) { div.parentNode.removeChild(div); }'); # Blue bar
-            $mech->eval_in_page('var div = document.getElementById("timeline_top_section"); if (div) { div.parentNode.removeChild(div); }'); # People Profile header
-          }
-          if ($typeHandle == 9 or $typeHandle == 12) { # Remove Left column
-            $mech->eval_in_page('var div = document.getElementById("entity_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # Event
-            $mech->eval_in_page('var div = document.getElementById("leftCol"); if (div) { div.parentNode.removeChild(div); }'); # Group and page
-            $mech->eval_in_page('var div = document.getElementById("u_0_16"); if (div) { div.parentNode.removeChild(div); }'); # People profile
-            $mech->eval_in_page('var div = document.getElementsByClassName("_1vc-"); if (div[0]) { div[0].parentNode.removeChild(div[0]); }'); # People profile
-          }
-          if ($typeHandle == 10 or $typeHandle == 12) { # Remove Right menu
-            $mech->eval_in_page('var div = document.getElementById("event_related_events"); if (div) { div.parentNode.removeChild(div); }'); # Event
-            $mech->eval_in_page('var div = document.getElementById("pagelet_rhc_footer"); if (div) { div.parentNode.removeChild(div); }'); # Event
-            $mech->eval_in_page('var div = document.getElementById("u_0_s"); if (div) { div.parentNode.removeChild(div); }'); # Page
-            $mech->eval_in_page('var div = document.getElementById("rightCol"); if (div) { div.parentNode.removeChild(div); }'); # Group
-            $mech->eval_in_page('var div = document.getElementsByClassName("_14i5"); if (div[0]) { div[0].style.right = "0px"; div[0].style.left = "0px"; }'); # Modify scrollable area css
-          }
-          if ($typeHandle == 11 or $typeHandle == 12) { # Remove Bottom
-            $mech->eval_in_page('var div = document.getElementById("pagelet_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
-            $mech->eval_in_page('var div = document.getElementById("pagelet_dock"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
-            $mech->eval_in_page('var div = document.getElementById("pageFooter"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
-          }
-        # Open current chat in Mobile Facebook
-        } elsif ($typeHandle == 13) {
-          if (my $partnerNameCode = $mech->selector('div._3eur span', any => 1)) {
-            my $partnerName = $partnerNameCode->{innerHTML};
-            # Open Mobile Facebook in a new tab
-            my $mechMFB = WWW::Mechanize::Firefox->new(activate => 1, create => 1, autodie => 0);
-            $mechMFB->autoclose_tab(0);
-            # Open Mobile Facebook
-            $mechMFB->get('https://m.facebook.com/messages', synchronize => 0);
-            sleep($$refCONFIG{'TIME_TO_WAIT'}*3);
-            # Search the conversation
-            $mechMFB->submit_form(with_fields => { 'q' => $partnerName });
+      } elsif ($typeHandle == 7) { # Load Older Msg
+        while (1) {
+          $count++;
+          # Scroll again
+          if ($maxScrollChatByDate and $maxDate) { # Stop by date
+            my $firstDisplayedDate = ($mech->selector('h4._497p._2lpt time._3oh-'))[0];
+            if ($firstDisplayedDate->{innerHTML} =~ /(\d{2}\/\d{2}\/\d{4} \d{1,2}\:\d{2}[ap]m)/) {
+              my $strp     = DateTime::Format::Strptime->new(pattern => '%m/%d/%Y %l:%M%p');
+              my $dt       = $strp->parse_datetime($1);
+              my $dateOnly = timelocal(0,0,0,$dt->day(),$dt->month()-1,$dt->year());
+              last if $dateOnly <= $maxDate;
+            }
+          } elsif ($maxScrollChat and $count > $maxScrollChat) { last; } # Stop by page
+          my @loadOlderCode = $mech->selector('button._3quh._30yy._2t_._41jf');
+          if (scalar(@loadOlderCode) > 1) {
+            $loadOlderCode[0]->click();
             sleep($$refCONFIG{'TIME_TO_WAIT'});
-            if (my @links = $mechMFB->selector('h3 a')) {
-              my $chatURL;
-              foreach (@links) { $chatURL = $_->{href} if $_->{outerHTML} =~ /$partnerName/; }
-              if ($chatURL) {
-                $mechMFB->get($chatURL, synchronize => 0);
-              } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'url'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Url not found
-            } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'CurrChat'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Not found
-          }
+          } else { last; }
         }
       }
+    # Remove
+    } elsif (($typeHandle >= 8 and $typeHandle <= 12) or $typeHandle == 14) {
+      if ($typeHandle == 8 or $typeHandle == 12) {  # Remove Header
+        $mech->eval_in_page('var div = document.getElementById("pagelet_bluebar"); if (div) { div.parentNode.removeChild(div); }'); # Blue bar
+        $mech->eval_in_page('var div = document.getElementById("timeline_top_section"); if (div) { div.parentNode.removeChild(div); }'); # People Profile header
+      }
+      if ($typeHandle == 9 or $typeHandle == 12) { # Remove Left column
+        $mech->eval_in_page('var div = document.getElementById("entity_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # Event
+        $mech->eval_in_page('var div = document.getElementById("leftCol"); if (div) { div.parentNode.removeChild(div); }'); # Group and page
+        $mech->eval_in_page('var div = document.getElementById("u_0_16"); if (div) { div.parentNode.removeChild(div); }'); # People profile
+        $mech->eval_in_page('var div = document.getElementsByClassName("_1vc-"); if (div[0]) { div[0].parentNode.removeChild(div[0]); }'); # People profile
+      }
+      if ($typeHandle == 10 or $typeHandle == 12) { # Remove Right menu
+        $mech->eval_in_page('var div = document.getElementById("event_related_events"); if (div) { div.parentNode.removeChild(div); }'); # Event
+        $mech->eval_in_page('var div = document.getElementById("pagelet_rhc_footer"); if (div) { div.parentNode.removeChild(div); }'); # Event
+        $mech->eval_in_page('var div = document.getElementById("u_0_s"); if (div) { div.parentNode.removeChild(div); }'); # Page
+        $mech->eval_in_page('var div = document.getElementById("rightCol"); if (div) { div.parentNode.removeChild(div); }'); # Group
+        $mech->eval_in_page('var div = document.getElementsByClassName("_14i5"); if (div[0]) { div[0].style.right = "0px"; div[0].style.left = "0px"; }'); # Modify scrollable area css
+      }
+      if ($typeHandle == 11 or $typeHandle == 12) { # Remove Bottom
+        $mech->eval_in_page('var div = document.getElementById("pagelet_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+        $mech->eval_in_page('var div = document.getElementById("pagelet_dock"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+        $mech->eval_in_page('var div = document.getElementById("pageFooter"); if (div) { div.parentNode.removeChild(div); }'); # All profile types
+      }
+      if ($typeHandle == 14) { # Remove Comments
+        for (0..3) { # Repeat 4 times to be sure
+          $mech->eval_in_page('var div = document.getElementsByClassName("UFIList"); for (var i=0;i<div.length; i++) { div[i].parentNode.removeChild(div[i]); }'); # All comment sections
+        }
+      }
+    # Open current chat in Mobile Facebook
+    } elsif ($typeHandle == 13) {
+      if (my $partnerNameCode = $mech->selector('div._3eur span', any => 1)) {
+        my $partnerName = $partnerNameCode->{innerHTML};
+        # Open Mobile Facebook in a new tab
+        my $mechMFB = WWW::Mechanize::Firefox->new(activate => 1, create => 1, autodie => 0);
+        $mechMFB->autoclose_tab(0);
+        # Open Mobile Facebook
+        $mechMFB->get('https://m.facebook.com/messages', synchronize => 0);
+        sleep($$refCONFIG{'TIME_TO_WAIT'}*3);
+        # Search the conversation
+        $mechMFB->submit_form(with_fields => { 'q' => $partnerName });
+        sleep($$refCONFIG{'TIME_TO_WAIT'});
+        if (my @links = $mechMFB->selector('h3 a')) {
+          my $chatURL;
+          foreach (@links) { $chatURL = $_->{href} if $_->{outerHTML} =~ /$partnerName/; }
+          if ($chatURL) {
+            $mechMFB->get($chatURL, synchronize => 0);
+          } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'url'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Url not found
+        } else { Win32::GUI::MessageBox($$refWin, "$$refSTR{'CurrChat'} $$refSTR{'NotFound'}", $$refSTR{'Error'}, 0x40010); } # Conversation Not found
+      }
+    }
     $$refWin->Tray->Change(-tip => "$processName[$typeHandle] $$refSTR{'finished'}");
     if (!$$refWin->IsVisible()) {
       $$refWin->Tray->Change(-balloon_icon => 'info', -balloon_title => 'ExtractFace',
@@ -2390,16 +2566,20 @@ sub expandContent
   $$refMech->eval_in_page("var el = document.getElementsByClassName('text_exposed_link'); for (var i=0;i<el.length; i++) { el[i].click(); }");
   # See more
   if ($$refCONFIG{'EXPAND_SEE_MORE'}) {
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('see_more_link'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('_5v47 fss'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIReplySocialSentenceLinkText UFIReplySocialSentenceVerified'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    for (0..3) { # Repeat 4 times to be sure
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('see_more_link'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('_5v47 fss'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIReplySocialSentenceLinkText UFIReplySocialSentenceVerified'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    }
   }
   # More post (wait to find the good classname)
   # View \d+ more comments? / View previous comments / Reply / etc
   if ($$refCONFIG{'EXPAND_MORE_POSTS'}) {
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIPagerLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFICommentLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIBlingBox uiBlingBox feedbackBling'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    for (0..3) { # Repeat 4 times to be sure
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIPagerLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('UFICommentLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+      $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIBlingBox uiBlingBox feedbackBling'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    }
   }
   # See translation
   if ($$refCONFIG{'SEE_TRANSLATION'}) {

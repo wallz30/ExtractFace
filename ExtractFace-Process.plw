@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-11-26
-my $VERSION               = '6.2';
+# Modified                : 2017-12-04
+my $VERSION               = '6.3';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -221,6 +221,8 @@ if (-f $dbFile and my $dbh = DBI->connect($dsn, undef, undef, { sqlite_unicode =
     $THR = threads->create(\&dumpMutualFriends, $dbFile, $refInfos, $nbrRetries, $firstExec);
   } elsif ($PROCNAME eq 'DumpContrib') {
     $THR = threads->create(\&dumpContrib      , $dbFile, $refInfos, $nbrRetries, $firstExec);
+  } elsif ($PROCNAME eq 'DumpComments') {
+    $THR = threads->create(\&dumpComments     , $dbFile, $refInfos, $nbrRetries, $firstExec);
   } elsif ($PROCNAME eq 'DumpEvent') {
     $THR = threads->create(\&dumpEventMembers , $dbFile, $refInfos, $nbrRetries, $firstExec);
   } elsif ($PROCNAME eq 'DumpGroupMembers') {
@@ -568,12 +570,12 @@ sub dumpContrib
   # List page urls (current page and Picture pages if option has been selected)
   if (!exists($$refInfos{step}) or !$$refInfos{step}) {
     &listContribURLs(\$mech, $refDbh, $refInfos);
-    $count1++;
-    $winPb->pbWinPb1->SetPos($count1);
-    $winPb->lblCount1->Text("$count1/$nbrOperations");
     $$refInfos{step} = 1;
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
+  $count1++;
+  $winPb->pbWinPb1->SetPos($count1);
+  $winPb->lblCount1->Text("$count1/$nbrOperations");
   # Recalculate number of operations
   my $refAllURLs = $$refDbh->selectall_arrayref('SELECT * FROM CONTRIBURLS');
   my $nbrURLs    = scalar(@$refAllURLs);
@@ -583,17 +585,18 @@ sub dumpContrib
   $winPb->lblCount1->Text("$currCount/$nbrOperations");
   # Foreach URLs in list
   if ($$refInfos{step} == 1) {
+    my $entryInd = 1;
     $winPb->lblPbCurr1->Text("$STR{'browseAllPagesURLs'}...");
     foreach my $entry (@$refAllURLs) {
-      # $$entry: 0 = id, 1 = url, 2 = tmpPage, 3 = step
-      my $sthUpdURLStep = $$refDbh->prepare('UPDATE CONTRIBURLS SET step = ? WHERE id = ?');
+      # $$entry: 0 = url, 1 = tmpPage, 2 = step
+      my $sthUpdURLStep = $$refDbh->prepare('UPDATE CONTRIBURLS SET step = ? WHERE url = ?');
       my $URLStep       = 0;
-      $URLStep          = $$entry[3] if $$entry[3];
+      $URLStep          = $$entry[2] if $$entry[2];
       # Open the page (if currURL in browser is different from url to process)
       if (!$URLStep) {
-        if ($mech->uri() ne $$entry[1]) {
+        if ($mech->uri() ne $$entry[0]) {
           $winPb->lblPbCurr2->Text("$STR{'Opening'} $STR{'thePage'}...");
-          $mech->get($$entry[1], synchronize => 0);
+          $mech->get($$entry[0], synchronize => 0);
           sleep($$refInfos{timeToWait});
           if ($$refInfos{vPosts}) { # Visitor posts, open the popup
             my $vPostsHeader = $mech->selector('div._2h4b._50f3', any => 1);
@@ -623,14 +626,14 @@ sub dumpContrib
         $$refDbh->commit();
       }
       # Save the page
-      if ($URLStep == 2 or !$$entry[2] or !-e $$entry[2]) {
+      if ($URLStep == 2 or !$$entry[1] or !-e $$entry[1]) {
         $winPb->lblPbCurr2->Text("$STR{'Saving'} $STR{'thePage'}...");
         mkdir("$$refInfos{saveDir}\\temp") if !-d "$$refInfos{saveDir}\\temp";
-        $$entry[2] = "$$refInfos{saveDir}\\temp\\temp".$$entry[0].'.html';
-        my $status = $mech->save_content($$entry[2]);
+        $$entry[1] = "$$refInfos{saveDir}\\temp\\temp".$entryInd.'.html';
+        my $status = $mech->save_content($$entry[1]);
         while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
-        my $sthUpdURLTmpPage = $$refDbh->prepare('UPDATE CONTRIBURLS SET tmpPage = ? WHERE id = ?');
-        $sthUpdURLTmpPage->execute($$entry[2], $$entry[0]);
+        my $sthUpdURLTmpPage = $$refDbh->prepare('UPDATE CONTRIBURLS SET tmpPage = ? WHERE url = ?');
+        $sthUpdURLTmpPage->execute($$entry[1], $$entry[0]);
         $URLStep = 3;
         $sthUpdURLStep->execute($URLStep, $$entry[0]);
         $$refDbh->commit();
@@ -638,19 +641,20 @@ sub dumpContrib
       # Parse the page
       if ($URLStep == 3) {
         $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
-        &parseContrib($refDbh, $refInfos, $$entry[2]);
+        &parseContrib($refDbh, $refInfos, $$entry[1]);
         $URLStep = 4;
         $sthUpdURLStep->execute($URLStep, $$entry[0]);
         $$refDbh->commit();
         &updateDumpDB_INFOS($refDbh, $refInfos);
       }
-      $count1++;
-      $winPb->pbWinPb1->SetPos($count1);
-      $winPb->lblCount1->Text("$count1/$nbrOperations");
+      $entryInd++;
     }
     $$refInfos{step} = 2;
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
+  $count1++;
+  $winPb->pbWinPb1->SetPos($count1);
+  $winPb->lblCount1->Text("$count1/$nbrOperations");
   # Dump Likes - Browse Likes Pages (open, save and parse)
   if ($$refInfos{step} == 2) {
     if ($$refInfos{likes}) {
@@ -702,6 +706,204 @@ sub dumpContrib
   exit(0);
 
 }  #--- End dumpContrib
+
+#--------------------------#
+sub dumpComments
+#--------------------------#
+{
+  # Local variables
+  my ($dbFile, $refInfos, $nbrRetries, $firstExec) = @_;
+  my $refDbh;
+  # Thread 'die' signal handler
+  $SIG{__DIE__} = sub {
+    my $msgErr = $_[0];
+    print "$msgErr\n";
+    chomp($msgErr);
+    $msgErr =~ s/[\t\r\n]/ /g;
+    &debug($msgErr) if $$refInfos{debugLogging};
+    undef $$refDbh;
+    $winPb->ChangeCursor($ARROW);
+    # Progress window
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->lblPbCurr2->Text('');
+    $winPb->lblCount2->Text('');
+    if ($msgErr =~ /NS_ERROR_FILE_IS_LOCKED/) {
+      $THR = threads->create(\&dumpComments, $dbFile, $refInfos, $nbrRetries, $firstExec);
+      threads->exit();
+    } else {
+      my $err = (split(/ at /, $msgErr))[0];
+      Win32::GUI::MessageBox($winPb, "$STR{'processCrash'}: $err", $STR{'Error'}, 0x40010) if !$$refInfos{silentProgress};
+      exit(0); # Exit program
+    }
+  };
+  $winPb->ChangeCursor($HOURGLASS);
+  # Connect to database
+  my $dsn  = "DBI:SQLite:dbname=$dbFile";
+  $$refDbh = DBI->connect($dsn, undef, undef, { RaiseError => 1, AutoCommit => 0, sqlite_unicode => 1});
+  # Connect to current tab
+  my $mech = WWW::Mechanize::Firefox->new(tab => 'current');
+  # First execution
+  if (!$firstExec) {
+    &createProfilesDB($refDbh); # Create table PROFILES
+    &createCommentsDB($refDbh); # Create table COMMENTS
+    $winPb->Text("$STR{'Dump'} $STR{'contributors'} $STR{'inProgress'}...");
+    $$refInfos{nbrTabs} = &getNbrTabs() if $$refInfos{closeUsedTabs};
+    $firstExec = 1;
+  } else { $winPb->lblPbCurr1->Text("$STR{'resumeProcess'}..."); }
+  # Steps (based on selected options)
+  # 1. List page urls (current page and Picture pages if option has been selected)
+  # 2. Foreach URLs in list
+  #   1: Open the page (if currURL is different from startingURL, scroll if autoscroll option has been selected)
+  #   2: Scroll and expand the page (if option has been selected)
+  #   3: Save the page
+  #   4: Parse the page
+  # 3: Download profiles icons (if option has been selected)
+  # 4: Create report
+  
+  # Turn on progress bar
+  my $count1 = 0;
+  my $nbrOperations;
+  if ($winPb->lblCount1->Text()) { $nbrOperations = (split(/\//, $winPb->lblCount1->Text()))[1]; }
+  else                           { $nbrOperations = 4; }
+  $winPb->pbWinPb1->SetRange(0, $nbrOperations);
+  $winPb->pbWinPb1->SetPos(0);
+  $winPb->pbWinPb1->SetStep(1);
+  $winPb->lblCount1->Text("0/$nbrOperations");
+  # List page urls (current page and Picture pages if option has been selected)
+  if (!exists($$refInfos{step}) or !$$refInfos{step}) {
+    &listContribURLs(\$mech, $refDbh, $refInfos);
+    $$refInfos{step} = 1;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $count1++;
+  $winPb->pbWinPb1->SetPos($count1);
+  $winPb->lblCount1->Text("$count1/$nbrOperations");
+  # Recalculate number of operations
+  my $refAllURLs = $$refDbh->selectall_arrayref('SELECT * FROM CONTRIBURLS');
+  my $nbrURLs    = scalar(@$refAllURLs);
+  $nbrOperations = $nbrURLs + 3;
+  $winPb->pbWinPb1->SetRange(0, $nbrOperations);
+  my $currCount = (split(/\//, $winPb->lblCount1->Text()))[0];
+  $winPb->lblCount1->Text("$currCount/$nbrOperations");
+  # Foreach URLs in list
+  if ($$refInfos{step} == 1) {
+    my $entryInd = 1;
+    $winPb->lblPbCurr1->Text("$STR{'browseAllPagesURLs'}...");
+    foreach my $entry (@$refAllURLs) {
+      # $$entry: 0 = url, 2 = tmpPage, 2 = step
+      my $sthUpdURLStep = $$refDbh->prepare('UPDATE CONTRIBURLS SET step = ? WHERE url = ?');
+      my $URLStep       = 0;
+      $URLStep          = $$entry[2] if $$entry[2];
+      # Open the page (if currURL in browser is different from url to process)
+      if (!$URLStep) {
+        if ($mech->uri() ne $$entry[0]) {
+          $winPb->lblPbCurr2->Text("$STR{'Opening'} $STR{'thePage'}...");
+          $mech->get($$entry[0], synchronize => 0);
+          sleep($$refInfos{timeToWait});
+          if ($$refInfos{vPosts}) { # Visitor posts, open the popup
+            my $vPostsHeader = $mech->selector('div._2h4b._50f3', any => 1);
+            if (!$vPostsHeader) {
+              my @vPostsUrl = $mech->selector('a._g3j');
+              foreach (@vPostsUrl) { $_->click() if $_->{href} =~ /posts_to_page/; }
+              sleep($$refInfos{timeToWait}*2);
+            }
+          } elsif (my $closePopup = $mech->selector('a._xlt._418x', any => 1)) {
+            $closePopup->click();
+            sleep($$refInfos{timeToWait});
+          }
+        }
+        $URLStep = 1;
+        $sthUpdURLStep->execute($URLStep, $$entry[0]);
+        $$refDbh->commit();
+      }
+      # Scroll and expand the page (if option has been selected)
+      if ($URLStep == 1) {
+        if ($$refInfos{autoScroll}) {
+          $winPb->lblPbCurr2->Text("$STR{'ScrollExpand'} $STR{'thePage'}...");
+          if ($$refInfos{vPosts}) { &scrollVPostsPage(\$mech, $$refInfos{timeToWait}); }
+          else                    { &scrollExpand(    \$mech, $$refInfos{timeToWait}); }
+        }
+        $URLStep = 2;
+        $sthUpdURLStep->execute($URLStep, $$entry[0]);
+        $$refDbh->commit();
+      }
+      # Save the page
+      if ($URLStep == 2 or !$$entry[1] or !-e $$entry[1]) {
+        $winPb->lblPbCurr2->Text("$STR{'Saving'} $STR{'thePage'}...");
+        mkdir("$$refInfos{saveDir}\\temp") if !-d "$$refInfos{saveDir}\\temp";
+        $$entry[1] = "$$refInfos{saveDir}\\temp\\temp".$entryInd.'.html';
+        my $status = $mech->save_content($$entry[1]);
+        while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { sleep(1); }
+        my $sthUpdURLTmpPage = $$refDbh->prepare('UPDATE CONTRIBURLS SET tmpPage = ? WHERE url = ?');
+        $sthUpdURLTmpPage->execute($$entry[1], $$entry[0]);
+        $URLStep = 3;
+        $sthUpdURLStep->execute($URLStep, $$entry[0]);
+        $$refDbh->commit();
+      }
+      # Parse the page
+      if ($URLStep == 3) {
+        $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
+        &parseComments($refDbh, $refInfos, $$entry[1], $$entry[0]);
+        $URLStep = 4;
+        $sthUpdURLStep->execute($URLStep, $$entry[0]);
+        $$refDbh->commit();
+        &updateDumpDB_INFOS($refDbh, $refInfos);
+      }
+      $entryInd++;
+      $count1++;
+      $winPb->pbWinPb1->SetPos($count1);
+      $winPb->lblCount1->Text("$count1/$nbrOperations");
+    }
+    $$refInfos{step} = 2;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  } else {
+    $count1 += $nbrURLs;
+    $winPb->pbWinPb1->SetPos($count1);
+    $winPb->lblCount1->Text("$count1/$nbrOperations");
+  }
+  # Download profiles icons and other images (if option has been selected)
+  if ($$refInfos{step} == 2) {
+    if ($$refInfos{incIcons} ) {
+      $winPb->lblPbCurr1->Text("$STR{'Downloading'} $STR{'files'}...");
+      &dlProfilesIcons(\$mech, $refDbh, $refInfos);
+      &dlCommentsImg(  \$mech, $refDbh, $refInfos);
+    }
+    $$refInfos{step} = 3;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $count1++;
+  $winPb->pbWinPb1->SetPos($count1);
+  $winPb->lblCount1->Text("$count1/$nbrOperations");
+  # Count comments
+  if (!$$refInfos{nbrComments}) {
+    $$refInfos{nbrComments} = $$refDbh->selectrow_array('SELECT COUNT(id) FROM COMMENTS');
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  # Parsing done, create the report
+  my $filename;
+  if ($$refInfos{nbrComments}) {
+    $winPb->lblPbCurr1->Text("$STR{'Creating'} $STR{'outputFile'}...");
+    # Create and open the XLSX file
+    if    ($$refInfos{reportFormat} eq 'XLSX') { $filename = &createCommentReportXLSX($refDbh, $refInfos, $$refInfos{nbrComments}); }
+    elsif ($$refInfos{reportFormat} eq 'HTML') { $filename = &createCommentReportHTML($refDbh, $refInfos, $$refInfos{nbrComments}); }
+    else                                       { $filename = &createCommentReportTXT( $refDbh, $refInfos, $$refInfos{nbrComments}); }
+    # Finish
+    &closeUsedTabs($$refInfos{nbrTabs}) if $$refInfos{closeUsedTabs};
+    $winPb->ShellExecute('open', $filename,'','',1) if $$refInfos{openReport} and $filename;
+  } else {
+    $winPb->Hide();
+    Win32::GUI::MessageBox($winPb, $STR{'noCommentsDumped'}, $STR{'Error'}, 0x40010) if !$$refInfos{silentProgress};
+  }
+  $count1++;
+  $winPb->pbWinPb1->SetPos($count1);
+  $winPb->lblCount1->Text("$count1/$nbrOperations");
+  $winPb->ChangeCursor($ARROW);
+  $$refDbh->disconnect();
+  remove_tree("$$refInfos{saveDir}\\temp") if $$refInfos{delTempFiles};
+  unlink($dbFile);
+  exit(0);
+
+}  #--- End dumpComments
 
 #--------------------------#
 sub dumpEventMembers
@@ -1980,10 +2182,15 @@ sub listContribURLs
   # Create table PICTURES and CONTRIBURLS
   &createPicturesDB($refDbh);
   &createContribURLDB($refDbh);
-  my $sthPictures = $$refDbh->prepare('INSERT OR REPLACE INTO PICTURES (album,ind,pageURL) VALUES(?,?,?)');
+  my $sthContribURL = $$refDbh->prepare('INSERT OR REPLACE INTO CONTRIBURLS (url,step) VALUES(?,?)');
   # Add the current page url
-  if ($$refInfos{startingURL}) { $sthPictures->execute(0, 1, $$refInfos{startingURL}); }
-  $sthPictures->finish();
+  if ($$refInfos{startingURL}) {
+    my $sthPictures = $$refDbh->prepare('INSERT OR REPLACE INTO PICTURES (album,ind,pageURL) VALUES(?,?,?)');
+    $sthPictures->execute(0, 1, $$refInfos{startingURL});
+    $sthPictures->finish();
+    $sthContribURL->execute($$refInfos{startingURL}, 0);
+    $$refDbh->commit();
+  }
   # Browse the album pages and get the picture pages url
   my $refAllAlbums = $$refDbh->selectall_arrayref('SELECT * FROM ALBUMS');
   my $nbrAlbums    = scalar(@$refAllAlbums);
@@ -1998,7 +2205,7 @@ sub listContribURLs
     # 2: Scroll the album page
     # 3: Save the album page
     # 4: Parse the album page
-    # 5: Copy the url in CONTRIBURLS 
+    # 5: Copy the url in CONTRIBURLS
     
     # Open the album page
     if (!$albumStep) {
@@ -2058,19 +2265,17 @@ sub listContribURLs
     }
     # Copy the url in CONTRIBURLS
     if ($albumStep == 4) {
-      my $urlID         = 1;
-      my $sthContribURL = $$refDbh->prepare('INSERT OR REPLACE INTO CONTRIBURLS (id,url,step) VALUES(?,?,?)');
-      my $sthAll        = $$refDbh->selectall_arrayref('SELECT pageURL FROM PICTURES');
-      foreach my $pictureEntry (@$sthAll) { $sthContribURL->execute($urlID, $$pictureEntry[0], 0); $urlID++; }
-      $sthContribURL->finish();
+      my $sthAll = $$refDbh->selectall_arrayref('SELECT pageURL FROM PICTURES');
+      foreach my $pictureEntry (@$sthAll) { $sthContribURL->execute($$pictureEntry[0], 0); }
       $albumStep = 5;
       $sthUpdAlbumStep->execute($albumStep, $$entry[0]);
       $$refDbh->commit();
     }
   }
+  $sthContribURL->finish();
   
 }  #--- End listContribURLs
-  
+
 #--------------------------#
 sub parseContrib
 #--------------------------#
@@ -2335,6 +2540,299 @@ sub dumpContribLikes
   }
   
 }  #--- End dumpContribLikes
+  
+#--------------------------#
+sub parseComments
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $tmpPage, $currUrl) = @_;
+  my $sthProfiles      = $$refDbh->prepare('INSERT INTO PROFILES (cat,id,ind,name,url,pictureURL,nbr) VALUES(?,?,?,?,?,?,?)');
+  my $sthProfilesUpd   = $$refDbh->prepare('UPDATE PROFILES SET nbr = ? WHERE cat = ? AND id = ?');
+  my $sthComments      = $$refDbh->prepare('INSERT INTO COMMENTS (id,profilId,date,msg,url) VALUES(?,?,?,?,?)');
+  my $sthCommentsFiles = $$refDbh->prepare('INSERT OR IGNORE INTO COMMENTS_FILES (url) VALUES(?)');
+  my $commentId        = $$refDbh->selectrow_array('SELECT COUNT(id) FROM COMMENTS')+1;
+  # Whole file on a single line
+  if (open(my $fhTemp, "<:encoding(UTF-8)", $tmpPage)) {
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
+    close($fhTemp);
+    $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'Comments'} $STR{'inProgress'}...");
+    my $section      = (split(/bottomContent/, $fileAsStr))[0];
+    my @commentNodes = split(/UFIImageBlockImage/, $section);
+    shift(@commentNodes);
+    # Progress
+    my $count2 = 0;
+    my $nbrComments = scalar(@commentNodes);
+    $winPb->pbWinPb2->SetRange(0, $nbrComments);
+    $winPb->pbWinPb2->SetStep(1);
+    $winPb->lblCount2->Text("0/$nbrComments");
+    my $ind = $$refDbh->selectrow_array('SELECT COUNT(id) FROM PROFILES');
+    # Parse each comment
+    foreach my $commentNode (@commentNodes) {
+      if ($commentNode !~ /^" role="presentation"/) {
+        # Parse profile details
+        my $id;
+        my $url;
+        my $name;
+        my $profileImg;
+        if ($commentNode =~ /href="([^\&\"]+)(?:&|")[^\>]+hovercard.php\?id=([^\&\"]+)(?:&|")/) {
+          $url  = $1;
+          $id   = $2;
+          $url  =~ s/&amp;/&/g;
+        } elsif ($commentNode =~ /hovercard.php\?id=([^\&\"]+)(?:&|")[^\>]+href="([^\&\"]+)(?:&|")/) {
+          $id   = $1;
+          $url  = $2;
+          $url  =~ s/&amp;/&/g;
+        }
+        if ($commentNode =~ /src="([^\"]+)"/) { $profileImg  = $1; $profileImg =~ s/&amp;/&/g; }
+        if ($commentNode =~ /alt="([^\"]+)"/) { $name = $1; }
+        # Parse comment details
+        my $dateInt;
+        my $message;
+        my $commentBody;
+        if ($commentNode =~ /UFICommentBody/) { $commentBody = (split(/UFICommentBody/, $commentNode))[1]; }
+        if ($commentBody) {
+          # Extract the comment
+          if ($commentBody =~ /^">(.+?)(?:UFICommentActions|UFITranslateLink)/) {
+            $message = $1;
+            # Emoji
+            if ($message =~ /<span[^\>]+_47e3/) {
+              my $tmpMessage = $message;
+              while ($tmpMessage =~ /(<span[^\>]+_47e3[^\>]+>(.+?)<\/span><\/span>)/) {
+                my $emojiTag = $1;
+                if ($emojiTag =~ /src="([^\"]+)"/) {
+                  my $emojiURL = $1;
+                  my $emojiTxt = '';
+                  if ($emojiTag =~ /<span[^\>]+class="_7oe"[^\>]*>(.+?)<\/span>/) { $emojiTxt = $1; }
+                  $emojiURL    =~ s/&amp;/&/g;
+                  $sthCommentsFiles->execute($emojiURL);
+                  $tmpMessage = &truncateText($tmpMessage, length($emojiTag), $emojiTag);
+                  my $emojiTagTmp = quotemeta($emojiTag);
+                  $message =~ s/$emojiTagTmp/<img src=\"$emojiURL\" alt=\"$emojiTxt\">/;
+                }
+              }
+            }
+            # Sticker
+            if ($message =~ /(<div[^\>]+ufi_comment_sticker[^\>]+>[^<]*<\/div>)/) {
+              my $extract = $1;
+              if ($extract =~ /style="background-image: ?url\((?:&quot;)?(\/stickers\/asset\/\?sticker_id[^\&]+)/ or
+                  $extract =~ /style="background-image: ?url\(&quot;(.+?)&quot;\); background/) {
+                my $imgURL = $1;
+                $imgURL = "https://www.facebook.com$imgURL" if $imgURL !~ /^http/;
+                if (($imgURL =~ /sticker_id=/)) { # If sticker use redirection
+                  my $mechSticker = WWW::Mechanize::Firefox->new(autodie => 0);
+                  $mechSticker->get($imgURL, synchronize => 0);
+                  sleep($$refInfos{timeToWait});
+                  $imgURL = $mechSticker->uri;
+                }
+                $imgURL =~ s/&amp;/&/g;
+                $sthCommentsFiles->execute($imgURL);
+                # Replace in $msg
+                my $extractTmp = quotemeta($extract);
+                $message       =~ s/$extractTmp/<img src=\"$imgURL\" alt=\"\">/;
+              }
+            }
+            # Picture
+            if ($message =~ /<div[^\>]+mvs[^\>]+>(.+?)<\/div>/) {
+              my $extract = $1;
+              if ($extract =~ /<img[^\>]+src="([^\"]+)"[^\>]+>/) {
+                my $picURL = encode('utf8', $1);
+                if ($picURL =~ /\?u=([^\&]+)&/ ) { $picURL = unescape($1); }
+                $picURL =~ s/&amp;/&/g;
+                $sthCommentsFiles->execute($picURL);
+                # Replace in $msg
+                $message =~ s/<div[^\>]+mvs[^\>]+>.+?<\/div>/<img src=\"$picURL\" alt=\"\">/;
+              }
+            }
+            # Profile link
+            if ($message =~ /(<a[^\>]+profileLink[^\>]+>)(.+?)<\/a>/) {
+              my $extract1 = $1;
+              my $extract2 = $2;
+              if ($extract1 =~ /href="([^\"]+)"/) {
+                my $href = $1;
+                # Replace in $msg
+                $message =~ s/<a[^\>]+profileLink[^\>]+>.+?<\/a>/<a href="$href">$extract2<\/a>/;
+              }
+            }
+          }          
+          # Extract the comment date
+          if ($commentBody =~ /<a[^>]+uiLinkSubtle[^>]+>(.+?)<\/a>/) {
+            my $dateTag = $1;
+            if ($dateTag =~ /data-utime="(\d+)"/) { $dateInt = $1; }
+          }
+        }
+        # Remove some Junk
+        if ($message) {
+          $message =~ s/<div class="fsm fwn fcg//; # Remove end
+          $message =~ s/<a class="//;              # Remove end
+          $message =~ s/<[^>]*span[^>]*>//g;       # Remove all span
+          $message =~ s/<[^>]*div[^>]*>//g;        # Remove all div
+          $message =~ s/role="presentation" //g;   # Remove emoticon attribute
+          $message =~ s/alt="" //g;                # Remove emoticon attribute
+          $message =~ s/class="img" //g;           # Remove emoticon attribute
+        }
+        if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename} and $dateInt) {
+          # Profile already exists, count
+          if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
+                                                     $STR{'Comments'}, $id)) {
+            $sthProfilesUpd->execute($exists+1, $STR{'Comments'}, $id);
+          # Add a new profile entry
+          } else {
+            $sthProfiles->execute($STR{'Comments'}, $id, $ind, $name, $url, $profileImg, 1);
+            $ind++;
+          }
+          # Add the message
+          $sthComments->execute($commentId, $id, $dateInt, $message, $currUrl);
+          $commentId++;
+        }
+      }
+      $count2++;
+      $winPb->pbWinPb2->StepIt();
+      $winPb->lblCount2->Text("$count2/$nbrComments");
+    }
+    $winPb->lblPbCurr2->Text('');
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->lblCount2->Text('');
+    $$refDbh->commit();
+  }
+  
+}  #--- End parseComments
+
+#--------------------------#
+sub dlCommentsImg
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refDbh, $refInfos) = @_;
+  my $all = $$refDbh->selectall_arrayref('SELECT url FROM COMMENTS_FILES WHERE url IS NOT NULL');
+  # Create a temp page with all images
+  my $count   = 0;
+  my $nbrToDL = scalar(@$all);
+  $winPb->pbWinPb2->SetRange(0, $nbrToDL);
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text("$count/$nbrToDL");
+  $winPb->lblPbCurr2->Text("$STR{'Creating'} $STR{'Pictures'} $STR{'page'}...");
+  my $imgPage = "$$refInfos{saveDir}\\temp\\tempImages.html";
+  if (open(HTML, ">:encoding(utf8)", $imgPage)) {
+    print HTML "<!DOCTYPE html><html>\n<body>";
+    foreach my $entry (@$all) {
+      print HTML "<img src=\"$$entry[0]\" alt=\"$$entry[0]\" />";
+      $count++;
+      $winPb->pbWinPb2->StepIt();
+      $winPb->lblCount2->Text("$count/$nbrToDL");
+    }
+    print HTML "</body></html>";
+    close(HTML);
+  }
+  $winPb->lblPbCurr2->Text('');
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');
+  # Open the temp page in Firefox
+  $winPb->lblPbCurr2->Text("$STR{'Opening'} $STR{'thePage'}...");
+  my $mechImg = WWW::Mechanize::Firefox->new(create => 1, autodie => 0);
+  $mechImg->get('file:///'.$imgPage, synchronize => 1);
+  # Save the page
+  $winPb->lblPbCurr2->Text("$STR{'Saving'} $STR{'thePage'}...");
+  mkdir("$$refInfos{saveDir}\\images_$$refInfos{filename}") if !-d "$$refInfos{saveDir}\\images_$$refInfos{filename}";
+  my $status = $mechImg->save_content("$$refInfos{saveDir}\\temp\\tempImages2.html", "$$refInfos{saveDir}\\temp");
+  while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
+  # Parse the saved page and move the images
+  $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}...");
+  my $sthCommentsFilesUpd = $$refDbh->prepare('UPDATE COMMENTS_FILES SET path = ?, relPath = ? WHERE url = ?');
+  if (open(my $fhTemp, "<:encoding(UTF-8)", "$$refInfos{saveDir}\\temp\\tempImages2.html")) {
+    my $fileAsStr = do { local $/ = <$fhTemp> };
+    $fileAsStr    =~ s/[\r\n]//g;
+    close($fhTemp);
+    my @images = split(/<img src=/, $fileAsStr);
+    shift(@images);
+    # Progress
+    $count = 0;
+    my $nbrImages = scalar(@images);
+    $winPb->pbWinPb2->SetRange(0, $nbrImages);
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->lblCount2->Text("$count/$nbrImages");    
+    foreach my $imgCode (@images) {
+      if ($imgCode =~ /^\"([^\"]+)\" alt=\"([^\"]+)\"/) {
+        my $imgPath = $1;
+        my $url     = $2;
+        my $filename;
+        if    ($imgPath =~ /^http/ and $imgPath =~ /\/([^\/\?]+)(?:\?|$)/) { $filename = $1;       }
+        elsif ($imgPath !~ /^http/ and $imgPath !~ /\//                  ) { $filename = $imgPath; }
+        if ($filename) {
+          my $tmpPath = "$$refInfos{saveDir}\\temp\\$filename";
+          my $path    = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$filename";
+          my $relPath = ".\\images_$$refInfos{filename}\\$filename";
+          # Download or copy file
+          if (-e $tmpPath and !-e $path) { rename($tmpPath, $path);              } # File exist in temp directory, move it
+          elsif ($imgPath =~ /^http/   ) { $$refMech->save_url($imgPath, $path); } # File must be downloaded
+          $url  =~ s/&amp;/&/g;
+          $sthCommentsFilesUpd->execute($path, $relPath, $url);
+        }
+      }
+      $count++;
+      $winPb->pbWinPb2->StepIt();
+      $winPb->lblCount2->Text("$count/$nbrImages");
+    }
+  }
+  $winPb->lblPbCurr2->Text('');
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');
+  $$refDbh->commit();
+  
+}  #--- End dlCommentsImg
+
+#--------------------------#
+sub dlCommentsFiles
+#--------------------------#
+{
+  # Local variables
+  my ($refMech, $refDbh, $refInfos) = @_;
+  my $nbrCommentsFiles = $$refDbh->selectrow_array('SELECT COUNT(url) FROM COMMENTS_FILES');
+  my $sthAll           = $$refDbh->prepare('SELECT * FROM COMMENTS_FILES');
+  # COMMENTS_FILES fields: url, path, relPath
+  # COMMENTS fields: id, profilId, date, msg, url
+  $sthAll->execute();
+  # Progress
+  my $count2 = 0;
+  $winPb->pbWinPb2->SetRange(0, $nbrCommentsFiles);
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->pbWinPb2->SetStep(1);
+  $winPb->lblCount2->Text("$count2/$nbrCommentsFiles");
+  # Download all files
+  my $sthCommentsFilesUpd = $$refDbh->prepare('UPDATE COMMENTS_FILES SET path = ?, relPath = ? WHERE url = ?');
+  while (my $entry = $sthAll->fetchrow_arrayref()) {
+    my $path    = undef;
+    my $relPath = undef;
+    # Option to download file have been selected and it doesn't exist already
+    if (!$$entry[1] and !$$entry[2] or ($$entry[1] and !-e $$entry[1])) {
+      my $filename;
+      if    ($$entry[0] =~ /^http/ and $$entry[0] =~ /\/([^\/\?]+)(?:\?|$)/) { $filename = $1;         }
+      elsif ($$entry[0] !~ /^http/ and $$entry[0] !~ /\//                  ) { $filename = $$entry[0]; }
+      if ($filename) {
+        my $tmpPath = "$$refInfos{saveDir}\\temp\\$filename";
+        # File is an image
+        mkdir("$$refInfos{saveDir}\\images_$$refInfos{filename}") if !-d "$$refInfos{saveDir}\\images_$$refInfos{filename}";
+        $path    = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$filename";
+        $relPath = ".\\images_$$refInfos{filename}\\$filename";
+        # Download or copy file
+        if ($path and $relPath) {
+          if (-e $tmpPath and !-e $path) { rcopy($tmpPath, $path);                 } # File exist in temp directory, copy it
+          else                           { $$refMech->save_url($$entry[0], $path); } # File must be downloaded
+        }
+      }
+      $sthCommentsFilesUpd->execute($path, $relPath, $$entry[0]);
+    }
+    # Update progress
+    $count2++;
+    $winPb->pbWinPb2->StepIt();
+    $winPb->lblCount2->Text("$count2/$nbrCommentsFiles");
+  }
+  $$refDbh->commit();
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');
+  
+}  #--- End dlCommentsFiles
 
 #--------------------------#
 sub dumpGroupMembersCat
@@ -2664,8 +3162,10 @@ sub parseChatPage
               $dt      = $strp->parse_datetime($str);
               $dt->set_year((localtime(time))[5]+1900);
             }
-            $dt->set_time_zone($localTZ) if $localTZ;
-            $currDatetime = $dt->epoch() if $dt;
+            if ($dt) {
+              $dt->set_time_zone($localTZ) if $localTZ;
+              $currDatetime = $dt->epoch();
+            }
           }
           my $keepMsg = 1;
           # Message is older than the requested date
@@ -2687,9 +3187,11 @@ sub parseChatPage
                 $dt   	 = $strp->parse_datetime($str);
                 $dt->set_year((localtime(time))[5]+1900);
               } else { $dateStr = $time; }
-              $dt->set_time_zone($localTZ) if $localTZ;
-              $datetime = $dt->epoch()          if $dt;
-              $dateStr .= $dt->ymd.' '.$dt->hms if $dt;
+              if ($dt) {
+                $dt->set_time_zone($localTZ) if $localTZ;
+                $datetime = $dt->epoch();
+                $dateStr .= $dt->ymd.' '.$dt->hms;
+              }
             } elsif ($datePart =~ /<div class="_497p">/) {
               my $tempText;
               while ($datePart =~ /\>([^\<]+)\</) {
@@ -3985,6 +4487,351 @@ sub createProfilesReportTXT
 }  #--- End createProfilesReportTXT
 
 #--------------------------#
+sub createCommentReportHTML
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $nbrComments) = @_;
+  $winPb->lblPbCurr2->Text("$STR{'Writing'} $STR{'Comments'}...");
+  # Save the Comments in a HTML file
+  my $htmlCommentsPage = "$$refInfos{saveDir}\\$$refInfos{filename}.html";
+	open(HTML, ">:encoding(utf8)", $htmlCommentsPage);
+	print HTML "<!DOCTYPE html>\n";
+	print HTML "<html>\n<head>\n<title>$$refInfos{filename}</title>\n";
+	print HTML "<meta charset=\"utf8\">\n";
+  print HTML "<meta name=\"generator\" content=\"ExtractFace $VERSION\">\n";
+	print HTML "<style>\n";
+	print HTML "table, th, td {\n";
+  print HTML "  border: 1px solid black;\n";
+  print HTML "  border-collapse: collapse;\n";
+	print HTML "}\n";
+	print HTML "th, td {\n";
+  print HTML "  padding: 5px;\n";
+	print HTML "}\n";
+	print HTML "</style>\n";
+	print HTML "</head>\n";
+	print HTML "<body>\n";
+	print HTML "<h1 style=\"color:#003300;font-size: 18pt;font-variant: small-caps;font-weight: bold;\;text-align: center;\">";
+	print HTML "$$refInfos{filename}</h1>\n";
+	# Progress bar
+  my $count2 = 0;
+	$winPb->pbWinPb2->SetRange(0, $nbrComments);
+	$winPb->pbWinPb2->SetPos(0);
+	$winPb->pbWinPb2->SetStep(1);
+	$winPb->lblCount2->Text("0/$nbrComments");
+  my $refCommentsURL = $$refDbh->selectall_arrayref('SELECT DISTINCT(url) FROM COMMENTS');
+  foreach my $commentsURL (@$refCommentsURL) {
+    print HTML "<h2 style=\"color:#003300;font-size: 16pt;\;text-align: center;\">";
+    print HTML "<a href=\"$$commentsURL[0]\" target=\"_blank\">$$commentsURL[0]<\/a></h2>\n";
+    print HTML "<table style=\"margin: auto;\">\n";
+    print HTML "<tr>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'Image'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'Name'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'ProfileID'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'url'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'Date'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'Time'}</td>\n";
+    print HTML "<td style=\"font-weight: bold;text-align: center;\">$STR{'Comments'}</td>\n";
+    print HTML "</tr>\n";
+    my $sthComments = $$refDbh->prepare('SELECT * FROM COMMENTS WHERE url = ? ORDER BY id');
+    # Print all comments for the page
+    $sthComments->execute($$commentsURL[0]);
+    while (my $entry = $sthComments->fetchrow_arrayref()) {
+      # COMMENTS fields for $entry : 0=id, 1=profilId, 2=date, 3=msg, 4=url
+      my @profileDetails = $$refDbh->selectrow_array('SELECT * FROM PROFILES WHERE id = ?', undef, $$entry[1]);
+      # PROFILES fields: 0=cat, 1=id, 2=ind, 3=name, 4=url, 5=details, 6=pictureURL, 7=picturePath, 8=pictureRelPath, 9=nbr
+      print HTML "<tr>\n";
+      # Profile Image
+      print HTML "<td style=\"text-align: center;vertical-align: center;\">";
+      my $profileImgPath;
+      if (scalar(@profileDetails) and -e $profileDetails[7] and $profileDetails[8]) {
+        $profileImgPath = $profileDetails[8]; # Profile image is local
+      } elsif (scalar(@profileDetails)) {
+        $profileImgPath = $profileDetails[4]; # Profile image is url
+      }
+      print HTML "<img src=\"$profileImgPath\" alt=\"\" style=\"width:32px;height:32px;\">" if $profileImgPath;
+      print HTML "</td>\n";
+      # Profile name
+      print HTML "<td>";
+      print HTML $profileDetails[3] if scalar(@profileDetails) and $profileDetails[3];
+      print HTML "</td>\n";
+      # Profile ID
+      print HTML "<td>";
+      print HTML $$entry[1] if $$entry[1];
+      print HTML "</td>\n";
+      # Profile URL
+      print HTML "<td>";
+      if (scalar(@profileDetails) and $profileDetails[4]) {
+        print HTML "<a href=\"$profileDetails[4]\" target=\"_blank\">$profileDetails[4]</a>";
+      }
+      print HTML "</td>\n";
+      # Date and time
+      my $dateStr       = &formatDate($$entry[2]);
+      my ($date, $time) = split(/ /, $dateStr);
+      print HTML "<td>$date</td>\n<td>$time</td>\n";
+      # Comment
+      print HTML "<td>";
+      if ($$entry[3]) {
+        # Comment contain at least one image
+        if ($$entry[3] =~ /\<img/) {
+          my $tmpMessage       = $$entry[3];
+          my $sthCommentsFiles = $$refDbh->prepare('SELECT * FROM PROFILES WHERE url = ?');
+          # COMMENTS_FILES fields: url, path, relPath
+          while ($tmpMessage =~ /\<img/) {
+            my $tag;
+            my $url;
+            if ($tmpMessage =~ /(\<img.+?[^\>]+\>)/) {
+              $tag = $1;
+              # Replace url if exists in database
+              if ($tag =~ /\<img/ and $tag =~ /src="([^\"]+)"/ ) {
+                my $searchURL = $url = $1;
+                $searchURL    =~ s/&amp;/&/g;
+                my @commentFilesEntry = $$refDbh->selectrow_array('SELECT * FROM COMMENTS_FILES WHERE url = ?', undef, $searchURL);
+                # COMMENTS_FILES fields: url, path, relPath
+                if (scalar(@commentFilesEntry) and -e $commentFilesEntry[1] and $commentFilesEntry[2]) {
+                  $url       = quotemeta($url);
+                  $$entry[3] =~ s/$url/$commentFilesEntry[2]/;
+                }
+              }
+              if ($tag) { # Crop $tmpMessage
+                my $offset  = length($tag);
+                $tmpMessage = substr($tmpMessage,$offset,length($tmpMessage)-$offset);
+              } else { last; }
+            }
+          }
+        }
+        print HTML $$entry[3];
+      }
+      print HTML "</td>\n";
+      print HTML "</tr>\n";
+      $count2++;
+      $winPb->lblCount2->Text("$count2/$nbrComments");
+      $winPb->pbWinPb2->StepIt();
+    }
+    print HTML "</table>\n";
+  }
+	print HTML "</body>\n</html>\n";
+	close(HTML);
+  return($htmlCommentsPage);
+
+}  #--- End createCommentReportHTML
+
+#--------------------------#
+sub createCommentReportXLSX
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $nbrComments) = @_;
+  my $filename = "$$refInfos{saveDir}\\$$refInfos{filename}\.xlsx";
+  my $excel;
+  my $count = 1;
+  while (!($excel = Excel::Writer::XLSX->new($filename))) { # If file is already open, must be renamed
+    $filename = "$$refInfos{saveDir}\\$$refInfos{filename} [".$count++."]\.xlsx";
+    last if $count == 10; # Stop after 10 attempts
+  }
+  if ($excel) {
+    # Set metadata
+    $excel->set_properties(title => $$refInfos{filename}, comments => 'ExtractFace '.$VERSION);
+    # Formats
+    my $format      = $excel->add_format(valign => 'vcenter', align  => 'center', bold => 1);
+    my $format2     = $excel->add_format(valign => 'top', text_wrap  => 1);
+    my $formatDate  = $excel->add_format(valign => 'top', num_format => 'yyyy-mm-dd');
+    my $formatTime  = $excel->add_format(valign => 'top', num_format => 'hh:mm:ss'  );
+    # Progress bar
+    my $count2 = 0;
+    $winPb->pbWinPb2->SetRange(0, $nbrComments);
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->pbWinPb2->SetStep(1);
+    $winPb->lblCount2->Text("0/$nbrComments");
+    if (my $sheet = $excel->add_worksheet($STR{'Comments'})) { # A sheet per page
+      my $j = 0; # Column no
+      # Headers
+      if ($$refInfos{incIcons}) { $sheet->write_string(0, $j, $STR{'Image'}, $format); $j++; }
+      $sheet->write_string(0, $j, $STR{'Name'}      , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'ProfileID'} , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'url'}       , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'Date'}      , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'Time'}      , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'Comments'}  , $format); $j++;
+      $sheet->write_string(0, $j, $STR{'originURL'} , $format);
+      # Create content
+      my $i = 1; # Row no
+      my $maxWidthCol1 = length($STR{'Image'}     )+5;
+      my $maxWidthCol2 = length($STR{'Name'}      )+5;
+      my $maxWidthCol3 = length($STR{'ProfileID'} )+5;
+      my $maxWidthCol4 = length($STR{'url'}       )+5;
+      my $maxWidthCol8 = length($STR{'originURL'} )+5;
+      my $sthComments = $$refDbh->prepare('SELECT * FROM COMMENTS ORDER BY id');
+      # Print all comments for the page
+      $sthComments->execute();
+      while (my $entry = $sthComments->fetchrow_arrayref()) {
+        $j = 0;
+        # COMMENTS fields for $entry : 0=id, 1=profilId, 2=date, 3=msg, 4=url
+        my @profileDetails = $$refDbh->selectrow_array('SELECT * FROM PROFILES WHERE id = ?', undef, $$entry[1]);
+        # PROFILES fields: 0=cat, 1=id, 2=ind, 3=name, 4=url, 5=details, 6=pictureURL, 7=picturePath, 8=pictureRelPath, 9=nbr
+        # Profile Image
+        if ($$refInfos{incIcons}) { 
+          $sheet->write_blank($i, $j);
+          my $profileImgPath;
+          if (scalar(@profileDetails) and $profileDetails[7] and -e $profileDetails[7] and $profileDetails[8]) {
+            $sheet->insert_image($i, $j, $profileDetails[7]);
+            $sheet->set_row($i, 30);
+          }
+          $j++;
+        }
+        # Profile name
+        if (scalar(@profileDetails) and $profileDetails[3]) {
+          $sheet->write_string($i, $j, $profileDetails[3]);
+          $maxWidthCol2 = length($profileDetails[3]) if length($profileDetails[3]) > $maxWidthCol2;
+        }
+        $j++;
+        # Profile ID
+        if ($$entry[1]) {
+          $sheet->write_string($i, $j, $$entry[1]);
+          $maxWidthCol3 = length($$entry[1]) if length($$entry[1]) > $maxWidthCol3;
+        }
+        $j++;
+        # Profile url
+        if (scalar(@profileDetails) and $profileDetails[4]) {
+          $sheet->write_string($i, $j, $profileDetails[4]);
+          $maxWidthCol4 = length($profileDetails[4]) if length($profileDetails[4]) > $maxWidthCol4;
+        }
+        $j++;
+        # Date and time
+        my $dateStr       = &formatDate($$entry[2]);
+        my ($date, $time) = split(/ /, $dateStr);
+        $sheet->write_date_time($i, $j, $date, $formatDate); $j++;
+        $sheet->write_date_time($i, $j, $time, $formatTime); $j++;
+        # Comment
+        if ($$entry[3]) {
+          if ($$entry[3] =~ /(\<[^\>]+\>)/) { # Comment contains a tag
+            my $tag = $1;
+            if ($tag =~ /emoji.php/) { # Remove emoji tag
+              while ($$entry[3] =~ /(\<img[^\>]+emoji.php[^\>]+alt="([^\"]*)"[^\>]*\>)/) {
+                my $tmpTag   = quotemeta($1);
+                my $emojiAlt = $2;
+                $$entry[3]   =~ s/$tmpTag/ $emojiAlt/g;
+              }
+            }
+            $$entry[3] =~ s/<br>/\r\n/g;
+            $$entry[3] =~ s/<img[^\>]+src="([^\"]+)"[^\>]*>/[$STR{'Image'}: $1]\r\n/g;
+            $$entry[3] =~ s/<a[^\>]+>([^\<]+)\<\/a\>/$1\r\n/g;
+            $$entry[3] =~ s/<[^\>]+>//g;
+            $$entry[3] =~ s/(?:\r\n)+/\r\n/g;
+            $$entry[3] =~ s/\r\n$//g;
+            $$entry[3] = unescape($$entry[3]);
+            $$entry[3] =~ s/&amp;/&/g;
+          }
+          $sheet->write_string($i, $j, $$entry[3]);
+        }
+        $j++;
+        # Origin url
+        $sheet->write_string($i, $j, $$entry[4]);
+        $maxWidthCol8 = length($$entry[4]) if length($$entry[4]) > $maxWidthCol8;
+        # Progress
+        $i++;
+        $winPb->pbWinPb2->StepIt();
+        $count2++;
+        $winPb->lblCount2->Text("$count2/$nbrComments");
+      }
+      # Set autofilter
+      $sheet->autofilter(0, 0, 0, $j);
+      $sheet->freeze_panes(1, 0);
+      # Ajust column sizes
+      $j = 0;
+      $sheet->set_column($j, 7, undef, $format2);
+      if ($$refInfos{incIcons}) { $sheet->set_column($j, $j, $maxWidthCol1); $j++; }
+      $sheet->set_column($j, $j, $maxWidthCol2); $j++;
+      $sheet->set_column($j, $j, $maxWidthCol3+4); $j++;
+      $sheet->set_column($j, $j, $maxWidthCol4+4); $j++;
+      $sheet->set_column($j, $j,  10); $j++; # Date
+      $sheet->set_column($j, $j,  10); $j++; # Time
+      $sheet->set_column($j, $j, 100); $j++; # Comment
+      $sheet->set_column($j, $j, $maxWidthCol8+4); 
+    }
+    $excel->close();
+    return($filename);
+  }
+  
+}  #--- End createCommentReportXLSX
+
+#--------------------------#
+sub createCommentReportTXT
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $nbrComments) = @_;
+  my $filename = "$$refInfos{saveDir}\\$$refInfos{filename}\.txt";
+  my $count = 1;
+  if (open(my $txt, ">:encoding(UTF-8)", $filename)) {
+    # Progress bar
+    my $count2 = 0;
+    $winPb->pbWinPb2->SetRange(0, $nbrComments);
+    $winPb->pbWinPb2->SetPos(0);
+    $winPb->pbWinPb2->SetStep(1);
+    $winPb->lblCount2->Text("0/$nbrComments");
+    my $sthComments = $$refDbh->prepare('SELECT * FROM COMMENTS ORDER BY id');
+    # Headers
+    print $txt "$STR{'Name'}\t$STR{'ProfileID'}\t$STR{'url'}\t$STR{'Date'}\t$STR{'Time'}\t$STR{'Comments'}\t$STR{'originURL'}\n";
+    my $i = 1; # Line no
+    # Print all messages
+    $sthComments->execute();
+    while (my $entry = $sthComments->fetchrow_arrayref()) {
+      my $newLine;
+      # COMMENTS fields for $entry : 0=id, 1=profilId, 2=date, 3=msg, 4=url
+      my @profileDetails = $$refDbh->selectrow_array('SELECT * FROM PROFILES WHERE id = ?', undef, $$entry[1]);
+      # PROFILES fields: 0=cat, 1=id, 2=ind, 3=name, 4=url, 5=details, 6=pictureURL, 7=picturePath, 8=pictureRelPath, 9=nbr
+      # Profile name
+      $newLine .= $profileDetails[3] if scalar(@profileDetails) and $profileDetails[3];
+      $newLine .= "\t";
+      # Profile id
+      $newLine .= $$entry[1] if $$entry[1];
+      $newLine .= "\t";
+      # Profile url
+      $newLine .= $profileDetails[4] if scalar(@profileDetails) and $profileDetails[4];
+      $newLine .= "\t";
+      # Date
+      my $dateStr       = &formatDate($$entry[2]);
+      my ($date, $time) = split(/ /, $dateStr);
+      $newLine .= "$date\t$time\t";
+      # Comment
+      if ($$entry[3]) {
+        if ($$entry[3] =~ /(\<[^\>]+\>)/) { # Comment contains a tag
+          my $tag = $1;
+          if ($tag =~ /emoji.php/) { # Remove emoji tag
+            while ($$entry[3] =~ /(\<img[^\>]+emoji.php[^\>]+alt="([^\"]*)"[^\>]*\>)/) {
+              my $tmpTag   = quotemeta($1);
+              my $emojiAlt = $2;
+              $$entry[3]   =~ s/$tmpTag/ $emojiAlt/g;
+            }
+          }
+          $$entry[3] =~ s/<br>/ /g;
+          $$entry[3] =~ s/<img[^\>]+src="([^\"]+)"[^\>]*>/[$STR{'Image'}: $1] /g;
+          $$entry[3] =~ s/<a[^\>]+>([^\<]+)\<\/a\>/$1 /g;
+          $$entry[3] =~ s/<[^\>]+>//g;
+          $$entry[3] =~ s/(?:  )+/ /g;
+          $$entry[3] = unescape($$entry[3]);
+          $$entry[3] =~ s/&amp;/&/g;
+        }
+        $newLine .= $$entry[3];
+      }
+      $newLine .= "\t";
+      # Origin URL
+      $newLine .= $$entry[4];
+      print $txt $newLine . "\n";
+      # Progress
+      $i++;
+      $winPb->pbWinPb2->StepIt();
+      $count2++;
+      $winPb->lblCount2->Text("$count2/$nbrComments");
+    }
+    close($txt);
+    return($filename);
+  }
+  
+}  #--- End createCommentReportTXT
+
+#--------------------------#
 sub createChatReportHTML
 #--------------------------#
 {
@@ -4643,9 +5490,12 @@ sub expandContent
 {
   # Local variables
   my ($refMech) = @_;
-  $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIPagerLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-  $$refMech->eval_in_page("var el = document.getElementsByClassName('UFICommentLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
-  $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIBlingBox uiBlingBox feedbackBling'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+  for (0..3) { # Repeat 4 times to be sure
+    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIPagerLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFICommentLink'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    $$refMech->eval_in_page("var el = document.getElementsByClassName('UFIBlingBox uiBlingBox feedbackBling'); for (var i=0;i<el.length; i++) { el[i].click(); }");
+    sleep(1);
+  }
 
 }  #--- End expandContent
 
@@ -4726,11 +5576,10 @@ sub createContribURLDB
   my $refDbh = shift;
   # Create Infos table
   my $stmt = qq(CREATE TABLE IF NOT EXISTS CONTRIBURLS
-                (id           VARCHAR(255)  NOT NULL,
-                 url          VARCHAR(255)  NOT NULL,
-                 tmpPage      VARCHAR(255),
-                 step         INT,
-                 PRIMARY KEY (id)));
+                (url      VARCHAR(255)  NOT NULL,
+                 tmpPage  VARCHAR(255),
+                 step     INT,
+                 PRIMARY KEY (url)));
   $$refDbh->do($stmt);
   $$refDbh->commit();
   
@@ -4812,6 +5661,31 @@ sub createProfilesDB
   $$refDbh->commit();
   
 }  #--- End createProfilesDB
+
+#--------------------------#
+sub createCommentsDB
+#--------------------------#
+{
+  # Local variables
+  my $refDbh = shift;
+  # Create Profiles Table
+  my $stmt = qq(CREATE TABLE IF NOT EXISTS COMMENTS
+                (id             INT          NOT NULL,
+                 profilId       INT          NOT NULL,
+                 date           INT          NOT NULL,
+                 msg            VARCHAR(255),
+                 url            VARCHAR(255),
+                 PRIMARY KEY (id)));
+  $$refDbh->do($stmt);
+  $stmt    = qq(CREATE TABLE IF NOT EXISTS COMMENTS_FILES
+                (url        VARCHAR(255) NOT NULL,
+                 path       VARCHAR(255),
+                 relPath    VARCHAR(255),
+                 PRIMARY KEY (url)));
+  $$refDbh->do($stmt);
+  $$refDbh->commit();
+  
+}  #--- End createCommentsDB
 
 #--------------------------#
 sub createChatDB
