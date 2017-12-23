@@ -8,8 +8,8 @@
 # SourceForge		: https://sourceforge.net/p/extractface
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation			: 2015-08-01
-# Modified			: 2017-12-04
-my $VERSION			= "6.3";
+# Modified			: 2017-12-23
+my $VERSION			= "6.3.1";
 # Author				: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)

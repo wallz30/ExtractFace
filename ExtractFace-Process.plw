@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-12-04
-my $VERSION               = '6.3';
+# Modified                : 2017-12-23
+my $VERSION               = '6.3.1';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
@@ -3392,12 +3392,13 @@ sub parseMessage
 		}
 	}
 	# Picture
-	if ($msgCode =~ /(<div[^\>]+_4tsk[^\>]+>)(.+?)<\/div>/) {
+	if ($msgCode =~ /(<div[^\>]+_4tsk[^\>]+>)(.+?)<\/a>/) {
 		my $extract1 = $1;
 		my $extract2 = $2;
+    my $extract3 = $';
 		# Multiples pictures
 		if ($extract1 =~ /background-image: url/ and $extract2 =~ /class="_4tsl"/) {
-			while ($msgCode =~ /(<div[^\>]+_4tsk[^\>]+>)(.+?)<\/div>/) {
+			while ($msgCode =~ /(<div[^\>]+_4tsk[^\>]+>)(.+?)<\/a>/) {
 				my $extract3 = $1;
 				my $extract4 = $2;
 				if ($extract3 =~ /style="background-image: ?url\(&quot;(.+?)&quot;\);/) {
@@ -3415,7 +3416,7 @@ sub parseMessage
 				$msgCode = &truncateText($msgCode, length($extract3)+length($extract2), $extract3);
 			}
 		# Single picture
-    } elsif ($extract2 =~ /(<img[^\>]+(?:_5pf5|_mxz)[^\>]+>.+?<\/a>)/) {
+    } elsif ($extract3 =~ /(<img[^\>]+(?:_5pf5|_mxz)[^\>]+>)/) {
 			$message .= $1;
 			if ($message =~ /src="([^\"]+)"/) {
 				my $picURL = encode('utf8', $1);

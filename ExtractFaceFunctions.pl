@@ -194,6 +194,8 @@ sub loadDumpAlbum
 {
   # Local variables
   my ($refMech, $refWinAlbums, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinAlbums->tfDirSaveAlbums->Text();
+  $$refWinAlbums->tfDirSaveAlbums->Text('') if $saveDir and !-d $saveDir;
   # Valid current page
   my ($validPage, $currURL) = &validAlbumPage($refMech, 1, $refWinAlbums, $refCONFIG, $refSTR);
   if ($validPage) {
@@ -258,8 +260,9 @@ sub loadDumpFriends
 {
   # Local variables
   my ($refMech, $refWinFriends, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
-  # Valid current page
   my $saveDir = $$refWinFriends->tfDirSaveFriends->Text();
+  $$refWinFriends->tfDirSaveFriends->Text('') if $saveDir and !-d $saveDir;
+  # Valid current page
   $$refWinFriends->lblInProgress->Text($$refSTR{'gatherFriendsLists'}.'...');
   my $currURL = $$refMech->uri();
   chop($currURL) if $currURL =~ /#$/;
@@ -340,6 +343,8 @@ sub loadDumpMutualFriends
 {
   # Local variables
   my ($refMech, $refWinMutualFriends, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinMutualFriends->tfDirSaveMutualFriends->Text();
+  $$refWinMutualFriends->tfDirSaveMutualFriends->Text('') if $saveDir and !-d $saveDir;
   my $currURL = $$refMech->uri();
   if ($currURL =~ /uid=(\d+)&node=(\d+)/) {
     my $id1 = $1;
@@ -360,6 +365,8 @@ sub loadDumpContrib
 {
   # Local variables
   my ($refMech, $refWinContrib, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinContrib->tfDirSaveContrib->Text();
+  $$refWinContrib->tfDirSaveContrib->Text('') if $saveDir and !-d $saveDir;
   my $title;
   my $currURL = $$refMech->uri();
   my ($pidCode, $pageType) = &getCurrPidCode($refMech);
@@ -420,6 +427,8 @@ sub loadDumpComments
 {
   # Local variables
   my ($refMech, $refWinComments, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinComments->tfDirSaveComments->Text();
+  $$refWinComments->tfDirSaveComments->Text('') if $saveDir and !-d $saveDir;
   my $title;
   my $currURL = $$refMech->uri();
   my ($pidCode, $pageType) = &getCurrPidCode($refMech);
@@ -471,6 +480,7 @@ sub loadDumpEventMembers
   # Local variables
   my ($refMech, $refWinEvent, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
   my $saveDir = $$refWinEvent->tfDirSaveEvent->Text();
+  $$refWinEvent->tfDirSaveEvent->Text('') if $saveDir and !-d $saveDir;
   my $tempDir = "$USERDIR\\temp";
   # Valid current page
   my $currURL = $$refMech->uri();
@@ -562,6 +572,7 @@ sub loadDumpGroupMembers
   # Local variables
   my ($refMech, $refWinGroupMembers, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
   my $saveDir = $$refWinGroupMembers->tfDirSaveGroupMembers->Text();
+  $$refWinGroupMembers->tfDirSaveGroupMembers->Text('') if $saveDir and !-d $saveDir;
   my $currURL = $$refMech->uri();
   my $type    = 0;
   my $idGroup;
@@ -638,6 +649,8 @@ sub loadDumpContacts
 {
   # Local variables
   my ($refMech, $refWinContacts, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinContacts->tfDirSaveContacts->Text();
+  $$refWinContacts->tfDirSaveContacts->Text('') if $saveDir and !-d $saveDir;
   my $currAccountCode = $$refMech->selector('a._2s25', any => 1);
   my $currURL         = $$refMech->uri();
   if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/messages/ and $currAccountCode->{href} =~ /\/([^\/]+)$/) {
@@ -656,6 +669,8 @@ sub loadDumpChat
 {
   # Local variables
   my ($refMech, $refWinChat, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinChat->tfDirSaveChat->Text();
+  $$refWinChat->tfDirSaveChat->Text('') if $saveDir and !-d $saveDir;
   my $currURL  = $$refMech->uri();
   if ($currURL !~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/search\/([^\/\?]+)\/?/ and
       $currURL !~ /https:\/\/(?:www|web).facebook.com\/messages\/t\/([^\/\?]+)\/?/         and
@@ -688,6 +703,8 @@ sub loadDumpVocalMessages
 {
   # Local variables
   my ($refMech, $refWinVocalMessages, $USERDIR, $DEBUG_FILE, $refCONFIG, $refWin, $refSTR) = @_;
+  my $saveDir = $$refWinVocalMessages->tfDirSaveVocalMessages->Text();
+  $$refWinVocalMessages->tfDirSaveVocalMessages->Text('') if $saveDir and !-d $saveDir;
   my $currURL = $$refMech->uri();
   if ($currURL =~ /\%[0-9a-fA-F]{2}(\d+)\&/) {
     my $partnerID = $1;
@@ -771,7 +788,7 @@ sub isDumpFriendsReady
   my $saveDir       = $$refWinFriends->tfDirSaveFriends->Text();
   my $friendName    = $$refWinFriends->tfFriendName->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$friendName) { $$refWinFriends->btnFriendsDumpNow->Disable(); return(0); }
+  if (!$saveDir or !-d $saveDir or !$friendName) { $$refWinFriends->btnFriendsDumpNow->Disable(); return(0); }
   # Friends category loaded and at least one checked ?
   my $friendsChecked = 0;
   for (my $i = 1; $i < $$refWinFriends->GridFriends->GetRows(); $i++) {
@@ -799,7 +816,7 @@ sub isDumpMutualFriendsReady
   my $mutualFriendsName   = $$refWinMutualFriends->tfMutualFriendsName->Text();
   my $saveDir             = $$refWinMutualFriends->tfDirSaveMutualFriends->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$mutualFriendsName) {
+  if (!$saveDir or !-d $saveDir or !$mutualFriendsName) {
     $$refWinMutualFriends->btnMutualFriendsDumpNow->Disable();
     $$refWinMutualFriends->btnMutualFriendsAddQueue->Disable();
     return(0);
@@ -818,7 +835,7 @@ sub isDumpContribReady
   my $contribName   = $$refWinContrib->tfContribName->Text();
   my $saveDir       = $$refWinContrib->tfDirSaveContrib->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$contribName) {
+  if (!$saveDir or !-d $saveDir or !$contribName) {
     $$refWinContrib->btnContribDumpNow->Disable();
     $$refWinContrib->btnContribAddQueue->Disable();
     return(0);
@@ -862,7 +879,7 @@ sub isDumpCommentsReady
   my $commentsName   = $$refWinComments->tfCommentsName->Text();
   my $saveDir        = $$refWinComments->tfDirSaveComments->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$commentsName) {
+  if (!$saveDir or !-d $saveDir or !$commentsName) {
     $$refWinComments->btnCommentsDumpNow->Disable();
     $$refWinComments->btnCommentsAddQueue->Disable();
     return(0);
@@ -899,7 +916,7 @@ sub isDumpEventMembersReady
   my $eventName   = $$refWinEvent->tfEventFilename->Text();
   my $saveDir     = $$refWinEvent->tfDirSaveEvent->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$eventName) {
+  if (!$saveDir or !-d $saveDir or !$eventName) {
     $$refWinEvent->btnEventDumpNow->Disable();
     $$refWinEvent->btnEventAddQueue->Disable();
     return(0);
@@ -925,7 +942,7 @@ sub isDumpGroupMembersReady
   my $GroupMembersName   = $$refWinGroupMembers->tfGroupMembersName->Text();
   my $saveDir            = $$refWinGroupMembers->tfDirSaveGroupMembers->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$GroupMembersName) {
+  if (!$saveDir or !-d $saveDir or !$GroupMembersName) {
     $$refWinGroupMembers->btnGroupMembersDumpNow->Disable();
     $$refWinGroupMembers->btnGroupMembersAddQueue->Disable();  
     return(0);
@@ -957,7 +974,7 @@ sub isDumpContactsReady
   my $contactsName   = $$refWinContacts->tfContactsName->Text();
   my $saveDir        = $$refWinContacts->tfDirSaveContacts->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$contactsName) {
+  if (!$saveDir or !-d $saveDir or !$contactsName) {
     $$refWinContacts->btnContactsDumpNow->Disable();
     $$refWinContacts->btnContactsAddQueue->Disable();
     return(0);
@@ -976,7 +993,7 @@ sub isDumpChatReady
   my $chatName   = $$refWinChat->tfChatName->Text();
   my $saveDir    = $$refWinChat->tfDirSaveChat->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$chatName) {
+  if (!$saveDir or !-d $saveDir or !$chatName) {
     $$refWinChat->btnChatDumpNow->Disable();
     $$refWinChat->btnChatAddQueue->Disable();
     return(0);
@@ -995,7 +1012,7 @@ sub isDumpVocalMessagesReady
   my $vocalMessagesName   = $$refWinVocalMessages->tfVocalMessagesName->Text();
   my $saveDir             = $$refWinVocalMessages->tfDirSaveVocalMessages->Text();
   # Valid directory and valid name for save ?
-  if (!$saveDir or !(-d $saveDir) or !$vocalMessagesName) {
+  if (!$saveDir or !-d $saveDir or !$vocalMessagesName) {
     $$refWinVocalMessages->btnVocalMessagesDumpNow->Disable();
     $$refWinVocalMessages->btnVocalMessagesAddQueue->Disable();
     return(0);
@@ -2127,6 +2144,8 @@ sub handlePageThr
       if ($typeHandle == 8 or $typeHandle == 12) {  # Remove Header
         $mech->eval_in_page('var div = document.getElementById("pagelet_bluebar"); if (div) { div.parentNode.removeChild(div); }'); # Blue bar
         $mech->eval_in_page('var div = document.getElementById("timeline_top_section"); if (div) { div.parentNode.removeChild(div); }'); # People Profile header
+        $mech->eval_in_page('var div = document.getElementsByClassName("_1pfm"); if (div[0]) { div[0].parentNode.removeChild(div[0]); }'); # Page
+        $mech->eval_in_page('var div = document.getElementById("headerArea"); if (div) { div.parentNode.removeChild(div); }'); # Group
       }
       if ($typeHandle == 9 or $typeHandle == 12) { # Remove Left column
         $mech->eval_in_page('var div = document.getElementById("entity_sidebar"); if (div) { div.parentNode.removeChild(div); }'); # Event
@@ -2137,7 +2156,7 @@ sub handlePageThr
       if ($typeHandle == 10 or $typeHandle == 12) { # Remove Right menu
         $mech->eval_in_page('var div = document.getElementById("event_related_events"); if (div) { div.parentNode.removeChild(div); }'); # Event
         $mech->eval_in_page('var div = document.getElementById("pagelet_rhc_footer"); if (div) { div.parentNode.removeChild(div); }'); # Event
-        $mech->eval_in_page('var div = document.getElementById("u_0_s"); if (div) { div.parentNode.removeChild(div); }'); # Page
+        $mech->eval_in_page('var div = document.getElementById("pages_side_column"); if (div) { div.parentNode.removeChild(div); }'); # Page
         $mech->eval_in_page('var div = document.getElementById("rightCol"); if (div) { div.parentNode.removeChild(div); }'); # Group
         $mech->eval_in_page('var div = document.getElementsByClassName("_14i5"); if (div[0]) { div[0].style.right = "0px"; div[0].style.left = "0px"; }'); # Modify scrollable area css
       }
