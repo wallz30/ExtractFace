@@ -8,11 +8,11 @@
 # SourceForge		: https://sourceforge.net/p/extractface
 # GitHub				: https://github.com/arioux/ExtractFace
 # Creation			: 2015-08-01
-# Modified			: 2017-12-23
-my $VERSION			= "6.3.1";
+# Modified			: 2018-01-06
+my $VERSION			= "6.3.2";
 # Author				: Alain Rioux (admin@le-tools.com)
 #
-# Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
+# Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,8 +75,12 @@ my ($winICO, $logoBmp, $albumBmp, $friendsBmp, $eventBmp, $contribBmp, $chatBmp,
 my $PROGDIR = $0;                                                              # Program path
 while (chop($PROGDIR) ne "\\") { }                                             # Dir only
 my $USERDIR;                                                                   # User path
-if (-d "$ENV{'APPDATA'}\\ExtractFace") { $USERDIR = "$ENV{'APPDATA'}\\ExtractFace"; }
-else                                   { $USERDIR = $PROGDIR;                       }
+print $ENV{'APPDATA'} . "\n";
+if 	  (-d "$ENV{'APPDATA'}\\ExtractFace") { $USERDIR = "$ENV{'APPDATA'}\\ExtractFace"; } # User dir is AppData (default installation)
+elsif (-w "$PROGDIR\\ExtractFace.ini"		)	{ $USERDIR = $PROGDIR;                       } # Program directory (as standalone, if writable) 
+else { # No user directory, we must create one (AppData by default)
+	$USERDIR = "$ENV{'APPDATA'}\\ExtractFace" if mkdir("$ENV{'APPDATA'}\\ExtractFace");
+}
 my $URL_DOC      = "http://le-tools.com/ExtractFaceDoc.html";                  # Online documentation
 my $CONFIG_FILE  = "$USERDIR\\ExtractFace.ini";                                # Configuration file
 my $LANG_FILE    = "$USERDIR\\Lang.ini";                                       # Langage file
@@ -187,7 +191,7 @@ $win->AddLabel(   -name        => 'lblText3'          ,
                   -font        => $font10             ,
                   -foreground  => [0  , 0  , 102]     ,
                   -background  => [255, 255, 255]     ,
-                  -text        => '© Copyright 2015-2016 Alain Rioux', );
+                  -text        => '© Copyright 2015-2018 Alain Rioux', );
 $win->AddLabel(   -name        => 'lblText4'          ,
                   -size        => [340, 22]           ,
                   -pos         => [180,110]           ,

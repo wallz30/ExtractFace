@@ -38,8 +38,7 @@ ExtractFace has been developped using ActivePerl 5.16.3 with the following modul
 
 To do
 -----
-
-- More Dump functions!
+- As MozRepl will stop working on Firefox ESR around june 2018, must find an alternative...
 
 
 Packaging

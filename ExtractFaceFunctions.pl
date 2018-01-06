@@ -7,10 +7,10 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2017-12-04
+# Modified                : 2018-01-06
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
-# Copyright (C) 2015-2017  Alain Rioux (le-tools.com)
+# Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1859,7 +1859,7 @@ sub getListAlbums
       my $id;
       if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) { # People or group
         $url = $1;
-        if    ($albumCode =~ /_50f4[^\>]*>([^\<]*)</               ) { $name = $1; }
+        if    ($albumCode =~ /_2ieo[^\>]*>([^\<]*)</               ) { $name = $1; }
         elsif ($pageType == 1 and $albumCode =~ /<strong>([^\<]+)</) { $name = $1; }
         if    ($url       =~ /album_id=(\d+)/) { $id = $1; }
         elsif ($url       =~ /set=([^\&]+)/  ) { $id = $1; }
