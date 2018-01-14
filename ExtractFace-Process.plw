@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2018-01-06
-my $VERSION               = '6.3.2';
+# Modified                : 2018-01-14
+my $VERSION               = '6.3.3';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -480,7 +480,7 @@ sub dumpMutualFriends
   $winPb->lblPbCurr1->Text("$STR{'Processing'}: $STR{'MutualFriends'}");
   $$refInfos{groupType} = 1;
   $$refInfos{"$STR{'MutualFriends'}-url"} = $$refInfos{startingURL};
-  &dumpGroupMembersCat(\$mech, $refDbh, $refInfos, $STR{'MutualFriends'});
+  &dumpMutualFriendsPage(\$mech, $refDbh, $refInfos, $STR{'MutualFriends'});
   # Parsing done, create the report
   $winPb->lblPbCurr1->Text("$STR{'Creating'} $STR{'outputFile'}...");
   my $nbrMutualFriends = $$refDbh->selectrow_array('SELECT COUNT(id) FROM PROFILES');
@@ -1054,16 +1054,19 @@ sub dumpGroupMembers
   # Connect to database
   my $dsn  = "DBI:SQLite:dbname=$dbFile";
   $$refDbh = DBI->connect($dsn, undef, undef, { AutoCommit => 0, sqlite_unicode => 1});
+  # Steps:
+  # 1: Open the page
+  # 2: Scroll the page
+  # 3: Save the page
+  # 4: Parse the page
+  
   # Connect to current tab in Firefox
   my $mech = WWW::Mechanize::Firefox->new(tab => 'current', autodie => 0);
-  # Number of Group Members categories (1 or 2: Admin, Members)
-  my @listCat = split(/\|/,$$refInfos{listCat});
-  my $nbrCatGroupMembers = scalar(@listCat);
   my $count1 = 0;
   # First execution, turn on the progress window
   if (!$firstExec) {
     # Turn on progress bar
-    $winPb->pbWinPb1->SetRange(0, $nbrCatGroupMembers);
+    $winPb->pbWinPb1->SetRange(0, 4);
     $winPb->pbWinPb1->SetPos(0);
     $winPb->pbWinPb1->SetStep(1);
     $winPb->lblPbCurr1->Text('');
@@ -1076,28 +1079,63 @@ sub dumpGroupMembers
   # Create folders
   mkdir("$$refInfos{saveDir}\\images_$$refInfos{filename}")
   if !-d "$$refInfos{saveDir}\\images_$$refInfos{filename}" and $$refInfos{incIcons};
-  # Parse each Group Members category page
-  foreach my $cat (@listCat) {
-    # Progress
-    my $encodedName = encode($$refInfos{charSet}, $cat);
-    $winPb->lblPbCurr1->Text("$STR{'Processing'}: $encodedName");
-    $winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
-    # Dump Group Members category
-    &dumpGroupMembersCat(\$mech, $refDbh, $refInfos, $cat);
-    # Progress
-    $count1++;
-    $winPb->pbWinPb1->StepIt();
-    $winPb->lblCount1->Text("$count1/$nbrCatGroupMembers");
-    $winPb->pbWinPb2->SetPos(0);
-    $winPb->lblPbCurr2->Text('');
-    $winPb->lblCount2->Text('');
+  # Opening the Group Members page
+  if (!exists($$refInfos{step}) or !$$refInfos{step}) {
+    if ($mech->uri() ne $$refInfos{startingURL}) {
+      $winPb->lblPbCurr1->Text("$STR{'Opening'} $STR{'thePage'}");
+      $mech->get($$refInfos{startingURL}, synchronize => 0);
+      sleep($$refInfos{timeToWait});
+    }
+    $$refInfos{step} = 1;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
   }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/4");
+  # Scrolling the Group Members page
+  if ($$refInfos{step} == 1) {
+    if ($$refInfos{autoScroll}) {
+      $winPb->lblPbCurr1->Text("$STR{'Scrolling'} $STR{'thePage'}");
+      sleep($$refInfos{timeToWait});
+      $mech->eval_in_page("var el = document.getElementsByClassName('uiMorePagerPrimary'); for (var i=0;i<el.length; i++) { el[i].click(); }"); # Expand Admins list
+      &scrollLikePage(\$mech, $$refInfos{timeToWait});
+    }
+    $$refInfos{step} = 2;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/4");
+  # Saving the Group Members page
+  if ($$refInfos{step} == 2) {
+    $winPb->lblPbCurr1->Text("$STR{'Saving'} $STR{'thePage'}");
+    # Create the directories
+    mkdir("$$refInfos{saveDir}\\temp") if !-d "$$refInfos{saveDir}\\temp";
+    $$refInfos{tmpPage} = "$$refInfos{saveDir}\\temp\\page.html";
+    my $status;
+    eval {
+      if ($$refInfos{incIcons}) { $status = $mech->save_content($$refInfos{tmpPage}, "$$refInfos{saveDir}\\temp"); }
+      else                      { $status = $mech->save_content($$refInfos{tmpPage}); }
+      while ($status->{currentState} != $status->{PERSIST_STATE_FINISHED}) { usleep(100000); }
+    };
+    $$refInfos{step} = 3;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/4");
+  # Parsing the Group Members page
+  if ($$refInfos{step} == 3) {
+    $winPb->lblPbCurr1->Text("$STR{'Parsing'} $STR{'thePage'}");
+    &parseGroupMembers($refDbh, $refInfos);
+    $$refInfos{step} = 4;
+    &updateDumpDB_INFOS($refDbh, $refInfos);
+  }
+  $winPb->pbWinPb1->SetPos($$refInfos{step});
+  $winPb->lblCount1->Text("$$refInfos{step}/4");
   # Parsing done, create the report
   $winPb->lblPbCurr1->Text("$STR{'Creating'} $STR{'outputFile'}...");
-  if ($nbrCatGroupMembers) {
+  if ($$refInfos{nbrMembers}) {
     # Progress 1
-    $winPb->lblCount1->Text("0/$nbrCatGroupMembers");
-    $winPb->pbWinPb1->SetRange(0, $nbrCatGroupMembers);
+    $winPb->lblCount1->Text("0/$$refInfos{nbrMembers}");
+    $winPb->pbWinPb1->SetRange(0, $$refInfos{nbrMembers});
     $winPb->pbWinPb1->SetPos(0);
     $winPb->pbWinPb1->SetStep(1);
     # Create and open the XLSX file
@@ -2835,7 +2873,7 @@ sub dlCommentsFiles
 }  #--- End dlCommentsFiles
 
 #--------------------------#
-sub dumpGroupMembersCat
+sub dumpMutualFriendsPage
 #--------------------------#
 {
   # Local variables
@@ -2860,9 +2898,11 @@ sub dumpGroupMembersCat
   }
   # Scrolling the Group Members Category
   if ($$refInfos{"$cat-step"} == 1) {
-    $winPb->lblPbCurr2->Text("$STR{'Scrolling'} $STR{'thePage'}");
-    sleep($$refInfos{timeToWait});
-    &scrollLikePage($refMech, $$refInfos{timeToWait});
+    if ($$refInfos{autoScroll}) {
+      $winPb->lblPbCurr2->Text("$STR{'Scrolling'} $STR{'thePage'}");
+      sleep($$refInfos{timeToWait});
+      &scrollLikePage($refMech, $$refInfos{timeToWait});
+    }
     $$refInfos{"$cat-step"} = 2;
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
@@ -2884,7 +2924,7 @@ sub dumpGroupMembersCat
   # Parsing the Group Members Category
   if ($$refInfos{"$cat-step"} == 3) {
     $winPb->lblPbCurr2->Text("$STR{'Parsing'} $STR{'thePage'}");
-    &parseGroupMembersCat($refDbh, $refInfos, $cat);
+    &parseMutualFriends($refDbh, $refInfos, $cat);
     $$refInfos{"$cat-step"} = 4; # Parsing done
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
@@ -2898,10 +2938,10 @@ sub dumpGroupMembersCat
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
   
-}  #--- End dumpGroupMembersCat
+}  #--- End dumpMutualFriendsPage
 
 #--------------------------#
-sub parseGroupMembersCat
+sub parseMutualFriends
 #--------------------------#
 {
   # Local variables
@@ -2989,6 +3029,111 @@ sub parseGroupMembersCat
   $$refDbh->commit();
   $winPb->pbWinPb2->SetPos(0);
   $winPb->lblCount2->Text('');
+  
+}  #--- End parseMutualFriends
+
+#--------------------------#
+sub parseGroupMembers
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos) = @_;
+  my @admins;
+  my @members;
+  my $nbrAdmins;
+  my $nbrMembers;
+  # Load content from file
+  if (-T $$refInfos{tmpPage}) {
+    if (open(my $fhTemp, "<:encoding(UTF-8)", $$refInfos{tmpPage})) {
+      my $fileAsStr = do { local $/ = <$fhTemp> };
+      $fileAsStr    =~ s/[\r\n]//g;
+      close($fhTemp);
+      my $section  = (split(/bottomContent/, $fileAsStr))[0];
+      my ($adminSection, $memberSection) = split(/groupsMemberSection_recently_joined/, $section);
+      # Admins/Moderators
+      @admins     = split(/GroupProfileGridItem/, $adminSection);
+      shift(@admins);
+      # Members
+      @members    = split(/GroupProfileGridItem/, $memberSection);
+      shift(@members);
+    }
+  }
+  # Parse each category
+  &parseGroupMembersCat($refDbh, $refInfos, 'admins', \@admins);
+  &parseGroupMembersCat($refDbh, $refInfos, 'members', \@members);
+  
+}  #--- End parseGroupMembers
+
+#--------------------------#
+sub parseGroupMembersCat
+#--------------------------#
+{
+  # Local variables
+  my ($refDbh, $refInfos, $cat, $refMembers) = @_;
+  # Progress bar
+  my $ind        = 0;
+  my $nbrMembers = scalar(@$refMembers);
+  $winPb->pbWinPb2->SetRange($ind, $nbrMembers);
+  $winPb->pbWinPb2->SetPos($ind);
+  $winPb->pbWinPb2->SetStep(1);
+  $winPb->lblCount2->Text("$ind/$nbrMembers");
+  my $sthProfiles = $$refDbh->prepare('INSERT OR REPLACE INTO PROFILES (cat,id,ind,name,url,details,pictureURL,picturePath,pictureRelPath) '.
+                                      'VALUES(?,?,?,?,?,?,?,?,?)');
+  # Parse friends details
+  my $i = 0;
+  foreach my $member (@$refMembers) {
+    my $url;
+    my $id;
+    my $pictureURL;
+    # Url and Img
+    if ($member =~ / href="([^\&\"]+)(?:&|")[^\>]+hovercard\/user.php\?id=([^\&\"]+)(?:&|")[^\>]*>/) {
+      $url = $1;
+      $id  = $2;
+    }
+    # Img
+    if ($member =~ /<img class="_s0[^\"]+_4[^ ]+ img" src="([^\"]+)" /) { $pictureURL = $1; }
+    # Minimum details required
+    if ($url and $id and $pictureURL) {
+      my $name;
+      my $details        = undef;
+      my $picturePath    = undef;
+      my $pictureRelPath = undef;
+      if ($$refInfos{incIcons} and ($pictureURL =~ /\/([^\/\?]+)\?/ or $pictureURL =~ /(\w+\.(?:jpg|png))/)) { # Include profile icons
+        my $encID       = encode('utf8', $id);
+        my $encImgFN    = encode('utf8', $1);
+        $picturePath    = "$$refInfos{saveDir}\\images_$$refInfos{filename}\\$encID\.jpg";
+        $pictureRelPath = "images_$$refInfos{filename}\\$encID\.jpg";
+        rcopy("$$refInfos{saveDir}\\temp\\$encImgFN", $picturePath)
+        if -e "$$refInfos{saveDir}\\temp\\$encImgFN" and !-e $picturePath; # Copy image
+      }
+      # Gather profil name
+      my $url2 = quotemeta($url);
+      if ($member =~ /<(?:div|span)[^\>]+fsl fwb fcb[^\>]+><a href="$url2[^\>]+>([^\<]+)</) { $name = $1; }
+      # Gather details (if available)
+      if ($member =~ /<div[^\>]+class="_61cg[^\>]+>(.+?)<\/div>/) {
+        my $temp  = $1;
+        $temp     =~ s/<[^\>]+>//g;
+        $temp     = decode_entities($temp);
+        $details  .= $temp;
+      }
+      if ($member =~ /<div[^\>]+class="_60rj[^\>]+>(.+?)<\/div>/) {
+        my $temp  = $1;
+        $temp     =~ s/<[^\>]+>//g;
+        $temp     = decode_entities($temp);
+        $details  .= ', ' if $details and $temp;
+        $details  .= $temp;
+      }
+      $sthProfiles->execute($cat, $id, $ind, $name, $url, $details, $pictureURL, $picturePath, $pictureRelPath);
+      $ind++;
+      $$refInfos{nbrMembers}++;
+    }
+    $i++;
+    $winPb->pbWinPb2->StepIt();
+    $winPb->lblCount2->Text("$i/$nbrMembers");
+  }
+  $$refDbh->commit();
+  $winPb->pbWinPb2->SetPos(0);
+  $winPb->lblCount2->Text('');  
   
 }  #--- End parseGroupMembersCat
 

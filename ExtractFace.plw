@@ -1,16 +1,16 @@
 #!/usr/bin/perl
 # Perl - v: 5.16.3
 #------------------------------------------------------------------------------#
-# Tool name			: ExtractFace
-# Description		: Dump Facebook stuff for analysis or reporting purposes
-# WebSite				: http://le-tools.com/ExtractFace.html
+# Tool name		: ExtractFace
+# Description	: Dump Facebook stuff for analysis or reporting purposes
+# WebSite		: http://le-tools.com/ExtractFace.html
 # Documentation	: http://le-tools.com/ExtractFaceDoc.html
-# SourceForge		: https://sourceforge.net/p/extractface
-# GitHub				: https://github.com/arioux/ExtractFace
-# Creation			: 2015-08-01
-# Modified			: 2018-01-06
-my $VERSION			= "6.3.2";
-# Author				: Alain Rioux (admin@le-tools.com)
+# SourceForge	: https://sourceforge.net/p/extractface
+# GitHub		: https://github.com/arioux/ExtractFace
+# Creation		: 2015-08-01
+# Modified		: 2018-01-14
+my $VERSION		= "6.3.3";
+# Author		: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
 #
@@ -75,7 +75,6 @@ my ($winICO, $logoBmp, $albumBmp, $friendsBmp, $eventBmp, $contribBmp, $chatBmp,
 my $PROGDIR = $0;                                                              # Program path
 while (chop($PROGDIR) ne "\\") { }                                             # Dir only
 my $USERDIR;                                                                   # User path
-print $ENV{'APPDATA'} . "\n";
 if 	  (-d "$ENV{'APPDATA'}\\ExtractFace") { $USERDIR = "$ENV{'APPDATA'}\\ExtractFace"; } # User dir is AppData (default installation)
 elsif (-w "$PROGDIR\\ExtractFace.ini"		)	{ $USERDIR = $PROGDIR;                       } # Program directory (as standalone, if writable) 
 else { # No user directory, we must create one (AppData by default)
@@ -1264,8 +1263,6 @@ sub MenuGroupMembers_Click
 	else {
 		&createWinGroupMembers if !$winGroupMembers;
     $winGroupMembers->tfGroupMembersName->Text('');
-		$winGroupMembers->tfGroupMembersType->Text('');
-		$winGroupMembers->GridGroupMembers->DeleteNonFixedRows();
 		$winGroupMembers->tfGroupMembersCurrURL->Text('');
     # Start the thread
     $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winGroupMembers, 6, $USERDIR, $DEBUG_FILE,
@@ -3555,7 +3552,7 @@ sub createWinGroupMembers
 	$winGroupMembers = Win32::GUI::Window->new( -name        => 'winGroupMembers'       ,
 																							-text        => "$STR{'Dump'} $STR{'groupMembers'}",
 																							-pos         => [$winPosX, $winPosY]		,
-																							-size        => [800,265]               ,
+																							-size        => [800,175]               ,
 																							-background  => [255, 255, 255]         ,
 																							-hasmaximize => 0                       ,
 																							-hasminimize => 1                       ,
@@ -3582,10 +3579,6 @@ sub createWinGroupMembers
 																			-size       => [512, 22]                      ,
 																			-pos        => [220, 15]                      ,
 																			-tabstop    => 1                              , );
-	$winGroupMembers->AddTextfield(     -name       => 'tfGroupMembersType'           ,
-																			-size       => [332, 22]                      ,
-																			-pos        => [220, 15]                      ,
-																			-visible    => 0                              , );
 	$winGroupMembers->AddCombobox(      -name       => 'cbGroupMembersFormat'         ,
 																			-size       => [ 55, 22]                      ,
 																			-pos        => [735, 15]                      ,
@@ -3628,6 +3621,13 @@ sub createWinGroupMembers
 																			-background => [255, 255, 255]                ,
 																			-font       => $font10                        ,
 																			-tabstop    => 1                              , );
+	$winGroupMembers->AddCheckbox(			-name       => 'chGroupMembersAutoScroll' 		,
+																			-size       => [220, 22]              				,
+																			-pos        => [395, 74]              				,
+																			-text       => $STR{'AutoScroll'}							,
+																			-background => [255, 255, 255]        				,
+																			-font       => $font10                				,
+																			-checked    => 0                      				, );
 	$winGroupMembers->AddLabel(         -name       => 'lblInProgress'                ,
 																			-size       => [200, 22]                      ,
 																			-pos        => [556, 77]                      ,
@@ -3641,51 +3641,37 @@ sub createWinGroupMembers
 																			-bitmap     => $refresh16                     ,
 																			-tip        => $STR{'ReloadPage'}          		,
 																			-tabstop    => 1                              , );
-	$winGroupMembers->AddGrid (         -name         => 'GridGroupMembers'           ,
-																			-pos          => [140,100]                    ,
-																			-size         => [650, 95]                    ,
-																			-fixedrows    => 1                            ,
-																			-fixedcolumns => 0                            ,
-																			-editable     => 0                            , );
-	$winGroupMembers->GridGroupMembers->SetListMode(1);
-	$winGroupMembers->GridGroupMembers->SetHeaderSort();
-	$winGroupMembers->AddButton(				-name       	=> 'btnGroupMembersDumpNow'     ,
-																			-size       	=> [150, 30]                    ,
-																			-pos        	=> [245,200]                    ,
-																			-text       	=> $STR{'DumpNow'}              ,
-																			-font       	=> $font10                      ,
-																			-disabled   	=> 1                            ,
-																			-tabstop    	=> 1                            ,
-																			-ok         	=> 1                            ,
-																			-default    	=> 1                            , );
-	$winGroupMembers->AddButton(				-name         => 'btnGroupMembersAddQueue'		,
-																			-size         => [150, 30]                    ,
-																			-pos          => [400,200]                    ,
-																			-text         => $STR{'AddToQueue'}.' >>'			,
-																			-font         => $font10                      ,
-																			-disabled     => 1                            ,
-																			-tabstop      => 1                            , );
-	# Header Dump Group Members grid
-	$winGroupMembers->GridGroupMembers->SetRows(1);
-	$winGroupMembers->GridGroupMembers->SetColumns(3); # 1: checkbox, 2: Category name, 3e: Category url
-	$winGroupMembers->GridGroupMembers->SetCellText(0, 0, ''        );
-	$winGroupMembers->GridGroupMembers->SetCellType(0, 0, GVIT_CHECK);
-	$winGroupMembers->GridGroupMembers->SetCellCheck(0, 0, 1);
-	$winGroupMembers->GridGroupMembers->SetCellText(0, 1, $STR{'Category'});
-	$winGroupMembers->GridGroupMembers->SetCellText(0, 2, $STR{'url'});
-	$winGroupMembers->GridGroupMembers->SetColumnWidth(0, 25);
-	$winGroupMembers->GridGroupMembers->SetColumnWidth(1, 80);
-	$winGroupMembers->GridGroupMembers->ExpandLastColumn();
+	$winGroupMembers->AddButton(				-name       => 'btnGroupMembersDumpNow'     	,
+																			-size       => [150, 30]                    	,
+																			-pos        => [245,105]                    	,
+																			-text       => $STR{'DumpNow'}              	,
+																			-font       => $font10                      	,
+																			-disabled   => 1                            	,
+																			-tabstop    => 1                            	,
+																			-ok         => 1                            	,
+																			-default    => 1                            	, );
+	$winGroupMembers->AddButton(				-name				=> 'btnGroupMembersAddQueue'			,
+																			-size				=> [150, 30]                    	,
+																			-pos				=> [400,105]                    	,
+																			-text				=> $STR{'AddToQueue'}.' >>'				,
+																			-font				=> $font10                      	,
+																			-disabled		=> 1                            	,
+																			-tabstop		=> 1                            	, );
 	# Load default values
 	if (exists($CONFIG{'GROUP_MEMBERS_REPORT_FORMAT'})) {
 		$winGroupMembers->cbGroupMembersFormat->SetCurSel($CONFIG{'GROUP_MEMBERS_REPORT_FORMAT'});
 	}	else { $winGroupMembers->cbGroupMembersFormat->SetCurSel(0); } # Default is XLSX
   $winGroupMembers->tfDirSaveGroupMembers->Text($CONFIG{'DIR_SAVE_GROUP_MEMBERS'})
 	if exists($CONFIG{'DIR_SAVE_GROUP_MEMBERS'}) and -d $CONFIG{'DIR_SAVE_GROUP_MEMBERS'};
-  # Dump Group Members
-	if (exists($CONFIG{'GROUP_MEMBERS_INCLUDE_ICONS'})) {
+	if (exists($CONFIG{'GROUP_MEMBERS_INCLUDE_ICONS'})) { # Include icon option
 		$winGroupMembers->chGroupMembersProfileIcons->Checked($CONFIG{'GROUP_MEMBERS_INCLUDE_ICONS'});
 	} else { $winGroupMembers->chGroupMembersProfileIcons->Checked(1); $CONFIG{'GROUP_MEMBERS_INCLUDE_ICONS'} = 1; } # Default is checked
+  if (exists($CONFIG{'GROUP_MEMBERS_AUTOSCROLL'})) { # Autoscroll option
+		$winGroupMembers->chGroupMembersAutoScroll->Checked($CONFIG{'GROUP_MEMBERS_AUTOSCROLL'});
+	} else {
+		$winGroupMembers->chGroupMembersAutoScroll->Checked(0); # Default is not checked
+		$CONFIG{'GROUP_MEMBERS_AUTOSCROLL'} = 0;
+	}
 
 }  #--- End createWinGroupMembers
 
@@ -3708,7 +3694,6 @@ sub btnGroupMembersRefresh_Click
   if ($THR and $THR->is_running()) { Win32::GUI::MessageBox($win, $STR{'processRunning'},$STR{'Warning'},0x40010); }
 	else {
     $winGroupMembers->tfGroupMembersName->Text('');
-		$winGroupMembers->GridGroupMembers->DeleteNonFixedRows();
     $THR = threads->create(\&loadDumpPageThr, \$THR, \$ARROW, \$HOURGLASS, \$winGroupMembers, 6, $USERDIR, $DEBUG_FILE,
 													 \%CONFIG, \$win, \%STR);
   }
@@ -3779,35 +3764,20 @@ sub chGroupMembersProfileIcons_Click
 }  #--- End chGroupMembersProfileIcons_Click
 
 #--------------------------#
-sub GridGroupMembers_Click
+sub chGroupMembersAutoScroll_Click
 #--------------------------#
 {
-  # Local variables
-  my ($row, $column) = @_;
-  # Select
-  if (!$column) {
-    my $selStatus = $winGroupMembers->GridGroupMembers->GetCellCheck($row, $column);
-    if (!$row) {
-      # Check all
-      if (!$selStatus) {
-				for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1); }
-      # Uncheck all
-			} else {
-				for (my $i = 0; $i < $winGroupMembers->GridGroupMembers->GetRows(); $i++) { $winGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 0); }
-			}
-    } else {
-      # Check
-      if (!$selStatus) { $winGroupMembers->GridGroupMembers->SetCellCheck($row, $column, 1); }
-      # Uncheck
-      else {
-				$winGroupMembers->GridGroupMembers->SetCellCheck($row, $column, 0);
-				$winGroupMembers->GridGroupMembers->SetCellCheck(0   , $column, 0);
-			}
-    }
+  # Save the choice
+  if ($winGroupMembers->chGroupMembersAutoScroll->Checked()) {
+    $CONFIG{'GROUP_MEMBERS_AUTOSCROLL'} = 1;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
+  # Don't save
+  } else {
+    $CONFIG{'GROUP_MEMBERS_AUTOSCROLL'} = 0;
+    &saveConfig(\%CONFIG, $CONFIG_FILE);
   }
-  return(1);
 
-}  #--- End GridGroupMembers_Click
+}  #--- End chGroupMembersAutoScroll_Click
 
 #--------------------------#
 sub btnGroupMembersDumpNow_Click

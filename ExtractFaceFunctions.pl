@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2018-01-06
+# Modified                : 2018-01-14
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -574,71 +574,26 @@ sub loadDumpGroupMembers
   my $saveDir = $$refWinGroupMembers->tfDirSaveGroupMembers->Text();
   $$refWinGroupMembers->tfDirSaveGroupMembers->Text('') if $saveDir and !-d $saveDir;
   my $currURL = $$refMech->uri();
-  my $type    = 0;
   my $idGroup;
   my $newURL;
   # Valid current page
-  if ($currURL =~ /(https:\/\/(?:www|web).facebook.com\/groups\/(\w+))/) {
+  if ($currURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/(\w+)\/members/) { # Already in the page
+    $idGroup = $1;
+    $newURL  = $currURL;
+  } elsif ($currURL =~ /(https:\/\/(?:www|web).facebook.com\/groups\/(\w+))/) { # Get the right page
     my $currUrlPath = $1;
     $idGroup        = $2;
-    my $load = 1;
-    if (my $pageSel = $$refMech->selector('div.uiHeader.uiHeaderTopAndBottomBorder.uiHeaderSection a', any => 1)) {
-      if ($currURL = $pageSel->{href}) {
-        $currURL = 'https://www.facebook.com'.$currURL if $currURL !~ /^http/;
-        $type = 1;
-      }
-    } elsif (my @menu = $$refMech->selector('div._2yaa')) {
-      foreach (@menu) {
-        if ($_->{outerHTML} =~ /data-key="members"/) {
-          chop($currURL) if $currURL =~ /\/$/;
-          if ($currURL !~ /members$/ and $currURL !~ /admins$/) { $currURL = $currUrlPath . '/members'; }
-          else 																									{ $load    = 0; $newURL = $currURL; 	  }
-          $type = 2;
-        }
-      }
-    }
-    if ($type and $currURL and $load and $$refCONFIG{'AUTO_LOAD_SCROLL'}) {
+    $currURL        = $currUrlPath. "/members";
+    if ($currURL and $$refCONFIG{'AUTO_LOAD_SCROLL'}) {
       $$refMech->get($currURL, synchronize => 0);
       sleep($$refCONFIG{'TIME_TO_WAIT'});
       $newURL = sprintf($$refMech->uri());
     }
-  } elsif ($currURL =~ /https:\/\/(?:www|web).facebook.com\/browse\/group_members\/\?gid=(\w+)/) {
-    $idGroup = $1;
-    $type    = 1;
-    $newURL  = $currURL;
   }
   # Right page, get the values
-  if ($type and $newURL and $idGroup and ($type == 1 and   $newURL =~ /https:\/\/(?:www|web).facebook.com\/browse\/group_members\/\?gid=$idGroup/) or
-                                         ($type == 2 and (($newURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/$idGroup\/members\/?/) or
-                                          ($newURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/$idGroup\/admins\/?/)))) {
-    $$refWinGroupMembers->tfGroupMembersType->Text($type);
+  if ($newURL and $idGroup and $newURL =~ /https:\/\/(?:www|web).facebook.com\/groups\/$idGroup\/members\/?/) {
     $$refWinGroupMembers->tfGroupMembersName->Text("$idGroup - $$refSTR{'groupMembers'}");
     $$refWinGroupMembers->tfGroupMembersCurrURL->Text($newURL);
-    my %categories;
-    # Type with single list
-    if ($type == 1) { $categories{$$refSTR{'groupMembers'}}{url} = $newURL; }
-    # Type with tab selection
-    else {
-      if (my $membersPageName = $$refMech->selector('a._5bv4', any => 1)) {
-        if ($membersPageName->{innerHTML} =~ /^(\w+)/) { $categories{$1}{url} = $membersPageName->{href}; }
-      }
-      if (my $adminsPageName  = $$refMech->selector('a._5bv3', any => 1)) {
-        if ($adminsPageName->{innerHTML}  =~ /^(\w+)/) { $categories{$1}{url} = $adminsPageName->{href};  }
-      }
-    }
-    foreach my $cat (sort keys %categories) {
-      if (my $i = $$refWinGroupMembers->GridGroupMembers->InsertRow($cat, -1)) {
-        $$refWinGroupMembers->GridGroupMembers->SetCellText($i, 0, ''        );
-        $$refWinGroupMembers->GridGroupMembers->SetCellType($i, 0, GVIT_CHECK);
-        $$refWinGroupMembers->GridGroupMembers->SetCellCheck($i, 0, 1);
-        $categories{$cat}{name} = encode($$refCONFIG{'CHARSET'}, $cat);
-        $$refWinGroupMembers->GridGroupMembers->SetCellText($i, 1, $categories{$cat}{name});
-        $$refWinGroupMembers->GridGroupMembers->SetCellText($i, 2, $categories{$cat}{url});
-      }
-    }
-    $$refWinGroupMembers->GridGroupMembers->AutoSize();
-    $$refWinGroupMembers->GridGroupMembers->ExpandLastColumn();
-    $$refWinGroupMembers->GridGroupMembers->Refresh();
   } else { Win32::GUI::MessageBox($$refWinGroupMembers, $$refSTR{'warn3'}, $$refSTR{'Warning'}, 0x40010); }
 
 }  #--- End loadDumpGroupMembers
@@ -945,19 +900,6 @@ sub isDumpGroupMembersReady
   if (!$saveDir or !-d $saveDir or !$GroupMembersName) {
     $$refWinGroupMembers->btnGroupMembersDumpNow->Disable();
     $$refWinGroupMembers->btnGroupMembersAddQueue->Disable();  
-    return(0);
-  }
-  # No selected lists
-  my $nbrSel = 0;
-  for (my $i = 1; $i < $$refWinGroupMembers->GridGroupMembers->GetRows(); $i++) {
-    if ($$refWinGroupMembers->GridGroupMembers->GetCellCheck($i, 0)) {
-      $nbrSel = 1;
-      last;
-    }
-  }
-  if (!$nbrSel) {
-    $$refWinGroupMembers->btnGroupMembersDumpNow->Disable();
-    $$refWinGroupMembers->btnGroupMembersAddQueue->Disable();
     return(0);
   }
   $$refWinGroupMembers->btnGroupMembersDumpNow->Enable();
@@ -1466,17 +1408,8 @@ sub dumpGroupMembers
 	$dumpParams{delTempFiles}   = 1 if $$refWinConfig->chDelTempFiles->Checked();
   $dumpParams{openReport}		  = 1 if $$refWinConfig->chOptOpenReport->Checked() and ($now or !$$refWinConfig->chOptDontOpenReport->Checked());
   $dumpParams{startingURL}	  = $$refWinGroupMembers->tfGroupMembersCurrURL->Text();
-	# Gather selected Group members categories names and urls
-	for (my $i = 1; $i < $$refWinGroupMembers->GridGroupMembers->GetRows(); $i++) {
-		if ($$refWinGroupMembers->GridGroupMembers->GetCellCheck($i, 0)) {
-			my $catName = decode($$refCONFIG{'CHARSET'}, $$refWinGroupMembers->GridGroupMembers->GetCellText($i, 1));
-      $dumpParams{listCat}       .= $catName . '|';
-			$dumpParams{"$catName-url"} = $$refWinGroupMembers->GridGroupMembers->GetCellText($i, 2);
-		}
-	}
-  chop($dumpParams{listCat});
-  $dumpParams{groupType}		= $$refWinGroupMembers->tfGroupMembersType->Text();
-	$dumpParams{incIcons}			= $$refWinGroupMembers->chGroupMembersProfileIcons->Checked();
+	$dumpParams{incIcons}			  = $$refWinGroupMembers->chGroupMembersProfileIcons->Checked();
+  $dumpParams{autoScroll}     = 1 if $$refWinGroupMembers->chGroupMembersAutoScroll->Checked();
 	$dumpParams{reportFormat}	= $$refWinGroupMembers->cbGroupMembersFormat->GetString($$refWinGroupMembers->cbGroupMembersFormat->GetCurSel());
   mkdir("$USERDIR\\Queue")  if !-d "$USERDIR\\Queue";
 	if (&createDumpDB("$USERDIR\\Queue\\$dumpParams{processName}-$dumpParams{procID}\.db", \%dumpParams)) {
