@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2018-01-14
-my $VERSION               = '6.3.3';
+# Modified                : 2018-03-03
+my $VERSION               = '6.3.4';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -4100,7 +4100,8 @@ sub createAlbumReportXLSX
       my $encodedAlbumName = encode($$refInfos{charSet}, $$albumEntry[1]);
       $winPb->lblPbCurr2->Text("$STR{'Creating'} $STR{'sheet'}: $encodedAlbumName");
       # Create a sheet by category
-      if (my $sheet = $excel->add_worksheet($encodedAlbumName)) {
+      my $sheetName = substr($encodedAlbumName, 0, 31);
+      if (my $sheet = $excel->add_worksheet($sheetName)) {
         &createAlbumReportXLSXSheet(\$excel, \$sheet, $refDbh, $refInfos, $albumEntry);
       }
       # Progress 1
@@ -4325,7 +4326,8 @@ sub createProfilesReportXLSX
       my $encodedName = encode($$refInfos{charSet}, $$cat[0]);
       $winPb->lblPbCurr2->Text("$STR{'Creating'} $STR{'sheet'}: $encodedName");
       # Create a sheet by category
-      if (my $sheet = $excel->add_worksheet($encodedName)) {
+      my $sheetName = substr($encodedName, 0, 31);
+      if (my $sheet = $excel->add_worksheet($sheetName)) {
         &createProfilesReportXLSXSheet(\$excel, \$sheet, $refDbh, $refInfos, $$cat[0], $type);
       }
       # Progress 1
@@ -5659,7 +5661,8 @@ sub scrollLikePage
 		else {
 			sleep($time); # End of the page, done ? Really ? Wait a bit more
 			$seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
-			$end++ if !$seeMore;
+      if ($seeMore) { $seeMore->click(); }
+			else          { $end++;            }
 		}
   }
 
@@ -5678,8 +5681,9 @@ sub scrollVPostsPage
     if ($seeMore) { $seeMore->click(); }
 		else {
 			sleep($time); # End of the page, done ? Really ? Wait a bit more
-			$seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
-			$end++ if !$seeMore;
+			$seeMore = $$refMech->selector('a.pam.uiBoxWhite.topborder.uiMorePagerPrimary', any => 1);
+      if ($seeMore) { $seeMore->click(); }
+			else          { $end++;            }
 		}
   }
 

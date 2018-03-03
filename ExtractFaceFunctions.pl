@@ -7,7 +7,7 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2018-01-14
+# Modified                : 2018-03-03
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -297,6 +297,7 @@ sub loadDumpFriends
   }
   # List available categories
   if ($$refWinFriends->tfFriendName->Text()) {
+		sleep($$refCONFIG{'TIME_TO_WAIT'});
     $$refWinFriends->tfFriendCurrURL->Text($currURL);
     my %categories;
     my $header = $$refMech->selector('div._3dc.lfloat._ohe._5brz', one => 1)->{innerHTML};
@@ -1778,10 +1779,10 @@ sub getListAlbums
     $file_as_string =~ s/[\r\n]//g;
     close($fhTemp);
     my @albumsCode;
-    if    ($pageType == 1 or $pageType == 2) { @albumsCode = split(/photoTextTitle/, $file_as_string); } # People or Group
-    elsif ($pageType == 3                  ) { @albumsCode = split(/_3rte/         , $file_as_string); } # Business
+    if    ($pageType == 1 or $pageType == 2) { @albumsCode = split(/photoDetails/, $file_as_string); } # People or Group
+    elsif ($pageType == 3                  ) { @albumsCode = split(/_3rte/			 , $file_as_string); } # Business
     shift(@albumsCode);
-    if    ($pageType == 1 and !(scalar(@albumsCode))) {
+    if    ($pageType == 1 and !(scalar(@albumsCode))) { # People
       @albumsCode = split(/_51m- _2pio _2pit/, $file_as_string);
       shift(@albumsCode);
     }
@@ -1790,14 +1791,16 @@ sub getListAlbums
       my $url;
       my $name;
       my $id;
-      if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) { # People or group
+      if (($pageType == 1 or $pageType == 3) and $albumCode =~ /href="([^\"]+)"/) { # People or Business
         $url = $1;
         if    ($albumCode =~ /_2ieo[^\>]*>([^\<]*)</               ) { $name = $1; }
         elsif ($pageType == 1 and $albumCode =~ /<strong>([^\<]+)</) { $name = $1; }
+				if		(!$name and $albumCode =~ /_2gxd[^\>]*><span[^\>]*>([^\<]*)</) { $name = $1; }
+				if		(!$name and $albumCode =~ /_3hpt[^\>]*><div[^\>]*>([^\<]*)</ ) { $name = $1; }
         if    ($url       =~ /album_id=(\d+)/) { $id = $1; }
         elsif ($url       =~ /set=([^\&]+)/  ) { $id = $1; }
-      } elsif ($albumCode =~ /href="([^\"]+)"><strong>([^\<]*)\</ or
-               $albumCode =~ /href="([^\"]+)"><i[^\>]+><\/i><strong>([^\<]*)\</) {
+      } elsif ($albumCode =~ /href="([^\"]+)"[^\>]*><strong>([^\<]*)\</ or
+               $albumCode =~ /href="([^\"]+)"[^\>]*><i[^\>]+><\/i><strong>([^\<]*)\</) { # Group
         $url  = $1;
         $name = $2;
         if ($url =~ /set=([^\&]+)/) { $id = $1; }
@@ -1955,7 +1958,7 @@ sub handlePageThr
     $$refWinPb2->lblPbCurr->Text("$processName[$typeHandle] $$refSTR{'inProgress'}...");
     # Scroll
     if      ($typeHandle == 1) {
-      &scrollToBottom(\$mech, $$refCONFIG{'DEBUG_LOGGING'}, $count, $refWinConfig);
+      &scrollToBottom(\$mech, $$refCONFIG{'TIME_TO_WAIT'}, $count, $refWinConfig);
       $mech->eval_in_page('window.scrollTo(0,0)') if $$refCONFIG{'OPT_SCROLL_TOP'}; # Scroll to the top
     # Expand
     } elsif ($typeHandle == 2) {

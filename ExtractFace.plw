@@ -8,8 +8,8 @@
 # SourceForge	: https://sourceforge.net/p/extractface
 # GitHub		: https://github.com/arioux/ExtractFace
 # Creation		: 2015-08-01
-# Modified		: 2018-01-14
-my $VERSION		= "6.3.3";
+# Modified		: 2018-03-03
+my $VERSION		= "6.3.4";
 # Author		: Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -76,7 +76,7 @@ my $PROGDIR = $0;                                                              #
 while (chop($PROGDIR) ne "\\") { }                                             # Dir only
 my $USERDIR;                                                                   # User path
 if 	  (-d "$ENV{'APPDATA'}\\ExtractFace") { $USERDIR = "$ENV{'APPDATA'}\\ExtractFace"; } # User dir is AppData (default installation)
-elsif (-w "$PROGDIR\\ExtractFace.ini"		)	{ $USERDIR = $PROGDIR;                       } # Program directory (as standalone, if writable) 
+elsif (-w "$PROGDIR\\ExtractFace.ini"		)	{ $USERDIR = $PROGDIR;                       } # Program directory (as standalone, if writable)
 else { # No user directory, we must create one (AppData by default)
 	$USERDIR = "$ENV{'APPDATA'}\\ExtractFace" if mkdir("$ENV{'APPDATA'}\\ExtractFace");
 }
