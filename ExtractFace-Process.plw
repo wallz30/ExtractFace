@@ -7,8 +7,8 @@
 # SourceForge             : https://sourceforge.net/p/extractface
 # GitHub                  : https://github.com/arioux/ExtractFace
 # Creation                : 2015-08-01
-# Modified                : 2019-04-08
-my $VERSION               = '7.0';
+# Modified                : 2019-04-13
+my $VERSION               = '7.0.1';
 # Author                  : Alain Rioux (admin@le-tools.com)
 #
 # Copyright (C) 2015-2018  Alain Rioux (le-tools.com)
@@ -128,7 +128,7 @@ my $WIN_LOGO;
 if    ($PROCNAME eq 'DumpAlbums'       ) { $WIN_LOGO = $albumBmp;   }
 elsif ($PROCNAME eq 'DumpFriends'      ) { $WIN_LOGO = $friendsBmp; }
 elsif ($PROCNAME eq 'DumpMutualFriends') { $WIN_LOGO = $friendsBmp; }
-elsif ($PROCNAME eq 'DumpContrib'      ) { $WIN_LOGO = $contribBmp; }
+elsif ($PROCNAME eq 'DumpContrib'      ) { $WIN_LOGO = $friendsBmp; }
 elsif ($PROCNAME eq 'DumpComments'     ) { $WIN_LOGO = $contribBmp; }
 elsif ($PROCNAME eq 'DumpGroupMembers' ) { $WIN_LOGO = $friendsBmp; }
 
@@ -644,7 +644,7 @@ sub dumpContrib
   # Recalculate number of operations
   my $refAllURLs;
   my $nbrURLs = 0;
-  if ($$refInfos{pageType} == 1) { # Albums
+  if ($$refInfos{pageType}) { # Albums
     $refAllURLs    = $$refDbh->selectall_arrayref('SELECT * FROM ALBUMS');
     $nbrURLs       = scalar(@$refAllURLs);
     $nbrOperations = $nbrURLs + 3;
@@ -1127,7 +1127,7 @@ sub dumpFriendCat
     $winPb->lblPbCurr2->Text("$STR{'Opening'} $STR{'thePage'}");
     $winPb->lblCount2->Text('');
     $winPb->pbWinPb2->SetPos(0);
-    #&selectCatFriendPage($refMechFriends, $cat, $$refInfos{charSet});
+    # If not already on the page...
     $$refMechFriends->get($$refInfos{"$cat-url"});
     sleep($$refInfos{timeToWait});
     $$refInfos{"$cat-step"}++;
@@ -1136,7 +1136,8 @@ sub dumpFriendCat
   # Scrolling the Friends Category Tab
   if ($$refInfos{"$cat-step"} == 1) {
     $winPb->lblPbCurr2->Text("$STR{'Scrolling'} $STR{'thePage'}");
-    &scrollFriendPage($refMechFriends, $$refInfos{timeToWait});
+    if ($$refInfos{"$cat-url"} !~ /followers/) { &scrollFriendPage($refMechFriends, $$refInfos{timeToWait}); }
+    else                                       { &scrollLikePage(  $refMechFriends, $$refInfos{timeToWait}); }
     $$refInfos{"$cat-step"}++;
     &updateDumpDB_INFOS($refDbh, $refInfos);
   }
@@ -1280,8 +1281,7 @@ sub dumpContribComments
   if ($URLStep == 1) {
     if ($$refInfos{autoScroll}) {
       $winPb->lblPbCurr2->Text("$STR{'ScrollExpand'} $STR{'thePage'}...");
-      if ($type) { &scrollFriendPage($refMech, $$refInfos{timeToWait}); }
-      else       { &scrollPage($refMech, $$refInfos{timeToWait}); &expandContent($refMech); }
+      &scrollPage($refMech, $$refInfos{timeToWait}); &expandContent($refMech);
     }
     $URLStep = 2;
     if ($type) { $sthUpdURLStep->execute($URLStep, $pageID); }
@@ -1403,26 +1403,27 @@ sub parseContrib
       foreach my $commentNode (@commentNodes) {
         my ($id, $url, $name, $profileImg);
         # Get profil id, profil url, image url and name
-        $url = $commentNode->href;
-        if ($url =~ /(.+?)[\?\&]fref/) { $url = $1; }
-        $url = "https://www.facebook.com$url" if $url !~ /^http/;
-        if (my $dataHC = $commentNode->{'data-hovercard'}) {
-          if ($dataHC =~ /hovercard\/user.php\?id=([^\&\"]+)/) { $id = $1; }
-        }
-        if (my $imageTag = ($commentNode->getElementsByTagName('img'))[0]) {
-          $profileImg = $imageTag->src;
-          $name       = $imageTag->{'alt'}
-        }
-        if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename}) {
-          if (!$$refInfos{startingID} or $$refInfos{startingID} != $id) { # Comments by owner of the page are ignored
-            # Already exists, count
-            if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
-                                                       $STR{'Comments'}, $id)) {
-              $sthProfilesUpd->execute($exists+1, $STR{'Comments'}, $id);
-            # Add a new entry
-            } else {
-              $sthProfiles->execute($STR{'Comments'}, $id, $ind, $name, $url, $profileImg, 1);
-              $ind++;
+        if ($commentNode->{_tag} eq 'a' and $url = $commentNode->href) {
+          if ($url =~ /(.+?)[\?\&]fref/) { $url = $1; }
+          $url = "https://www.facebook.com$url" if $url !~ /^http/;
+          if (my $dataHC = $commentNode->{'data-hovercard'}) {
+            if ($dataHC =~ /hovercard\/user.php\?id=([^\&\"]+)/) { $id = $1; }
+          }
+          if (my $imageTag = ($commentNode->getElementsByTagName('img'))[0]) {
+            $profileImg = $imageTag->src;
+            $name       = $imageTag->{'alt'}
+          }
+          if ($url and $id and $profileImg and $name and $name ne $$refInfos{filename}) {
+            if (!$$refInfos{startingID} or $$refInfos{startingID} != $id) { # Comments by owner of the page are ignored
+              # Already exists, count
+              if (my $exists = $$refDbh->selectrow_array('SELECT nbr FROM PROFILES WHERE cat == ? AND id = ?', undef,
+                                                         $STR{'Comments'}, $id)) {
+                $sthProfilesUpd->execute($exists+1, $STR{'Comments'}, $id);
+              # Add a new entry
+              } else {
+                $sthProfiles->execute($STR{'Comments'}, $id, $ind, $name, $url, $profileImg, 1);
+                $ind++;
+              }
             }
           }
         }
@@ -3068,38 +3069,12 @@ sub scrollFriendPage
     $$refMech->follow_link(class => '_3t3') if $seeAllLink->{attributes}->{href} =~ /friends/;
   }  
   while (1) {
-		my ($end, $type) = $$refMech->eval_in_page('if (document.body) { (window.innerHeight + window.scrollY) >= document.body.offsetHeight }');
     my @parts = $$refMech->selector('div._30f'); # Not end of the page, but all friends are visible
     return(1) if scalar(@parts) > 2;
-		if ($end) { # End of the page, done ? Really ? Wait a bit more
-			sleep($time);
-			$$refMech->eval_in_page('if (document.body) { window.scrollTo(0,document.body.scrollHeight) }');
-			($end, $type) = $$refMech->eval_in_page('if (document.body) { (window.innerHeight + window.scrollY) >= document.body.offsetHeight }');
-			return(1) if $end;
-		}
 		$$refMech->eval_in_page('if (document.body) { window.scrollTo(0,document.body.scrollHeight) }');
   }
 
 }  #--- End scrollFriendPage
-
-#--------------------------#
-sub selectCatFriendPage
-#--------------------------#
-{
-  # Local variables
-  my ($refMech, $cat, $charSet) = @_;
-  my @links = $$refMech->selector('div._3dc.lfloat._ohe._5brz a');
-  foreach my $link (@links) {
-		my $currentName = $link->{name};
-		my $catName = encode($charSet, $currentName);
-		$catName =~ s/[\<\>\:\"\/\\\|\?\*\.]/_/g;
-    if ($catName eq $cat) {
-      $link->click();
-      return(1);
-    }
-  }
-
-}  #--- End selectCatFriendPage
 
 #--------------------------#
 sub expandContent
@@ -3131,6 +3106,7 @@ sub scrollLikePage
 	my $end = 0;
   while (!$end) { # Click on "See more" button and wait for content to load
     sleep($time);
+    $$refMech->eval_in_page('if (document.body) { window.scrollTo(0,document.body.scrollHeight) }');
     my $seeMore = $$refMech->selector('a.pam.uiBoxLightblue.uiMorePagerPrimary', any => 1);
     if ($seeMore) { $$refMech->eval_in_page("var el = document.getElementsByClassName('pam uiBoxLightblue uiMorePagerPrimary'); if (el.length > 0) { el[0].click(); }"); }
 		else {
